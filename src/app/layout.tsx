@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Maellis — Copilot Freelance IA",
-  description: "Assistant intelligent pour freelances — Tâches, Calendrier, Emails, Facturation, Time Tracking & IA",
+  title: "Maellis — Assistant Intelligent Freelance",
+  description: "Votre copilote de travail intelligent pour freelancers",
   keywords: ["freelance", "IA", "productivité", "tâches", "calendrier", "emails", "facturation", "assistant"],
   authors: [{ name: "Maellis" }],
   icons: {

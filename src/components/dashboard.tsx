@@ -1,15 +1,43 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, RefreshCw, Plus, Play, FileText, Clock, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import {
+  CheckSquare,
+  TrendingUp,
+  Clock,
+  Mail,
+  Sparkles,
+  RefreshCw,
+  Plus,
+  Play,
+  FileText,
+  ArrowRight,
+  AlertTriangle,
+  Target,
+  Calendar,
+  FolderOpen,
+  Bell,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { useAppStore } from '@/lib/store'
-import { StatsCards } from '@/components/stats-cards'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useAppStore, type TabType } from '@/lib/store'
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts'
+import { format, isToday, isBefore, startOfDay, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns'
+import { fr } from 'date-fns/locale'
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -18,8 +46,147 @@ function getGreeting(): string {
   return 'Bonsoir'
 }
 
+function formatTimeUntil(dateStr: string): string {
+  const now = new Date()
+  const target = new Date(dateStr)
+  const mins = differenceInMinutes(target, now)
+  if (mins < 0) return 'Passé'
+  if (mins < 60) return `${mins} min`
+  const hours = differenceInHours(target, now)
+  if (hours < 24) return `${hours}h`
+  const days = differenceInDays(target, now)
+  return `${days}j`
+}
+
+function priorityLabel(priority: string): string {
+  switch (priority) {
+    case 'urgent': return 'Urgent'
+    case 'high': return 'Élevée'
+    case 'medium': return 'Moyenne'
+    case 'low': return 'Basse'
+    default: return priority
+  }
+}
+
+function priorityBadgeVariant(priority: string): 'destructive' | 'secondary' | 'outline' {
+  if (priority === 'urgent' || priority === 'high') return 'destructive'
+  if (priority === 'medium') return 'secondary'
+  return 'outline'
+}
+
+function suggestionPriorityColor(priority: string): string {
+  switch (priority) {
+    case 'high': return 'bg-red-500/15 text-red-400 border-red-500/30'
+    case 'medium': return 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+    case 'low': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+    default: return 'bg-secondary text-secondary-foreground border-border'
+  }
+}
+
+function eventTypeLabel(type: string): string {
+  switch (type) {
+    case 'meeting': return 'Réunion'
+    case 'deadline': return 'Deadline'
+    case 'block': return 'Focus'
+    case 'reminder': return 'Rappel'
+    default: return type
+  }
+}
+
+// ─── Skeleton Loaders ───────────────────────────────────────────────────────
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-7 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <Skeleton className="h-10 w-10 rounded-lg" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function ChartSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <Skeleton className="h-4 w-40" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-[200px] w-full rounded-lg" />
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Stat Card ──────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  label: string
+  value: string | number
+  icon: React.ElementType
+  accentClass: string
+  bgClass: string
+  trend?: string
+  sublabel?: string
+}
+
+function StatCard({ label, value, icon: Icon, accentClass, bgClass, trend, sublabel }: StatCardProps) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-1">{label}</p>
+              <p className="text-2xl font-bold">{value}</p>
+              {trend && (
+                <p className={`text-xs mt-1 flex items-center gap-1 ${accentClass}`}>
+                  <TrendingUp className="w-3 h-3" /> {trend}
+                </p>
+              )}
+              {sublabel && (
+                <p className="text-xs text-muted-foreground mt-1">{sublabel}</p>
+              )}
+            </div>
+            <div className={`w-10 h-10 rounded-lg ${bgClass} flex items-center justify-center flex-shrink-0`}>
+              <Icon className={`w-5 h-5 ${accentClass}`} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
 export function Dashboard() {
-  const { stats, briefing, fetchBriefing, fetchStats, fetchSuggestions, suggestions, tasks, events, goals, setActiveTab } = useAppStore()
+  const {
+    stats,
+    briefing,
+    suggestions,
+    tasks,
+    events,
+    reminders,
+    goals,
+    projects,
+    fetchBriefing,
+    fetchSuggestions,
+    fetchStats,
+    setActiveTab,
+  } = useAppStore()
+
   const [loadingBriefing, setLoadingBriefing] = useState(false)
 
   useEffect(() => {
@@ -33,29 +200,71 @@ export function Dashboard() {
     setLoadingBriefing(false)
   }
 
-  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date())
-  const todayTasks = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString())
-  const todayEvents = events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString())
+  // ─── Derived Data ───────────────────────────────────────────────────────
+
+  const todayStr = useMemo(() => new Date().toDateString(), [])
+
+  const upcomingTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.status !== 'done' && t.dueDate)
+      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+      .slice(0, 5)
+  }, [tasks])
+
+  const todayEvents = useMemo(() => {
+    return events
+      .filter(e => isToday(new Date(e.startDate)))
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+  }, [events, todayStr])
+
+  const upcomingReminders = useMemo(() => {
+    return reminders
+      .filter(r => !r.isSent)
+      .sort((a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime())
+      .slice(0, 3)
+  }, [reminders])
+
+  const weekChartData = useMemo(() => {
+    if (stats?.weekDays && stats.weekDays.length > 0) {
+      return stats.weekDays.map(d => ({
+        name: d.day,
+        heures: Number(d.totalHours.toFixed(1)),
+      }))
+    }
+    // Fallback mock data
+    const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+    return days.map(d => ({ name: d, heures: 0 }))
+  }, [stats])
+
+  // ─── Date display ──────────────────────────────────────────────────────
+
+  const formattedDate = format(new Date(), "EEEE d MMMM yyyy", { locale: fr })
+  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)
+
+  // ─── Stats values ──────────────────────────────────────────────────────
+
+  const isLoadingStats = !stats
+
+  // ─── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
-      {/* Greeting & Briefing */}
+    <div className="space-y-6 max-w-7xl mx-auto">
+
+      {/* ═══ 1. Greeting + Briefing ═════════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="bg-gradient-to-r from-emerald-500/10 to-amber-500/5 border-emerald-500/20">
           <CardContent className="p-6">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold">
                   {getGreeting()}, <span className="text-emerald-400">Alex</span> 👋
                 </h1>
-                <p className="text-muted-foreground mt-1">
-                  {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
+                <p className="text-muted-foreground mt-1">{capitalizedDate}</p>
               </div>
               <Button
                 onClick={handleBriefing}
                 disabled={loadingBriefing}
-                className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30"
+                className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 flex-shrink-0"
                 variant="outline"
               >
                 {loadingBriefing ? (
@@ -63,7 +272,7 @@ export function Dashboard() {
                 ) : (
                   <Sparkles className="w-4 h-4 mr-2" />
                 )}
-                {briefing ? 'Rafraîchir' : 'Générer le briefing'}
+                {briefing ? 'Rafraîchir le briefing' : 'Générer mon briefing'}
               </Button>
             </div>
 
@@ -73,7 +282,7 @@ export function Dashboard() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-4 p-4 rounded-lg bg-background/50 border border-border"
+                  className="mt-4 p-4 rounded-lg border-l-4 border-l-emerald-400 bg-background/50 border border-border"
                 >
                   <div className="flex items-start gap-2">
                     <Sparkles className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -86,20 +295,57 @@ export function Dashboard() {
         </Card>
       </motion.div>
 
-      {/* Stats Cards */}
-      <StatsCards />
+      {/* ═══ 2. Stats Cards Row ═════════════════════════════════════════════ */}
+      {isLoadingStats ? (
+        <StatsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Tâches aujourd'hui"
+            value={stats?.tasksToday || 0}
+            icon={CheckSquare}
+            accentClass="text-emerald-400"
+            bgClass="bg-emerald-500/10"
+            sublabel={stats ? `${stats.completedTasksThisWeek} terminées cette semaine` : undefined}
+          />
+          <StatCard
+            label="CA du mois"
+            value={`${(stats?.monthlyRevenue || 0).toLocaleString('fr-FR')} €`}
+            icon={TrendingUp}
+            accentClass="text-amber-400"
+            bgClass="bg-amber-500/10"
+            trend="+12%"
+          />
+          <StatCard
+            label="Heures cette semaine"
+            value={stats?.weeklyHours || 0}
+            icon={Clock}
+            accentClass="text-zinc-400"
+            bgClass="bg-zinc-500/10"
+            sublabel={stats ? `${stats.billableHours}h facturées` : undefined}
+          />
+          <StatCard
+            label="Emails non lus"
+            value={stats?.unreadEmails || 0}
+            icon={Mail}
+            accentClass="text-rose-400"
+            bgClass="bg-rose-500/10"
+            trend={stats && stats.unreadEmails > 5 ? 'Attention' : undefined}
+          />
+        </div>
+      )}
 
-      {/* AI Suggestions */}
+      {/* ═══ 3. AI Suggestions ══════════════════════════════════════════════ */}
       {suggestions.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                Suggestions IA
+                Suggestions de Maellis
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {suggestions.map((s, i) => (
                 <motion.div
                   key={i}
@@ -108,18 +354,30 @@ export function Dashboard() {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
                 >
-                  <span className="text-lg">{s.icon}</span>
+                  <span className="text-lg flex-shrink-0 mt-0.5">{s.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{s.title}</p>
-                      <Badge variant={s.priority === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
-                        {s.priority === 'high' ? 'Urgent' : 'Moyen'}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">{s.title}</p>
+                      <Badge
+                        className={`text-[10px] border ${suggestionPriorityColor(s.priority)}`}
+                        variant="outline"
+                      >
+                        {s.priority === 'high' ? 'Élevée' : s.priority === 'medium' ? 'Moyenne' : 'Basse'}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.message}</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="flex-shrink-0 text-xs" onClick={() => setActiveTab(s.actionUrl.replace('#', '') as 'tasks' | 'emails' | 'invoices')}>
-                    <ArrowRight className="w-3 h-3" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-shrink-0 text-xs text-emerald-400 hover:text-emerald-300"
+                    onClick={() => {
+                      const tab = s.actionUrl?.replace('#', '') as TabType
+                      if (tab) setActiveTab(tab)
+                    }}
+                  >
+                    Voir les détails
+                    <ArrowRight className="w-3 h-3 ml-1" />
                   </Button>
                 </motion.div>
               ))}
@@ -128,196 +386,339 @@ export function Dashboard() {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Goals */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              Objectifs de la semaine
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {goals.map((goal) => {
-              const progress = goal.target ? Math.min((goal.current / goal.target) * 100, 100) : 0
-              return (
-                <div key={goal.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm">{goal.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {goal.current}{goal.target ? `/${goal.target}` : ''} {goal.unit === 'tasks' ? 'tâches' : goal.unit === 'hours' ? 'h' : '€'}
-                    </span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-              )
-            })}
-            {goals.length === 0 && <p className="text-sm text-muted-foreground">Aucun objectif cette semaine</p>}
-          </CardContent>
-        </Card>
+      {/* ═══ 4. Two-Column Layout ═══════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* Upcoming Tasks */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-400" />
-                Tâches à venir
-              </CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-emerald-400" onClick={() => setActiveTab('tasks')}>
-                Voir tout <ArrowRight className="w-3 h-3 ml-1" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-            {todayTasks.slice(0, 5).map((task) => (
-              <div key={task.id} className={`flex items-center gap-3 p-2 rounded-lg bg-secondary/50 ${task.priority === 'urgent' ? 'task-urgent' : task.priority === 'high' ? 'task-high' : 'task-medium'}`}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate">{task.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {task.project && (
-                      <Badge variant="outline" className="text-[10px] h-4" style={{ borderColor: task.project.color, color: task.project.color }}>
-                        {task.project.name}
-                      </Badge>
-                    )}
-                    <Badge variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'} className="text-[10px] h-4">
-                      {task.priority === 'urgent' ? 'Urgent' : task.priority === 'high' ? 'Élevée' : task.priority === 'medium' ? 'Moyenne' : 'Basse'}
-                    </Badge>
-                  </div>
-                </div>
-                {task.dueDate && (
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                  </span>
-                )}
-              </div>
-            ))}
-            {overdueTasks.slice(0, 3).map((task) => (
-              <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 task-overdue">
-                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate">{task.title}</p>
-                  <span className="text-xs text-red-400">En retard</span>
-                </div>
-              </div>
-            ))}
-            {todayTasks.length === 0 && overdueTasks.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">Aucune tâche à venir</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        {/* ─── Left Column (60%) ─────────────────────────────────────────── */}
+        <div className="lg:col-span-3 space-y-6">
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Productivity Chart */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Heures cette semaine</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={stats?.weekDays || []}>
-                <defs>
-                  <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  labelStyle={{ color: 'var(--foreground)' }}
-                />
-                <Area type="monotone" dataKey="totalHours" stroke="#10b981" fillOpacity={1} fill="url(#colorHours)" name="Heures" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Revenue Chart */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Revenus mensuels</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={stats?.monthlyData || []}>
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                  labelStyle={{ color: 'var(--foreground)' }}
-                  formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, 'Revenu']}
-                />
-                <Bar dataKey="revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Revenu" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Today's Events */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-400" />
-              Événements d&apos;aujourd&apos;hui
-            </CardTitle>
-            <Button variant="ghost" size="sm" className="text-xs text-emerald-400" onClick={() => setActiveTab('calendar')}>
-              Calendrier <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {todayEvents.length > 0 ? (
-            <div className="space-y-2">
-              {todayEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
-                  <div className="w-1 h-8 rounded-full" style={{ backgroundColor: event.color }} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.allDay ? 'Toute la journée' : new Date(event.startDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                      {event.location && ` · ${event.location}`}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] h-4">
-                    {event.type === 'meeting' ? 'Réunion' : event.type === 'deadline' ? 'Deadline' : event.type === 'block' ? 'Focus' : 'Rappel'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+          {/* Productivity Chart */}
+          {isLoadingStats ? (
+            <ChartSkeleton />
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucun événement aujourd&apos;hui</p>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    Productivité cette semaine
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={weekChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="emeraldGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 12 }}
+                        stroke="var(--muted-foreground)"
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        stroke="var(--muted-foreground)"
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--card)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        labelStyle={{ color: 'var(--foreground)' }}
+                        formatter={(value: number) => [`${value}h`, 'Heures']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="heures"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#emeraldGradient)"
+                        name="Heures"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={() => setActiveTab('tasks')} variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+          {/* Upcoming Tasks */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-amber-400" />
+                    Tâches à venir
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-emerald-400 hover:text-emerald-300"
+                    onClick={() => setActiveTab('tasks')}
+                  >
+                    Voir tout <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                {upcomingTasks.length > 0 ? (
+                  upcomingTasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null
+                    const isOverdue = dueDate && isBefore(dueDate, startOfDay(new Date())) && task.status !== 'done'
+                    const isDueToday = dueDate && isToday(dueDate)
+
+                    return (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+                        onClick={() => setActiveTab('tasks')}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate font-medium">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <Badge
+                              variant={priorityBadgeVariant(task.priority)}
+                              className="text-[10px] h-5"
+                            >
+                              {priorityLabel(task.priority)}
+                            </Badge>
+                            {task.project && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-5"
+                                style={{ borderColor: task.project.color, color: task.project.color }}
+                              >
+                                {task.project.name}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {task.dueDate && (
+                          <span
+                            className={`text-xs whitespace-nowrap ${
+                              isOverdue
+                                ? 'text-red-400 font-medium'
+                                : isDueToday
+                                  ? 'text-amber-400 font-medium'
+                                  : 'text-muted-foreground'
+                            }`}
+                          >
+                            {isOverdue && <AlertTriangle className="w-3 h-3 inline mr-1" />}
+                            {format(new Date(task.dueDate), 'd MMM', { locale: fr })}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    Aucune tâche à venir
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* ─── Right Column (40%) ────────────────────────────────────────── */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Today's Events — Mini Timeline */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-emerald-400" />
+                    Événements aujourd&apos;hui
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-emerald-400 hover:text-emerald-300"
+                    onClick={() => setActiveTab('calendar')}
+                  >
+                    Voir le calendrier
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {todayEvents.length > 0 ? (
+                  <div className="relative space-y-0">
+                    {/* Timeline line */}
+                    <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+                    {todayEvents.map((event) => (
+                      <div key={event.id} className="flex items-start gap-3 py-2 relative">
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border-2 border-background flex-shrink-0 mt-0.5 z-10"
+                          style={{ backgroundColor: event.color || '#10b981' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium leading-tight">{event.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {event.allDay
+                              ? 'Toute la journée'
+                              : format(new Date(event.startDate), 'HH:mm', { locale: fr })}
+                            {event.location && (
+                              <span> · {event.location}</span>
+                            )}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">
+                          {eventTypeLabel(event.type)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    Aucun événement aujourd&apos;hui
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Weekly Goals — Progress Bars */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Target className="w-4 h-4 text-amber-400" />
+                  Objectifs de la semaine
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {goals.length > 0 ? (
+                  goals.map((goal) => {
+                    const progress = goal.target ? Math.min((goal.current / goal.target) * 100, 100) : 0
+                    const unitLabel = goal.unit === 'tasks' ? 'tâches' : goal.unit === 'hours' ? 'h' : '€'
+                    return (
+                      <div key={goal.id}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm font-medium">{goal.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {goal.current}{goal.target ? `/${goal.target}` : ''} {unitLabel}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-emerald-400 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-3">Aucun objectif défini</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 text-xs"
+                      onClick={() => setActiveTab('settings')}
+                    >
+                      <Target className="w-3.5 h-3.5 mr-1.5" />
+                      Définir un objectif
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Upcoming Reminders */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-400" />
+                  Rappels à venir
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                {upcomingReminders.length > 0 ? (
+                  upcomingReminders.map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                        <Bell className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{reminder.title}</p>
+                        {reminder.message && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{reminder.message}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        dans {formatTimeUntil(reminder.remindAt)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucun rappel à venir
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ═══ 5. Quick Actions Bar ═══════════════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="flex flex-wrap gap-3"
+      >
+        <Button
+          onClick={() => setActiveTab('tasks')}
+          variant="outline"
+          className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+        >
           <Plus className="w-4 h-4 mr-2" /> Nouvelle tâche
         </Button>
-        <Button onClick={() => setActiveTab('invoices')} variant="outline" className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+        <Button
+          onClick={() => setActiveTab('documents')}
+          variant="outline"
+          className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+        >
+          <FolderOpen className="w-4 h-4 mr-2" /> Nouveau projet
+        </Button>
+        <Button
+          onClick={() => setActiveTab('invoices')}
+          variant="outline"
+          className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+        >
           <FileText className="w-4 h-4 mr-2" /> Nouvelle facture
         </Button>
-        <Button onClick={() => setActiveTab('time')} variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+        <Button
+          onClick={() => setActiveTab('time')}
+          variant="outline"
+          className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+        >
           <Play className="w-4 h-4 mr-2" /> Démarrer chrono
         </Button>
-      </div>
+      </motion.div>
     </div>
   )
 }
