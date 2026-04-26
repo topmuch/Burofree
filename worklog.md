@@ -422,3 +422,269 @@ Implemented a comprehensive real-time notification system for the Maellis app us
 - `prisma/schema.prisma` (added PushSubscription model, relation on User)
 - `public/sw.js` (complete rewrite — caching strategies, push, sync, notification click)
 - `src/app/page.tsx` (added RealtimeProvider wrapper, connection status indicator)
+
+---
+
+# Task 2c+2d — Enhanced Time Tracking & Docker Deployment
+
+## Summary
+
+Implemented enhanced time tracking with billing goals, revenue tracking, smart break reminders, and comprehensive time reports. Created full Docker + PostgreSQL deployment setup for production.
+
+### 1. Prisma Schema Updates
+- Added `hourlyRate`, `weeklyTargetHours`, `weeklyTargetRevenue`, `maxDailyHours` to User model
+- Ran `npx prisma db push --accept-data-loss`
+
+### 2. Weekly Billing Goals API (`src/app/api/time-entries/goals/route.ts`)
+- GET: Returns billing goal progress (target hours, tracked/billable hours, revenue, daily breakdown, project breakdown)
+- POST: Set/update weekly billing goal (targetHours, targetRevenue, hourlyRate)
+
+### 3. Time Reports API (`src/app/api/time-entries/reports/route.ts`)
+- GET: Generates reports with period selector (week/month/year/custom), project filter, aggregation, CSV export
+
+### 4. Smart Break Reminders API (`src/app/api/time-entries/breaks/route.ts`)
+- GET: Analyzes work patterns, suggests short/long breaks or stop based on hours worked and billable ratio
+
+### 5. Enhanced Time Tracker Component
+- Billing Goal Progress Bar with weekly billable hours progress
+- Revenue Counter (real-time during active timer)
+- Project Breakdown mini chart
+- Smart Break Indicator (pulsing amber card)
+- Daily Summary Card
+- Quick Timer Actions (30min, 1h, 2h presets)
+- Goal Settings Dialog
+
+### 6. Time Reports Component (`src/components/time-reports.tsx`)
+- Period selector, project filter, summary cards, bar chart (Recharts), project breakdown, CSV export
+
+### 7. Time View Wrapper (`src/components/time-view.tsx`)
+- Sub-tab toggle between "Suivi" (tracker) and "Rapports" (reports)
+
+### 8. Store Updates
+- Added TimeGoals, TimeReport, BreakSuggestion interfaces
+- Added state: timeGoals, timeReports, breakSuggestion
+- Added actions: fetchTimeGoals, fetchTimeReports, fetchBreakSuggestion, setBillingGoal
+
+### 9. Docker + PostgreSQL Deployment
+- `Dockerfile` — Multi-stage build (deps → builder → runner)
+- `docker-compose.yml` — Dev setup with PostgreSQL 16
+- `docker-compose.prod.yml` — Production with nginx + certbot SSL
+- `nginx.conf` — Reverse proxy with SSE support and static caching
+- `scripts/migrate-to-pg.sh` — PostgreSQL migration script
+- `.dockerignore` — Build exclusions
+- `.env.example` — Updated with PostgreSQL, domain, Stripe variables
+
+## Files Created
+- `src/app/api/time-entries/goals/route.ts`
+- `src/app/api/time-entries/reports/route.ts`
+- `src/app/api/time-entries/breaks/route.ts`
+- `src/components/time-reports.tsx`
+- `src/components/time-view.tsx`
+- `Dockerfile`
+- `docker-compose.yml`
+- `docker-compose.prod.yml`
+- `nginx.conf`
+- `scripts/migrate-to-pg.sh`
+- `.dockerignore`
+
+## Files Modified
+- `prisma/schema.prisma` (added hourlyRate, weeklyTargetHours, weeklyTargetRevenue, maxDailyHours)
+- `src/lib/store.ts` (added TimeGoals, TimeReport, BreakSuggestion; state + actions)
+- `src/components/time-tracker.tsx` (complete rewrite with billing goals, revenue, breaks, quick actions)
+- `src/app/page.tsx` (replaced TimeTracker with TimeView)
+- `.env.example` (added PostgreSQL, domain, deployment, Stripe variables)
+- `src/lib/pdf-generator.ts` (fixed require to ES import)
+
+---
+
+# Task 2a+2b — Professional PDF Invoice Generation & Stripe Payment Integration
+
+## Summary
+
+Implemented two major feature sets for the Maellis invoicing system: (A) professional PDF invoice generation using puppeteer-core with HTML fallback, and (B) Stripe payment integration with checkout sessions, webhooks, and graceful degradation when Stripe is not configured.
+
+## Task A: Professional PDF Invoice Generation
+
+### 1. PDF Generation Utility
+- **File**: `src/lib/pdf-generator.ts` (new) — Comprehensive PDF generation engine
+  - `generateInvoiceHTML(data)` — Generates professional HTML invoice with:
+    - Company logo area with Maellis "M" icon and emerald gradient
+    - Invoice/Quote header with type label and status badge
+    - Émetteur and client info sections with proper formatting
+    - Items table with alternating row colors, quantities, unit prices, line totals
+    - Totals section: Sous-total HT, TVA (configurable rate), Total TTC with emerald accent
+    - Payment terms row: Échéance, conditions, devise
+    - Notes section with emerald left border accent
+    - DRAFT watermark ("BOUILLON") for draft status invoices
+    - Footer with "Généré par Maellis" and project name
+  - `generateInvoicePDF(data, options)` — Converts HTML to PDF via puppeteer-core
+    - Uses puppeteer-core with system Chromium (no bundled download)
+    - Falls back to returning HTML if puppeteer/Chromium unavailable
+    - Supports `?format=html` query param for HTML output
+    - A4 format with 20mm margins, print background enabled
+  - Multi-currency support: EUR (€), USD ($), GBP (£), CHF with proper symbols
+  - `InvoicePDFData` interface for type-safe data passing
+  - `findChromium()` — Searches common Linux Chromium paths
+  - Caches puppeteer availability check to avoid repeated failures
+
+### 2. Updated PDF Route
+- **File**: `src/app/api/invoices/[id]/pdf/route.ts` — Rewritten to use PDF generator
+  - GET endpoint now produces actual PDF (or HTML fallback)
+  - `?format=pdf` (default) — Returns PDF binary with `application/pdf` content type
+  - `?format=html` — Returns styled HTML (for debugging/browser preview)
+  - Sets proper `Content-Type` and `Content-Disposition` headers
+  - Includes all invoice details, user info, project info via `InvoicePDFData`
+  - Project name displayed in footer when linked
+
+### 3. Invoice Email Sending
+- **File**: `src/app/api/invoices/[id]/send/route.ts` (new) — POST endpoint
+  - Sends invoice by email using user's connected email account (Gmail/Outlook)
+  - Generates professional email body with invoice summary in French
+  - Uses `sendGmailEmail()` or `sendOutlookEmail()` based on provider
+  - Auto-updates invoice status from "draft" to "sent" after successful send
+  - Creates in-app notification confirming the email was sent
+  - Validates: client email exists, email account connected
+  - Graceful error handling with descriptive French messages
+
+### 4. Invoice Reminder Automation
+- **File**: `src/app/api/invoices/remind/route.ts` (new) — GET + POST endpoints
+  - **GET**: Finds all overdue invoices and sends reminder emails
+    - Queries invoices: status=sent, dueDate < now, clientEmail not null
+    - Sends personalized reminders for each overdue invoice
+    - Updates status to "overdue" and creates notifications
+    - Returns count of sent reminders and any errors
+  - **POST**: Sends a reminder for a specific invoice
+    - Uses AI engine (`createAIEngine()`) to generate personalized reminder text
+    - Falls back to professional template if AI unavailable
+    - Includes days overdue calculation in reminder body
+    - Sends via Gmail or Outlook based on user's connected account
+    - Updates invoice status and creates notification
+
+## Task B: Stripe Payment Integration
+
+### 1. Stripe Utility
+- **File**: `src/lib/stripe.ts` (new) — Stripe client wrapper
+  - `stripe` — Singleton Stripe client instance (apiVersion: '2024-12-18.acacia')
+  - `isStripeConfigured()` — Checks if real Stripe keys are present (not mock)
+  - `createCheckoutSession(invoiceId, amount, currency, clientEmail)` — Creates Stripe Checkout session
+    - Sets payment_method_types: ['card'], mode: 'payment'
+    - Includes invoice metadata for webhook tracking
+    - Sets success_url and cancel_url with invoice reference
+    - Returns checkout URL for client-side redirect
+  - `verifyWebhookSignature(payload, sig)` — Verifies Stripe webhook signatures
+  - `formatAmountForStripe(amount, currency)` — Converts to cents (handles zero-decimal currencies)
+  - `formatAmountFromStripe(amount, currency)` — Converts from cents to decimal
+
+### 2. Prisma Schema Updates
+- **File**: `prisma/schema.prisma`
+  - Invoice model: added `stripePaymentIntentId` (String?), `stripeCheckoutUrl` (String?), `paymentMethod` (String, default "manual")
+  - User model: added `stripeAccountId` (String?), `stripeCustomerId` (String?)
+  - Ran `npx prisma db push --accept-data-loss` to sync schema
+
+### 3. Checkout Session API
+- **File**: `src/app/api/stripe/checkout/route.ts` (new) — POST endpoint
+  - Validates Stripe is configured, invoice exists, not already paid
+  - Creates checkout session via `createCheckoutSession()`
+  - Saves checkout URL and paymentMethod to invoice in DB
+  - Returns `{ url, invoiceId }` for client-side redirect
+
+### 4. Stripe Webhook API
+- **File**: `src/app/api/stripe/webhook/route.ts` (new) — POST endpoint
+  - Verifies webhook signature using `STRIPE_WEBHOOK_SECRET`
+  - Handles event types:
+    - `checkout.session.completed` — Marks invoice paid, creates success notification
+    - `payment_intent.succeeded` — Marks invoice paid (if not already), creates notification
+    - `payment_intent.payment_failed` — Creates error notification for the freelancer
+  - Updates invoice: status='paid', paidAt=now, stripePaymentIntentId, paymentMethod='stripe'
+  - Creates in-app notifications for all payment events with `#invoices` actionUrl
+
+### 5. Stripe Config API
+- **File**: `src/app/api/stripe/config/route.ts` (new) — GET endpoint
+  - Returns `{ configured: boolean, publishableKey: string }`
+  - Used by frontend to determine if Stripe payment option should be shown
+
+### 6. Store Updates
+- **File**: `src/lib/store.ts` — Updated `Invoice` interface
+  - Added `stripePaymentIntentId: string | null`
+  - Added `stripeCheckoutUrl: string | null`
+  - Added `paymentMethod: string`
+
+### 7. Invoice API Updates
+- **File**: `src/app/api/invoices/[id]/route.ts` — Added Stripe field handling in PUT
+  - `stripePaymentIntentId`, `stripeCheckoutUrl`, `paymentMethod` now updatable
+- **File**: `src/app/api/invoices/route.ts` — Added `paymentMethod` to POST creation
+  - Defaults to "manual" if not specified
+
+### 8. Stripe Payment Button Component
+- **File**: `src/components/stripe-payment-button.tsx` (new) — Dual export component
+  - `StripePaymentButton` — Full payment button with multiple states:
+    - Loading state with Loader2 spinner
+    - "Payer en ligne" button in amber (matches app dark theme)
+    - Stripe checkout redirect on click
+    - "Paiement sécurisé par Stripe" badge with ShieldCheck icon
+    - Compact mode for table row actions
+    - Handles existing checkout URLs (re-opens Stripe page)
+    - Shows "Payé via Stripe" badge for completed Stripe payments
+    - Shows "Payé (manuel)" badge for manual payments
+    - Graceful error handling when Stripe not configured
+  - `PaymentMethodBadge` — Payment method indicator:
+    - "Stripe" badge (amber) for Stripe payments
+    - "Virement" badge for bank transfers
+    - No badge for manual/default payments
+
+### 9. Invoicing Panel Updates
+- **File**: `src/components/invoicing-panel.tsx` — Complete Stripe integration
+  - Added "Paiement" column in invoice table with `PaymentMethodBadge`
+  - Added "Envoyer par email" button (Mail icon) for unsent invoices with client email
+  - Added `StripePaymentButton` (compact) in table row actions
+  - Replaced placeholder `handleSendReminder` with real API call to `/api/invoices/remind`
+  - Added `handleSendEmail` function calling `/api/invoices/[id]/send`
+  - Added loading states for email sending (Loader2 animation)
+  - Updated invoice detail dialog with:
+    - "Envoyer par email" button (amber outline)
+    - `StripePaymentButton` for online payment
+    - "Payé via Stripe" confirmation with payment intent ID
+    - "Marquer comme payée (manuel)" ghost button
+  - Table column count updated from 7 to 8 for new Payment column
+  - All UI text in French
+
+### 10. Environment Variables
+- **File**: `.env.example` — Added Stripe configuration variables
+  - `STRIPE_SECRET_KEY=` — Stripe secret key (sk_test_* or sk_live_*)
+  - `STRIPE_PUBLISHABLE_KEY=` — Stripe publishable key (pk_test_* or pk_live_*)
+  - `STRIPE_WEBHOOK_SECRET=` — Stripe webhook signing secret (whsec_*)
+
+## Technical Details
+- puppeteer-core installed (no bundled Chromium) — falls back to HTML if unavailable
+- Stripe SDK v22.1.0 with apiVersion '2024-12-18.acacia'
+- App works WITHOUT Stripe configured (graceful degradation — payment button hidden)
+- App works WITHOUT Chromium installed (PDF falls back to HTML)
+- All API errors return descriptive French messages
+- Invoice status flow: draft → sent → paid/overdue
+- Payment methods: "manual" (default), "stripe", "bank_transfer"
+- AI engine used for personalized reminder text generation
+- All UI text in French, matching app's dark theme (zinc-950, emerald/amber accents)
+- Lint passes with 0 errors, 0 warnings
+
+## Dependencies Added
+- `puppeteer-core@24.42.0` — Headless Chrome PDF rendering (no bundled Chromium)
+- `stripe@22.1.0` — Stripe Node.js SDK for payment processing
+
+## Files Created
+- `src/lib/pdf-generator.ts` (new — PDF generation engine)
+- `src/app/api/invoices/[id]/send/route.ts` (new — Email sending endpoint)
+- `src/app/api/invoices/remind/route.ts` (new — Reminder automation endpoint)
+- `src/lib/stripe.ts` (new — Stripe client wrapper)
+- `src/app/api/stripe/checkout/route.ts` (new — Checkout session endpoint)
+- `src/app/api/stripe/webhook/route.ts` (new — Webhook handler endpoint)
+- `src/app/api/stripe/config/route.ts` (new — Configuration endpoint)
+- `src/components/stripe-payment-button.tsx` (new — Payment button component)
+
+## Files Modified
+- `prisma/schema.prisma` (added Stripe fields to Invoice and User models)
+- `src/lib/store.ts` (added Stripe fields to Invoice interface)
+- `src/app/api/invoices/[id]/pdf/route.ts` (rewritten to use PDF generator)
+- `src/app/api/invoices/[id]/route.ts` (added Stripe field updates)
+- `src/app/api/invoices/route.ts` (added paymentMethod to creation)
+- `src/components/invoicing-panel.tsx` (complete Stripe integration, email sending, real reminders)
+- `.env.example` (added Stripe environment variables)

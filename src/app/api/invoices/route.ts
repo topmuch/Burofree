@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
         notes: body.notes,
         projectId: body.projectId || null,
+        paymentMethod: body.paymentMethod || 'manual',
         userId: user.id,
       },
       include: { project: true },

@@ -126,6 +126,9 @@ export interface Invoice {
   dueDate: string | null
   paidAt: string | null
   notes: string | null
+  stripePaymentIntentId: string | null
+  stripeCheckoutUrl: string | null
+  paymentMethod: string
   projectId: string | null
   project: Project | null
   userId: string
@@ -221,6 +224,10 @@ export interface User {
   theme: string
   focusMode: boolean
   onboardingDone: boolean
+  hourlyRate: number | null
+  weeklyTargetHours: number | null
+  weeklyTargetRevenue: number | null
+  maxDailyHours: number | null
   createdAt: string
   updatedAt: string
 }
@@ -252,6 +259,47 @@ export interface AISuggestion {
   message: string
   priority: string
   actionUrl: string
+}
+
+export interface TimeGoals {
+  targetHours: number
+  targetRevenue: number
+  trackedHours: number
+  billableHours: number
+  revenue: number
+  percentageProgress: number
+  hourlyRate: number
+  weekStart: string
+  weekEnd: string
+  dailyBreakdown: { day: string; date: string; totalHours: number; billableHours: number }[]
+  projectBreakdown: { projectId: string | null; projectName: string; projectColor: string; totalHours: number; billableHours: number; revenue: number }[]
+}
+
+export interface TimeReport {
+  period: string
+  startDate: string
+  endDate: string
+  totalHours: number
+  billableHours: number
+  nonBillableHours: number
+  revenue: number
+  avgHourlyRate: number
+  totalEntries: number
+  projectBreakdown: { projectId: string | null; projectName: string; projectColor: string; totalHours: number; billableHours: number; revenue: number; percentage: number }[]
+  aggregation: { label: string; totalHours: number; billableHours: number; revenue: number }[]
+}
+
+export interface BreakSuggestion {
+  shouldBreak: boolean
+  reason: string
+  breakType: 'short' | 'long' | 'stop'
+  workedMinutes: number
+  activeMinutes: number
+  todayHours: number
+  weeklyHours: number
+  billableRatio: number
+  maxDailyHours: number
+  isTracking: boolean
 }
 
 interface AppState {
@@ -288,6 +336,11 @@ interface AppState {
   // Timer state
   activeTimer: { startTime: string; taskId: string | null; projectId: string | null; description: string; isBillable: boolean } | null
 
+  // Time tracking enhanced state
+  timeGoals: TimeGoals | null
+  timeReports: TimeReport | null
+  breakSuggestion: BreakSuggestion | null
+
   // Actions - UI
   setActiveTab: (tab: TabType) => void
   toggleSidebar: () => void
@@ -319,6 +372,12 @@ interface AppState {
   fetchStats: () => Promise<void>
   fetchBriefing: () => Promise<void>
   fetchSuggestions: () => Promise<void>
+  // Time tracking enhanced
+  fetchTimeGoals: () => Promise<void>
+  fetchTimeReports: (params?: { period?: string; projectId?: string; startDate?: string; endDate?: string }) => Promise<void>
+  fetchBreakSuggestion: () => Promise<void>
+  setBillingGoal: (data: { targetHours?: number; targetRevenue?: number; hourlyRate?: number }) => Promise<void>
+
   fetchAll: () => Promise<void>
 
   // CRUD - Tasks
@@ -417,6 +476,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Timer
   activeTimer: null,
 
+  // Time tracking enhanced
+  timeGoals: null,
+  timeReports: null,
+  breakSuggestion: null,
+
   // UI Actions
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -429,6 +493,37 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUser: (user) => set((s) => ({
     user: user ? { ...s.user, ...user } as User : null
   })),
+
+  // Time tracking enhanced
+  fetchTimeGoals: async () => {
+    try {
+      const res = await fetch('/api/time-entries/goals')
+      if (res.ok) set({ timeGoals: await res.json() })
+    } catch (e) { console.error('fetchTimeGoals:', e) }
+  },
+  fetchTimeReports: async (params) => {
+    try {
+      const query = new URLSearchParams()
+      if (params?.period) query.set('period', params.period)
+      if (params?.projectId) query.set('projectId', params.projectId)
+      if (params?.startDate) query.set('startDate', params.startDate)
+      if (params?.endDate) query.set('endDate', params.endDate)
+      const res = await fetch(`/api/time-entries/reports?${query.toString()}`)
+      if (res.ok) set({ timeReports: await res.json() })
+    } catch (e) { console.error('fetchTimeReports:', e) }
+  },
+  fetchBreakSuggestion: async () => {
+    try {
+      const res = await fetch('/api/time-entries/breaks')
+      if (res.ok) set({ breakSuggestion: await res.json() })
+    } catch (e) { console.error('fetchBreakSuggestion:', e) }
+  },
+  setBillingGoal: async (data) => {
+    try {
+      const res = await fetch('/api/time-entries/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchTimeGoals(); await get().fetchStats() }
+    } catch (e) { console.error('setBillingGoal:', e) }
+  },
 
   // Fetch - User
   fetchUser: async () => {

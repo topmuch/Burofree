@@ -37,6 +37,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.dueDate !== undefined) updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null
     if (body.notes !== undefined) updateData.notes = body.notes
     if (body.projectId !== undefined) updateData.projectId = body.projectId || null
+    if (body.stripePaymentIntentId !== undefined) updateData.stripePaymentIntentId = body.stripePaymentIntentId
+    if (body.stripeCheckoutUrl !== undefined) updateData.stripeCheckoutUrl = body.stripeCheckoutUrl
+    if (body.paymentMethod !== undefined) updateData.paymentMethod = body.paymentMethod
 
     const invoice = await db.invoice.update({
       where: { id },

@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Receipt, Plus, Eye, CheckCircle2, Trash2, AlertTriangle,
   TrendingUp, Clock, AlertCircle, DollarSign, FileText, FileSpreadsheet,
-  Send, CalendarDays, X, PlusCircle, MinusCircle, Printer
+  Send, CalendarDays, X, PlusCircle, MinusCircle, Printer, Mail, Loader2,
+  CreditCard, ExternalLink
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts'
 import { useAppStore, type Invoice } from '@/lib/store'
+import { StripePaymentButton, PaymentMethodBadge } from '@/components/stripe-payment-button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -38,10 +40,10 @@ interface LineItem {
 
 const statusConfig: Record<string, { label: string; className: string; icon?: React.ElementType }> = {
   draft: { label: 'Brouillon', className: 'bg-zinc-500/20 text-zinc-400' },
-  sent: { label: 'Envoyée', className: 'bg-amber-500/20 text-amber-400' },
-  paid: { label: 'Payée', className: 'bg-emerald-500/20 text-emerald-400', icon: CheckCircle2 },
+  sent: { label: 'Envoy\u00e9e', className: 'bg-amber-500/20 text-amber-400' },
+  paid: { label: 'Pay\u00e9e', className: 'bg-emerald-500/20 text-emerald-400', icon: CheckCircle2 },
   overdue: { label: 'En retard', className: 'bg-red-500/20 text-red-400', icon: AlertTriangle },
-  cancelled: { label: 'Annulée', className: 'bg-zinc-500/20 text-zinc-400' },
+  cancelled: { label: 'Annul\u00e9e', className: 'bg-zinc-500/20 text-zinc-400' },
 }
 
 const typeLabels: Record<string, string> = {
@@ -123,7 +125,7 @@ function CreateInvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         notes: notes || null,
         projectId: projectId || null,
       } as Partial<Invoice>)
-      toast.success(type === 'invoice' ? 'Facture créée' : 'Devis créé')
+      toast.success(type === 'invoice' ? 'Facture cr\u00e9\u00e9e' : 'Devis cr\u00e9\u00e9')
       onOpenChange(false)
       // Reset form
       setClientName('')
@@ -134,7 +136,7 @@ function CreateInvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       setNotes('')
       setProjectId('')
     } catch {
-      toast.error('Erreur lors de la création')
+      toast.error('Erreur lors de la cr\u00e9ation')
     } finally {
       setSaving(false)
     }
@@ -166,7 +168,7 @@ function CreateInvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Numéro</Label>
+              <Label>Num\u00e9ro</Label>
               <Input value={nextNumber} readOnly className="bg-secondary opacity-70" />
             </div>
           </div>
@@ -266,7 +268,7 @@ function CreateInvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           {/* Date & Project */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Date d&apos;échéance</Label>
+              <Label>Date d&apos;\u00e9ch\u00e9ance</Label>
               <Input
                 type="date"
                 value={dueDate}
@@ -311,7 +313,7 @@ function CreateInvoiceDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             disabled={saving}
             className="bg-emerald-500 hover:bg-emerald-600 text-white"
           >
-            {saving ? 'Création...' : 'Créer'}
+            {saving ? 'Cr\u00e9ation...' : 'Cr\u00e9er'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -325,6 +327,8 @@ export function InvoicingPanel() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null)
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null)
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null)
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -339,16 +343,54 @@ export function InvoicingPanel() {
 
   const handleMarkPaid = async (id: string) => {
     await updateInvoice(id, { status: 'paid', paidAt: new Date().toISOString() })
-    toast.success('Facture marquée comme payée')
+    toast.success('Facture marqu\u00e9e comme pay\u00e9e')
   }
 
   const handleDelete = async (id: string) => {
     await deleteInvoice(id)
-    toast.success('Document supprimé')
+    toast.success('Document supprim\u00e9')
   }
 
-  const handleSendReminder = (invoice: Invoice) => {
-    toast.success(`Relance envoyée pour ${invoice.number}`)
+  const handleSendEmail = async (invoice: Invoice) => {
+    setSendingEmail(invoice.id)
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/send`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(data.message || 'Facture envoy\u00e9e par email')
+        useAppStore.getState().fetchInvoices()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erreur lors de l\'envoi')
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setSendingEmail(null)
+    }
+  }
+
+  const handleSendReminder = async (invoice: Invoice) => {
+    setSendingReminder(invoice.id)
+    try {
+      const res = await fetch('/api/invoices/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceId: invoice.id }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(data.message || 'Relance envoy\u00e9e')
+        useAppStore.getState().fetchInvoices()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Erreur lors de la relance')
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setSendingReminder(null)
+    }
   }
 
   const isOverdue = (invoice: Invoice) =>
@@ -361,7 +403,7 @@ export function InvoicingPanel() {
       return stats.monthlyData.slice(-6)
     }
     // Generate placeholder data
-    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin']
+    const months = ['Jan', 'F\u00e9v', 'Mar', 'Avr', 'Mai', 'Juin']
     return months.map(month => ({ month, revenue: 0 }))
   }, [stats])
 
@@ -445,8 +487,8 @@ export function InvoicingPanel() {
             <SelectContent>
               <SelectItem value="all">Tous</SelectItem>
               <SelectItem value="draft">Brouillon</SelectItem>
-              <SelectItem value="sent">Envoyée</SelectItem>
-              <SelectItem value="paid">Payée</SelectItem>
+              <SelectItem value="sent">Envoy\u00e9e</SelectItem>
+              <SelectItem value="paid">Pay\u00e9e</SelectItem>
               <SelectItem value="overdue">En retard</SelectItem>
             </SelectContent>
           </Select>
@@ -475,12 +517,13 @@ export function InvoicingPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Numéro</TableHead>
+                <TableHead>Num\u00e9ro</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Montant</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead>Échéance</TableHead>
+                <TableHead>\u00c9ch\u00e9ance</TableHead>
+                <TableHead>Paiement</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -488,11 +531,11 @@ export function InvoicingPanel() {
               <AnimatePresence>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Receipt className="w-10 h-10 mb-2 opacity-40" />
-                        <p className="text-sm">Aucun document trouvé</p>
-                        <p className="text-xs mt-1">Créez votre premier devis ou facture</p>
+                        <p className="text-sm">Aucun document trouv\u00e9</p>
+                        <p className="text-xs mt-1">Cr\u00e9ez votre premier devis ou facture</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -553,8 +596,11 @@ export function InvoicingPanel() {
                               })}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">\u2014</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <PaymentMethodBadge invoice={invoice} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -575,15 +621,31 @@ export function InvoicingPanel() {
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </Button>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.clientEmail && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-amber-400 hover:text-amber-300"
+                                onClick={() => handleSendEmail(invoice)}
+                                disabled={sendingEmail === invoice.id}
+                                title="Envoyer par email"
+                              >
+                                {sendingEmail === invoice.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                              </Button>
+                            )}
                             {overdue && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 text-xs text-red-400 hover:text-red-300"
                                 onClick={() => handleSendReminder(invoice)}
+                                disabled={sendingReminder === invoice.id}
                               >
-                                <Send className="w-3.5 h-3.5 mr-1" /> Relance
+                                {sendingReminder === invoice.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />} Relance
                               </Button>
+                            )}
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <StripePaymentButton invoice={invoice} compact onPaymentInitiated={() => useAppStore.getState().fetchInvoices()} />
                             )}
                             {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                               <Button
@@ -592,7 +654,7 @@ export function InvoicingPanel() {
                                 className="h-8 text-xs text-emerald-400 hover:text-emerald-300"
                                 onClick={() => handleMarkPaid(invoice.id)}
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Payée
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Pay\u00e9e
                               </Button>
                             )}
                             <Button
@@ -635,7 +697,7 @@ export function InvoicingPanel() {
               <YAxis
                 tick={{ fontSize: 12 }}
                 stroke="var(--muted-foreground)"
-                tickFormatter={(v: number) => `${v.toLocaleString('fr-FR')} €`}
+                tickFormatter={(v: number) => `${v.toLocaleString('fr-FR')} \u20AC`}
               />
               <Tooltip
                 contentStyle={{
@@ -645,7 +707,7 @@ export function InvoicingPanel() {
                   fontSize: '12px',
                 }}
                 labelStyle={{ color: 'var(--foreground)' }}
-                formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, 'Revenu']}
+                formatter={(value: number) => [`${value.toLocaleString('fr-FR')} \u20AC`, 'Revenu']}
               />
               <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenu" />
             </BarChart>
@@ -658,7 +720,7 @@ export function InvoicingPanel() {
 
       {/* View Invoice Dialog */}
       <Dialog open={!!viewInvoice} onOpenChange={(open) => { if (!open) setViewInvoice(null) }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-emerald-400" />
@@ -679,11 +741,12 @@ export function InvoicingPanel() {
                     {typeLabels[viewInvoice.type] || viewInvoice.type}
                   </Badge>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="text-muted-foreground">Statut :</span>
-                  <Badge className={cn('ml-2 text-xs', (statusConfig[viewInvoice.status] || statusConfig.draft).className)}>
+                  <Badge className={cn('text-xs', (statusConfig[viewInvoice.status] || statusConfig.draft).className)}>
                     {(statusConfig[viewInvoice.status] || statusConfig.draft).label}
                   </Badge>
+                  <PaymentMethodBadge invoice={viewInvoice} />
                 </div>
               </div>
               <div className="space-y-1.5 text-sm">
@@ -691,10 +754,10 @@ export function InvoicingPanel() {
                 {viewInvoice.clientEmail && <p><span className="text-muted-foreground">Email :</span> {viewInvoice.clientEmail}</p>}
                 {viewInvoice.clientAddress && <p><span className="text-muted-foreground">Adresse :</span> {viewInvoice.clientAddress}</p>}
                 {viewInvoice.dueDate && (
-                  <p><span className="text-muted-foreground">Échéance :</span> {new Date(viewInvoice.dueDate).toLocaleDateString('fr-FR')}</p>
+                  <p><span className="text-muted-foreground">\u00c9ch\u00e9ance :</span> {new Date(viewInvoice.dueDate).toLocaleDateString('fr-FR')}</p>
                 )}
                 {viewInvoice.paidAt && (
-                  <p><span className="text-muted-foreground">Payée le :</span> {new Date(viewInvoice.paidAt).toLocaleDateString('fr-FR')}</p>
+                  <p><span className="text-muted-foreground">Pay\u00e9e le :</span> {new Date(viewInvoice.paidAt).toLocaleDateString('fr-FR')}</p>
                 )}
               </div>
               <div className="border-t border-border pt-3 space-y-1 text-sm">
@@ -716,13 +779,61 @@ export function InvoicingPanel() {
                   {viewInvoice.project.name}
                 </Badge>
               )}
-              <Button
-                onClick={() => window.open(`/api/invoices/${viewInvoice.id}/pdf`, '_blank')}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                size="sm"
-              >
-                <Printer className="w-4 h-4 mr-2" /> Voir / Imprimer PDF
-              </Button>
+
+              {/* Action buttons */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <Button
+                  onClick={() => window.open(`/api/invoices/${viewInvoice.id}/pdf`, '_blank')}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                  size="sm"
+                >
+                  <Printer className="w-4 h-4 mr-2" /> Voir / Imprimer PDF
+                </Button>
+
+                {viewInvoice.clientEmail && viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                    size="sm"
+                    onClick={() => { handleSendEmail(viewInvoice); setViewInvoice(null) }}
+                    disabled={sendingEmail === viewInvoice.id}
+                  >
+                    {sendingEmail === viewInvoice.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                    Envoyer par email
+                  </Button>
+                )}
+
+                {/* Stripe Payment Button */}
+                {viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
+                  <StripePaymentButton
+                    invoice={viewInvoice}
+                    onPaymentInitiated={() => useAppStore.getState().fetchInvoices()}
+                  />
+                )}
+
+                {/* Already paid via Stripe */}
+                {viewInvoice.status === 'paid' && viewInvoice.paymentMethod === 'stripe' && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Pay\u00e9 via Stripe
+                    {viewInvoice.stripePaymentIntentId && (
+                      <span className="text-xs text-muted-foreground">({viewInvoice.stripePaymentIntentId.slice(0, 12)}...)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Mark as paid manually */}
+                {viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
+                  <Button
+                    variant="ghost"
+                    className="w-full text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    size="sm"
+                    onClick={() => { handleMarkPaid(viewInvoice.id); setViewInvoice(null) }}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" /> Marquer comme pay\u00e9e (manuel)
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

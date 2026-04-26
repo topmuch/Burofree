@@ -18,7 +18,13 @@ model User {
   assistantTone String   @default("friendly")
   theme         String   @default("dark")
   focusMode     Boolean  @default(false)
-  onboardingDone Boolean @default(false)
+  onboardingDone       Boolean  @default(false)
+  hourlyRate            Float?
+  weeklyTargetHours     Float?
+  weeklyTargetRevenue   Float?
+  maxDailyHours         Float?
+  stripeAccountId       String?
+  stripeCustomerId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   tasks         Task[]
@@ -157,28 +163,31 @@ model Email {
 }
 
 model Invoice {
-  id            String   @id @default(cuid())
-  number        String
-  type          String   @default("invoice")
-  clientName    String
-  clientEmail   String?
-  clientAddress String?
-  items         String
-  subtotal      Float
-  taxRate       Float    @default(20.0)
-  taxAmount     Float
-  total         Float
-  currency      String   @default("EUR")
-  status        String   @default("draft")
-  dueDate       DateTime?
-  paidAt        DateTime?
-  notes         String?
-  projectId     String?
-  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  number                 String
+  type                   String    @default("invoice")
+  clientName             String
+  clientEmail            String?
+  clientAddress          String?
+  items                  String
+  subtotal               Float
+  taxRate                Float     @default(20.0)
+  taxAmount              Float
+  total                  Float
+  currency               String    @default("EUR")
+  status                 String    @default("draft")
+  dueDate                DateTime?
+  paidAt                 DateTime?
+  notes                  String?
+  stripePaymentIntentId  String?
+  stripeCheckoutUrl      String?
+  paymentMethod          String    @default("manual")
+  projectId              String?
+  project                Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 }
 
 model TimeEntry {
