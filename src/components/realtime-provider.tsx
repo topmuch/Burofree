@@ -1,20 +1,33 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, type ReactNode } from 'react'
 import { useRealtimeNotifications } from '@/hooks/use-realtime'
 import { useAppStore } from '@/lib/store'
 import { toast } from 'sonner'
-import { Bell, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
+import { Wifi, WifiOff, AlertTriangle } from 'lucide-react'
+
+type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
+
+const RealtimeContext = createContext<ConnectionStatus>('disconnected')
+
+export function useRealtimeStatus() {
+  return useContext(RealtimeContext)
+}
 
 interface RealtimeProviderProps {
   children: ReactNode
 }
 
+/**
+ * Single source of truth for the realtime SSE connection.
+ * Exposes connection status via context so children can read it
+ * without creating their own SSE connection.
+ */
 export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const { status, isConnected } = useRealtimeNotifications()
   const user = useAppStore((s) => s.user)
 
-  // Show toast on connection status changes (only when user is logged in/onboarded)
+  // Show toast on connection status changes (only when user is onboarded)
   useEffect(() => {
     if (!user?.onboardingDone) return
 
@@ -39,31 +52,8 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
   }, [status, user?.onboardingDone])
 
-  // Subscribe to push notifications if supported
-  useEffect(() => {
-    if (!user?.onboardingDone) return
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-    const subscribeToPush = async () => {
-      try {
-        const registration = await navigator.serviceWorker.ready
-        const existingSubscription = await registration.pushManager.getSubscription()
-
-        if (existingSubscription) return // Already subscribed
-
-        // We need a VAPID key to create a subscription
-        // For now, we'll skip push subscription if no VAPID key is configured
-        // The SSE stream will handle real-time notifications instead
-      } catch (err) {
-        console.error('Push subscription error:', err)
-      }
-    }
-
-    subscribeToPush()
-  }, [user?.onboardingDone])
-
   return (
-    <>
+    <RealtimeContext.Provider value={status}>
       {children}
       {/* Connection status indicator */}
       {user?.onboardingDone && !isConnected && status !== 'connecting' && (
@@ -75,6 +65,6 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           </div>
         </div>
       )}
-    </>
+    </RealtimeContext.Provider>
   )
 }

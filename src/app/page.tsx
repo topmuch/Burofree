@@ -18,8 +18,7 @@ import { Menu, Bell, Eye, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { RealtimeProvider } from '@/components/realtime-provider'
-import { useRealtimeNotifications } from '@/hooks/use-realtime'
+import { RealtimeProvider, useRealtimeStatus } from '@/components/realtime-provider'
 
 const tabComponents: Record<TabType, React.ComponentType> = {
   dashboard: Dashboard,
@@ -45,73 +44,24 @@ const tabTitles: Record<TabType, string> = {
   settings: 'Paramètres',
 }
 
-export default function HomePage() {
+/**
+ * Inner app content that only renders after data is loaded.
+ * Uses useRealtimeStatus() from the RealtimeProvider context
+ * instead of creating its own SSE connection.
+ */
+function AppContent() {
   const {
-    activeTab, focusMode, notifications, user, fetchAll, isLoading, fetchReminders, fetchUser
+    activeTab, focusMode, notifications, user, fetchReminders
   } = useAppStore()
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const realtimeStatus = useRealtimeStatus()
 
   const unreadNotifications = notifications.filter(n => !n.isRead).length
-  const { status: realtimeStatus } = useRealtimeNotifications()
-
-  // Register service worker
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
-    }
-  }, [])
-
-  // Initialize data on mount
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        // Fetch user first to check onboarding status
-        await fetchUser()
-      } catch (error) {
-        console.error('Erreur lors du chargement des données :', error)
-      }
-    }
-    initData()
-  }, [fetchUser])
-
-  // After user is fetched, check onboarding and fetch other data
-  useEffect(() => {
-    if (user !== undefined && user !== null) {
-      if (!user.onboardingDone) {
-        setShowOnboarding(true)
-        setLoading(false)
-      } else {
-        const loadAll = async () => {
-          try {
-            await fetchAll()
-          } catch (error) {
-            console.error('Erreur lors du chargement des données :', error)
-          } finally {
-            setLoading(false)
-          }
-        }
-        loadAll()
-      }
-    } else if (user === null && !isLoading) {
-      // User was fetched but not found — still load everything
-      const loadAll = async () => {
-        try {
-          await fetchAll()
-        } catch (error) {
-          console.error('Erreur lors du chargement des données :', error)
-        } finally {
-          setLoading(false)
-        }
-      }
-      loadAll()
-    }
-  }, [user, fetchAll, fetchUser, isLoading])
 
   // Reminder checking interval
   useEffect(() => {
+    fetchReminders()
     const interval = setInterval(() => {
       fetchReminders()
     }, 60000)
@@ -127,39 +77,9 @@ export default function HomePage() {
     setMobileMenuOpen(prev => !prev)
   }, [])
 
-  const handleOnboardingComplete = useCallback(async () => {
-    setShowOnboarding(false)
-    await fetchUser()
-    await fetchAll()
-  }, [fetchUser, fetchAll])
-
   const ActiveComponent = tabComponents[activeTab]
 
-  // Onboarding wizard
-  if (showOnboarding) {
-    return <OnboardingWizard onComplete={handleOnboardingComplete} />
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto"
-          >
-            <span className="text-2xl font-bold text-emerald-400">M</span>
-          </motion.div>
-          <p className="text-sm text-zinc-400">Chargement de Maellis...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <RealtimeProvider>
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
@@ -276,6 +196,99 @@ export default function HomePage() {
       {/* AI Assistant */}
       <AiAssistant />
     </div>
+  )
+}
+
+export default function HomePage() {
+  const { fetchAll, fetchUser } = useAppStore()
+
+  const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+  }, [])
+
+  // Single initialization effect — runs once on mount
+  useEffect(() => {
+    let cancelled = false
+
+    const initData = async () => {
+      try {
+        // Step 1: Fetch user to check onboarding status
+        await fetchUser()
+      } catch (error) {
+        console.error('Erreur fetchUser:', error)
+      }
+
+      if (cancelled) return
+
+      // After fetchUser, read the latest state from the store
+      const currentUser = useAppStore.getState().user
+
+      if (currentUser && !currentUser.onboardingDone) {
+        // User exists but hasn't done onboarding
+        if (!cancelled) {
+          setShowOnboarding(true)
+          setLoading(false)
+        }
+        return
+      }
+
+      // Step 2: Fetch all other data (tasks, events, etc.)
+      try {
+        await fetchAll()
+      } catch (error) {
+        console.error('Erreur fetchAll:', error)
+      }
+
+      if (!cancelled) {
+        setLoading(false)
+      }
+    }
+
+    initData()
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false)
+    await fetchUser()
+    await fetchAll()
+  }, [fetchUser, fetchAll])
+
+  // Onboarding wizard
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} />
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto"
+          >
+            <span className="text-2xl font-bold text-emerald-400">M</span>
+          </motion.div>
+          <p className="text-sm text-zinc-400">Chargement de Maellis...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Main app content — wrapped in RealtimeProvider (single SSE connection)
+  return (
+    <RealtimeProvider>
+      <AppContent />
     </RealtimeProvider>
   )
 }

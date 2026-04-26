@@ -241,9 +241,13 @@ export function useRealtimeNotifications() {
   }, [connect, disconnect])
 
   // Reconnect when window regains focus
+  // Use a ref for status to avoid re-registering the listener on every status change
+  const statusRef = useRef(status)
+  statusRef.current = status
+
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && (status === 'disconnected' || status === 'error')) {
+      if (document.visibilityState === 'visible' && (statusRef.current === 'disconnected' || statusRef.current === 'error')) {
         isManualClose.current = false
         reconnectAttempts.current = 0
         connect()
@@ -254,7 +258,7 @@ export function useRealtimeNotifications() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [status, connect])
+  }, [connect])
 
   return {
     status,

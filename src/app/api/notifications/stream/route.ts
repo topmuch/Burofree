@@ -144,6 +144,16 @@ export async function GET(request: Request) {
 
   const userId = user.id
 
+  let isClosed = false
+  let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+  let checkInterval: ReturnType<typeof setInterval> | null = null
+
+  const cleanup = () => {
+    isClosed = true
+    if (heartbeatInterval) clearInterval(heartbeatInterval)
+    if (checkInterval) clearInterval(checkInterval)
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
       // Send initial connection event
@@ -155,24 +165,28 @@ export async function GET(request: Request) {
       // Check for pending notifications on connect
       try {
         const pending = await checkPendingNotifications(userId)
-        for (const event of pending) {
-          controller.enqueue(encoder.encode(serializeEvent(event)))
+        if (!isClosed) {
+          for (const event of pending) {
+            controller.enqueue(encoder.encode(serializeEvent(event)))
+          }
         }
       } catch (err) {
         console.error('SSE: Error checking pending notifications:', err)
       }
 
       // Heartbeat interval (every 15 seconds)
-      const heartbeatInterval = setInterval(() => {
+      heartbeatInterval = setInterval(() => {
+        if (isClosed) { clearInterval(heartbeatInterval!); return }
         try {
           controller.enqueue(encoder.encode(serializeComment('heartbeat')))
         } catch {
-          clearInterval(heartbeatInterval)
+          cleanup()
         }
       }, 15000)
 
       // Check interval (every 30 seconds)
-      const checkInterval = setInterval(async () => {
+      checkInterval = setInterval(async () => {
+        if (isClosed) { clearInterval(checkInterval!); return }
         try {
           const events: SSEEvent[] = []
 
@@ -192,13 +206,15 @@ export async function GET(request: Request) {
           const emailEvents = await checkUnreadEmails(userId)
           events.push(...emailEvents)
 
-          // Send all events
-          for (const event of events) {
-            controller.enqueue(encoder.encode(serializeEvent(event)))
+          // Send all events (guard against closed stream)
+          if (!isClosed) {
+            for (const event of events) {
+              controller.enqueue(encoder.encode(serializeEvent(event)))
+            }
           }
 
-          // Mark sent reminders
-          if (reminderEvents.length > 0) {
+          // Mark sent reminders only if we actually sent them
+          if (!isClosed && reminderEvents.length > 0) {
             const reminderIds = reminderEvents.map((e) => e.payload.id as string)
             await db.reminder.updateMany({
               where: { id: { in: reminderIds }, userId },
@@ -206,23 +222,21 @@ export async function GET(request: Request) {
             })
           }
         } catch (err) {
-          console.error('SSE: Error in check interval:', err)
+          if (!isClosed) console.error('SSE: Error in check interval:', err)
         }
       }, 30000)
 
       // Handle abort signal (client disconnect)
       const signal = request.signal
       const onAbort = () => {
-        clearInterval(heartbeatInterval)
-        clearInterval(checkInterval)
-        try {
-          controller.close()
-        } catch {
-          // Already closed
-        }
+        cleanup()
+        try { controller.close() } catch { /* Already closed */ }
       }
 
       signal.addEventListener('abort', onAbort, { once: true })
+    },
+    cancel() {
+      cleanup()
     },
   })
 
