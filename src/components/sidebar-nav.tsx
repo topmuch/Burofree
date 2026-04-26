@@ -1,44 +1,47 @@
 'use client'
 
-import { useAppStore, type TabType } from '@/lib/store'
-import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Calendar,
-  CheckSquare,
-  Mail,
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  User,
-} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard, CheckSquare, Calendar, Mail, FolderOpen,
+  Receipt, Clock, Bell, Settings, ChevronLeft, ChevronRight,
+  Bot, Sparkles
+} from 'lucide-react'
+import { useAppStore, TabType } from '@/lib/store'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 
 const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+  { id: 'tasks', label: 'Tâches & Projets', icon: CheckSquare },
   { id: 'calendar', label: 'Calendrier', icon: Calendar },
-  { id: 'tasks', label: 'Tâches', icon: CheckSquare },
   { id: 'emails', label: 'Emails', icon: Mail },
-  { id: 'reminders', label: 'Rappels', icon: Bell },
+  { id: 'documents', label: 'Documents', icon: FolderOpen },
+  { id: 'invoices', label: 'Facturation', icon: Receipt },
+  { id: 'time', label: 'Temps', icon: Clock },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'settings', label: 'Paramètres', icon: Settings },
 ]
 
 export function SidebarNav() {
-  const { activeTab, setActiveTab, sidebarOpen, toggleSidebar, stats } = useAppStore()
-
-  const unreadCount = stats?.unreadEmails || 0
-  const pendingReminders = stats?.pendingReminders || 0
+  const { activeTab, setActiveTab, sidebarOpen, toggleSidebar, focusMode, setFocusMode, notifications, emails } = useAppStore()
+  
+  const unreadNotifications = notifications.filter(n => !n.isRead).length
+  const unreadEmails = emails.filter(e => !e.isRead && !e.isSent).length
 
   return (
     <motion.aside
-      initial={false}
-      animate={{ width: sidebarOpen ? 256 : 72 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className="h-screen bg-sidebar border-r border-sidebar-border flex flex-col sidebar-transition relative"
+      className={cn(
+        'h-screen flex flex-col bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] sidebar-transition flex-shrink-0',
+        sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'
+      )}
     >
-      {/* Logo / Brand */}
-      <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
-        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-primary-foreground font-bold text-sm">FF</span>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-[var(--sidebar-border)]">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-5 h-5 text-emerald-400" />
         </div>
         <AnimatePresence>
           {sidebarOpen && (
@@ -46,101 +49,119 @@ export function SidebarNav() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-              className="ml-3 font-semibold text-sidebar-foreground text-lg"
+              className="text-lg font-bold tracking-tight"
             >
-              FreeFlow
+              <span className="text-emerald-400">Mae</span>
+              <span className="text-foreground">llis</span>
             </motion.span>
           )}
         </AnimatePresence>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 py-2 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => {
           const isActive = activeTab === item.id
-          const Icon = item.icon
-          const showBadge =
-            (item.id === 'emails' && unreadCount > 0) ||
-            (item.id === 'reminders' && pendingReminders > 0)
-
+          const badge = item.id === 'notifications' ? unreadNotifications : item.id === 'emails' ? unreadEmails : 0
+          
           return (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 relative',
+                'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all relative',
                 isActive
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'text-emerald-400 bg-emerald-500/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--sidebar-accent)]'
               )}
             >
-              <Icon className={cn('h-5 w-5 flex-shrink-0', isActive && 'text-primary-foreground')} />
+              {isActive && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-emerald-400 rounded-r-full"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <item.icon className={cn('w-5 h-5 flex-shrink-0', isActive && 'text-emerald-400')} />
               <AnimatePresence>
                 {sidebarOpen && (
                   <motion.span
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="whitespace-nowrap"
+                    className="flex-1 text-left whitespace-nowrap"
                   >
                     {item.label}
                   </motion.span>
                 )}
               </AnimatePresence>
-              {showBadge && !isActive && (
-                <span
-                  className={cn(
-                    'flex-shrink-0 h-5 min-w-[20px] px-1.5 rounded-full text-xs font-bold flex items-center justify-center',
-                    sidebarOpen ? 'ml-auto' : 'absolute -top-1 -right-1',
-                    item.id === 'emails'
-                      ? 'bg-red-500 text-white'
-                      : 'bg-amber-500 text-white'
-                  )}
-                >
-                  {item.id === 'emails' ? unreadCount : pendingReminders}
-                </span>
+              {badge > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-[20px] text-[10px] px-1.5 flex-shrink-0">
+                  {badge}
+                </Badge>
               )}
             </button>
           )
         })}
       </nav>
 
-      {/* User profile */}
-      <div className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-            <User className="h-4 w-4 text-primary" />
-          </div>
+      <Separator className="bg-[var(--sidebar-border)]" />
+
+      {/* Focus Mode Toggle */}
+      <div className="px-4 py-3">
+        <div className={cn('flex items-center gap-3', !sidebarOpen && 'justify-center')}>
+          <Bot className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <AnimatePresence>
             {sidebarOpen && (
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-between flex-1"
               >
-                <p className="text-sm font-medium text-sidebar-foreground truncate">Alex Martin</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">alex@freelance.dev</p>
+                <span className="text-xs text-muted-foreground">Mode Focus</span>
+                <Switch
+                  checked={focusMode}
+                  onCheckedChange={setFocusMode}
+                  className="data-[state=checked]:bg-emerald-500"
+                />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      {/* Toggle button */}
-      <button
+      {/* User Profile */}
+      <div className="px-4 py-3 border-t border-[var(--sidebar-border)]">
+        <div className={cn('flex items-center gap-3', !sidebarOpen && 'justify-center')}>
+          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-emerald-400">AM</span>
+          </div>
+          <AnimatePresence>
+            {sidebarOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex-1 min-w-0"
+              >
+                <p className="text-sm font-medium truncate">Alex Martin</p>
+                <p className="text-xs text-muted-foreground truncate">Développeur Web</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={toggleSidebar}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors z-10"
+        className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-border bg-background shadow-md hover:bg-emerald-500/10 z-10"
       >
-        {sidebarOpen ? (
-          <ChevronLeft className="h-3 w-3" />
-        ) : (
-          <ChevronRight className="h-3 w-3" />
-        )}
-      </button>
+        {sidebarOpen ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+      </Button>
     </motion.aside>
   )
 }

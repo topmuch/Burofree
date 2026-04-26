@@ -1,429 +1,323 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, RefreshCw, Plus, Play, FileText, Clock, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useAppStore, type Task, type Email, type Reminder, type CalendarEvent } from '@/lib/store'
+import { Progress } from '@/components/ui/progress'
+import { useAppStore } from '@/lib/store'
 import { StatsCards } from '@/components/stats-cards'
-import { getTimeUntilReminder, formatReminderDate } from '@/lib/notifications'
-import { format, isToday, isPast, parseISO } from 'date-fns'
-import { fr } from 'date-fns/locale'
-import { motion } from 'framer-motion'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { Bell, Mail, CheckSquare, Clock, Star, ExternalLink } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
-const priorityColors: Record<string, string> = {
-  urgent: 'bg-red-500/10 text-red-500 border-red-500/20',
-  high: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  low: 'bg-primary/10 text-primary border-primary/20',
-}
-
-const priorityLabels: Record<string, string> = {
-  urgent: 'Urgent',
-  high: 'Élevée',
-  medium: 'Moyenne',
-  low: 'Basse',
-}
-
-function MiniCalendar({ events }: { events: CalendarEvent[] }) {
-  const [currentDate] = useState(new Date())
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-  const { selectedDate, setSelectedDate, setActiveTab } = useAppStore()
-
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startPad = (firstDay.getDay() + 6) % 7
-  const daysInMonth = lastDay.getDate()
-
-  const eventDates = new Set(
-    events
-      .filter((e) => {
-        const d = parseISO(e.startDate)
-        return d.getMonth() === month && d.getFullYear() === year
-      })
-      .map((e) => parseISO(e.startDate).getDate())
-  )
-
-  const monthName = format(currentDate, 'MMMM yyyy', { locale: fr })
-
-  const handleDayClick = (day: number) => {
-    const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd')
-    setSelectedDate(dateStr)
-    setActiveTab('calendar')
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold capitalize">{monthName}</CardTitle>
-      </CardHeader>
-      <CardContent className="pb-3">
-        <div className="grid grid-cols-7 gap-0.5 text-center">
-          {['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'].map((d) => (
-            <div key={d} className="text-xs text-muted-foreground font-medium py-1">{d}</div>
-          ))}
-          {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} />
-          ))}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const day = i + 1
-            const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd')
-            const isSelected = selectedDate === dateStr
-            const isTodayDate = isToday(new Date(year, month, day))
-            const hasEvents = eventDates.has(day)
-
-            return (
-              <button
-                key={day}
-                onClick={() => handleDayClick(day)}
-                className={`mini-calendar-day relative ${
-                  isSelected
-                    ? 'mini-calendar-day-selected'
-                    : isTodayDate
-                    ? 'mini-calendar-day-today'
-                    : ''
-                }`}
-              >
-                {day}
-                {hasEvents && !isSelected && (
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  )
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Bonjour'
+  if (hour < 18) return 'Bon après-midi'
+  return 'Bonsoir'
 }
 
 export function Dashboard() {
-  const { tasks, events, reminders, emails, stats, setActiveTab } = useAppStore()
-  const chartData = useMemo(() => {
-    if (!stats?.dailyCompleted) return []
-    return stats.dailyCompleted.map((d) => ({
-      name: format(parseISO(d.date), 'EEE', { locale: fr }),
-      count: d.count,
-    }))
-  }, [stats])
+  const { stats, briefing, fetchBriefing, fetchStats, fetchSuggestions, suggestions, tasks, events, goals, setActiveTab } = useAppStore()
+  const [loadingBriefing, setLoadingBriefing] = useState(false)
 
-  const upcomingTasks = tasks
-    .filter((t: Task) => t.status !== 'done' && t.dueDate)
-    .sort((a: Task, b: Task) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, 5)
+  useEffect(() => {
+    fetchStats()
+    fetchSuggestions()
+  }, [fetchStats, fetchSuggestions])
 
-  const recentEmails = emails
-    .filter((e: Email) => !e.isSent)
-    .slice(0, 5)
-
-  const upcomingReminders = reminders
-    .filter((r: Reminder) => !r.isSent)
-    .sort((a: Reminder, b: Reminder) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime())
-    .slice(0, 5)
-
-  const getTaskDueStatus = (task: Task) => {
-    if (!task.dueDate) return ''
-    const due = parseISO(task.dueDate)
-    if (isPast(due) && !isToday(due)) return 'task-overdue'
-    if (isToday(due)) return 'task-due-today'
-    return ''
+  const handleBriefing = async () => {
+    setLoadingBriefing(true)
+    await fetchBriefing()
+    setLoadingBriefing(false)
   }
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08 },
-    },
-  }
-
-  const item = {
-    hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0 },
-  }
+  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date())
+  const todayTasks = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString())
+  const todayEvents = events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString())
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={container}
-      initial="hidden"
-      animate="show"
-    >
-      <motion.div variants={item}>
-        <h1 className="text-2xl font-bold mb-1">Tableau de bord</h1>
-        <p className="text-muted-foreground text-sm">Vue d&apos;ensemble de votre activité freelance</p>
+    <div className="space-y-6">
+      {/* Greeting & Briefing */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="bg-gradient-to-r from-emerald-500/10 to-amber-500/5 border-emerald-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {getGreeting()}, <span className="text-emerald-400">Alex</span> 👋
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+              <Button
+                onClick={handleBriefing}
+                disabled={loadingBriefing}
+                className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30"
+                variant="outline"
+              >
+                {loadingBriefing ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                {briefing ? 'Rafraîchir' : 'Générer le briefing'}
+              </Button>
+            </div>
+
+            <AnimatePresence>
+              {briefing && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 p-4 rounded-lg bg-background/50 border border-border"
+                >
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed">{briefing}</div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
       </motion.div>
 
-      {/* Stats cards */}
-      <motion.div variants={item}>
-        <StatsCards />
-      </motion.div>
+      {/* Stats Cards */}
+      <StatsCards />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Productivity chart */}
-          <motion.div variants={item}>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-primary" />
-                  Productivité de la semaine
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.5 0 0 / 15%)" />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 12, fill: 'oklch(0.5 0.01 155)' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12, fill: 'oklch(0.5 0.01 155)' }}
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'oklch(0.18 0.008 155)',
-                          border: '1px solid oklch(1 0 0 / 10%)',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                        }}
-                        labelStyle={{ color: 'oklch(0.985 0.002 155)' }}
-                      />
-                      <Bar dataKey="count" fill="oklch(0.696 0.17 162.48)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Upcoming tasks */}
-          <motion.div variants={item}>
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-amber-500" />
-                    Tâches à venir
-                  </CardTitle>
-                  <button
-                    onClick={() => setActiveTab('tasks')}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Voir tout <ExternalLink className="h-3 w-3" />
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {upcomingTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Aucune tâche à venir</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                    {upcomingTasks.map((task: Task) => (
-                      <div
-                        key={task.id}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border ${getTaskDueStatus(task)} task-${task.priority}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{task.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {task.dueDate && (
-                              <span className="text-xs text-muted-foreground">
-                                {format(parseISO(task.dueDate), 'd MMM', { locale: fr })}
-                              </span>
-                            )}
-                            {task.category && (
-                              <span className="text-xs text-muted-foreground/60">{task.category}</span>
-                            )}
-                          </div>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${priorityColors[task.priority] || ''}`}
-                        >
-                          {priorityLabels[task.priority] || task.priority}
-                        </Badge>
-                      </div>
-                    ))}
+      {/* AI Suggestions */}
+      {suggestions.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                Suggestions IA
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {suggestions.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                >
+                  <span className="text-lg">{s.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">{s.title}</p>
+                      <Badge variant={s.priority === 'high' ? 'destructive' : 'secondary'} className="text-[10px]">
+                        {s.priority === 'high' ? 'Urgent' : 'Moyen'}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.message}</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                  <Button variant="ghost" size="sm" className="flex-shrink-0 text-xs" onClick={() => setActiveTab(s.actionUrl.replace('#', '') as 'tasks' | 'emails' | 'invoices')}>
+                    <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </motion.div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
-          {/* Recent emails */}
-          <motion.div variants={item}>
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-rose-500" />
-                    Emails récents
-                  </CardTitle>
-                  <button
-                    onClick={() => setActiveTab('emails')}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Voir tout <ExternalLink className="h-3 w-3" />
-                  </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Weekly Goals */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              Objectifs de la semaine
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {goals.map((goal) => {
+              const progress = goal.target ? Math.min((goal.current / goal.target) * 100, 100) : 0
+              return (
+                <div key={goal.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm">{goal.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {goal.current}{goal.target ? `/${goal.target}` : ''} {goal.unit === 'tasks' ? 'tâches' : goal.unit === 'hours' ? 'h' : '€'}
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                {recentEmails.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Aucun email récent</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                    {recentEmails.map((email: Email) => (
-                      <div
-                        key={email.id}
-                        className={`flex items-start gap-3 p-2.5 rounded-lg transition-colors hover:bg-accent/50 cursor-pointer ${
-                          !email.isRead ? 'email-item-unread' : 'email-item-read'
-                        }`}
-                        onClick={() => setActiveTab('emails')}
-                      >
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
-                          {(email.fromName || email.fromAddress)[0].toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={`text-sm truncate ${!email.isRead ? 'font-semibold' : ''}`}>
-                              {email.fromName || email.fromAddress}
-                            </p>
-                            {email.isStarred && <Star className="h-3 w-3 text-amber-500 fill-amber-500" />}
-                          </div>
-                          <p className="text-sm truncate text-muted-foreground">{email.subject}</p>
-                          {email.snippet && (
-                            <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground/50 flex-shrink-0">
-                          {format(parseISO(email.receivedAt), 'HH:mm')}
-                        </span>
-                      </div>
-                    ))}
+              )
+            })}
+            {goals.length === 0 && <p className="text-sm text-muted-foreground">Aucun objectif cette semaine</p>}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Tasks */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400" />
+                Tâches à venir
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-xs text-emerald-400" onClick={() => setActiveTab('tasks')}>
+                Voir tout <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+            {todayTasks.slice(0, 5).map((task) => (
+              <div key={task.id} className={`flex items-center gap-3 p-2 rounded-lg bg-secondary/50 ${task.priority === 'urgent' ? 'task-urgent' : task.priority === 'high' ? 'task-high' : 'task-medium'}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{task.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {task.project && (
+                      <Badge variant="outline" className="text-[10px] h-4" style={{ borderColor: task.project.color, color: task.project.color }}>
+                        {task.project.name}
+                      </Badge>
+                    )}
+                    <Badge variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'} className="text-[10px] h-4">
+                      {task.priority === 'urgent' ? 'Urgent' : task.priority === 'high' ? 'Élevée' : task.priority === 'medium' ? 'Moyenne' : 'Basse'}
+                    </Badge>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-6">
-          {/* Mini calendar */}
-          <motion.div variants={item}>
-            <MiniCalendar events={events} />
-          </motion.div>
-
-          {/* Upcoming reminders */}
-          <motion.div variants={item}>
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-violet-500" />
-                    Rappels à venir
-                  </CardTitle>
-                  <button
-                    onClick={() => setActiveTab('reminders')}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Voir tout <ExternalLink className="h-3 w-3" />
-                  </button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {upcomingReminders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Aucun rappel à venir</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                    {upcomingReminders.map((reminder: Reminder) => (
-                      <div
-                        key={reminder.id}
-                        className="p-2.5 rounded-lg border hover:bg-accent/50 transition-colors"
-                      >
-                        <p className="text-sm font-medium">{reminder.title}</p>
-                        {reminder.message && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{reminder.message}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-xs text-primary font-medium">
-                            {getTimeUntilReminder(reminder.remindAt)}
-                          </span>
-                          <span className="text-xs text-muted-foreground/50">
-                            {formatReminderDate(reminder.remindAt)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {task.dueDate && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  </span>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Task completion summary */}
-          <motion.div variants={item}>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Résumé des tâches</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {stats?.taskBreakdown && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">À faire</span>
-                      <span className="text-sm font-semibold">{stats.taskBreakdown.todo}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                        style={{
-                          width: `${stats.totalTasks ? (stats.taskBreakdown.todo / stats.totalTasks) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">En cours</span>
-                      <span className="text-sm font-semibold">{stats.taskBreakdown.inProgress}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{
-                          width: `${stats.totalTasks ? (stats.taskBreakdown.inProgress / stats.totalTasks) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Terminées</span>
-                      <span className="text-sm font-semibold">{stats.taskBreakdown.done}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{
-                          width: `${stats.totalTasks ? (stats.taskBreakdown.done / stats.totalTasks) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+              </div>
+            ))}
+            {overdueTasks.slice(0, 3).map((task) => (
+              <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 task-overdue">
+                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{task.title}</p>
+                  <span className="text-xs text-red-400">En retard</span>
+                </div>
+              </div>
+            ))}
+            {todayTasks.length === 0 && overdueTasks.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucune tâche à venir</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </motion.div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Productivity Chart */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Heures cette semaine</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={stats?.weekDays || []}>
+                <defs>
+                  <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+                <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                />
+                <Area type="monotone" dataKey="totalHours" stroke="#10b981" fillOpacity={1} fill="url(#colorHours)" name="Heures" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Revenue Chart */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Revenus mensuels</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={stats?.monthlyData || []}>
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+                <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                  formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, 'Revenu']}
+                />
+                <Bar dataKey="revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Revenu" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Today's Events */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-400" />
+              Événements d&apos;aujourd&apos;hui
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-xs text-emerald-400" onClick={() => setActiveTab('calendar')}>
+              Calendrier <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {todayEvents.length > 0 ? (
+            <div className="space-y-2">
+              {todayEvents.map((event) => (
+                <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
+                  <div className="w-1 h-8 rounded-full" style={{ backgroundColor: event.color }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {event.allDay ? 'Toute la journée' : new Date(event.startDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {event.location && ` · ${event.location}`}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] h-4">
+                    {event.type === 'meeting' ? 'Réunion' : event.type === 'deadline' ? 'Deadline' : event.type === 'block' ? 'Focus' : 'Rappel'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">Aucun événement aujourd&apos;hui</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => setActiveTab('tasks')} variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+          <Plus className="w-4 h-4 mr-2" /> Nouvelle tâche
+        </Button>
+        <Button onClick={() => setActiveTab('invoices')} variant="outline" className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+          <FileText className="w-4 h-4 mr-2" /> Nouvelle facture
+        </Button>
+        <Button onClick={() => setActiveTab('time')} variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+          <Play className="w-4 h-4 mr-2" /> Démarrer chrono
+        </Button>
+      </div>
+    </div>
   )
 }

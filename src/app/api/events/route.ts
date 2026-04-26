@@ -1,25 +1,20 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const start = searchParams.get('start')
     const end = searchParams.get('end')
 
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
-      })
-    }
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const where: Record<string, unknown> = { userId: user.id }
-    if (start && end) {
-      where.startDate = {
-        gte: new Date(start),
-        lte: new Date(end),
-      }
+    if (start || end) {
+      where.startDate = {}
+      if (start) (where.startDate as Record<string, unknown>).gte = new Date(start)
+      if (end) (where.startDate as Record<string, unknown>).lte = new Date(end)
     }
 
     const events = await db.calendarEvent.findMany({
@@ -29,21 +24,16 @@ export async function GET(request: Request) {
 
     return NextResponse.json(events)
   } catch (error) {
-    console.error('Error fetching events:', error)
-    return NextResponse.json({ error: 'Erreur lors du chargement des événements' }, { status: 500 })
+    console.error('Events GET error:', error)
+    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
-      })
-    }
+    const body = await req.json()
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const event = await db.calendarEvent.create({
       data: {
@@ -54,13 +44,15 @@ export async function POST(request: Request) {
         color: body.color || '#10b981',
         allDay: body.allDay || false,
         location: body.location,
+        type: body.type || 'meeting',
+        source: body.source || 'local',
         userId: user.id,
       },
     })
 
     return NextResponse.json(event, { status: 201 })
   } catch (error) {
-    console.error('Error creating event:', error)
-    return NextResponse.json({ error: 'Erreur lors de la création de l\'événement' }, { status: 500 })
+    console.error('Events POST error:', error)
+    return NextResponse.json({ error: 'Failed to create event' }, { status: 500 })
   }
 }

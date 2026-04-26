@@ -1,311 +1,265 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Star, Mail, Send, Trash2, ArrowRight, Sparkles, ExternalLink } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { useAppStore, type Email } from '@/lib/store'
-import { EmailCompose } from '@/components/email-compose'
-import { format, parseISO } from 'date-fns'
-import { fr } from 'date-fns/locale'
-import {
-  Mail,
-  Star,
-  Plus,
-  Search,
-  Send,
-  Inbox,
-  BookmarkCheck,
-  ArrowLeft,
-  Reply,
-  Trash2,
-  User,
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { useAppStore, Email } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
-const filterOptions = [
-  { value: 'all', label: 'Tous', icon: Inbox },
-  { value: 'unread', label: 'Non lus', icon: Mail },
-  { value: 'starred', label: 'Favoris', icon: BookmarkCheck },
-  { value: 'sent', label: 'Envoyés', icon: Send },
-]
+const categoryConfig: Record<string, { label: string; color: string }> = {
+  client: { label: 'Client', color: 'bg-emerald-500/20 text-emerald-400' },
+  admin: { label: 'Admin', color: 'bg-amber-500/20 text-amber-400' },
+  newsletter: { label: 'Newsletter', color: 'bg-slate-500/20 text-slate-400' },
+  spam: { label: 'Spam', color: 'bg-red-500/20 text-red-400' },
+}
 
-export function EmailInbox() {
-  const { emails, selectedEmail, setSelectedEmail, updateEmail, deleteEmail, emailFilter, setEmailFilter, fetchEmails } = useAppStore()
-  const [showCompose, setShowCompose] = useState(false)
-  const [replyTo, setReplyTo] = useState<Email | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) {
+  const { updateEmail, deleteEmail, convertEmailToTask } = useAppStore()
+  const [aiReply, setAiReply] = useState('')
+  const [generating, setGenerating] = useState(false)
 
-  const filteredEmails = emails.filter((email) => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return (
-        email.subject.toLowerCase().includes(q) ||
-        (email.fromName || '').toLowerCase().includes(q) ||
-        email.fromAddress.toLowerCase().includes(q)
-      )
+  const handleGenerateReply = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `Propose une réponse professionnelle en français à cet email:\nDe: ${email.fromName || email.fromAddress}\nSujet: ${email.subject}\nContenu: ${email.body || email.snippet}` }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAiReply(data.message)
+      }
+    } catch (e) {
+      console.error('AI reply error:', e)
     }
-    return true
-  })
-
-  const handleStar = async (email: Email, e: React.MouseEvent) => {
-    e.stopPropagation()
-    await updateEmail(email.id, { isStarred: !email.isStarred })
-  }
-
-  const handleMarkRead = async (email: Email) => {
-    if (!email.isRead) {
-      await updateEmail(email.id, { isRead: true })
-    }
-    setSelectedEmail(email)
-  }
-
-  const handleDelete = async (id: string) => {
-    await deleteEmail(id)
-    toast.success('Email supprimé')
-  }
-
-  const handleReply = (email: Email) => {
-    setReplyTo(email)
-    setShowCompose(true)
-  }
-
-  const handleFilterChange = async (value: string) => {
-    setEmailFilter(value)
-    // Need to refetch emails with new filter
-    const res = await fetch(`/api/emails${value !== 'all' ? `?filter=${value}` : ''}`)
-    const data = await res.json()
-    useAppStore.setState({ emails: data.emails || [] })
-  }
-
-  const getInitials = (name: string | null, email: string) => {
-    if (name) return name[0].toUpperCase()
-    return email[0].toUpperCase()
+    setGenerating(false)
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Emails</h1>
-          <p className="text-muted-foreground text-sm">Gérez votre messagerie professionnelle</p>
-        </div>
-        <Button onClick={() => { setReplyTo(null); setShowCompose(true) }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nouveau message
-        </Button>
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-          {filterOptions.map((opt) => {
-            const Icon = opt.icon
-            return (
-              <Button
-                key={opt.value}
-                variant={emailFilter === opt.value ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleFilterChange(opt.value)}
-                className="text-xs h-7 gap-1"
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {opt.label}
-              </Button>
-            )
-          })}
-        </div>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Email layout - list + detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-[calc(100vh-280px)] min-h-[400px]">
-        {/* Email List */}
-        <div className="lg:col-span-2 border rounded-lg overflow-hidden">
-          <div className="bg-muted/50 px-3 py-2 border-b">
-            <span className="text-sm font-medium">
-              {filteredEmails.length} message{filteredEmails.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          <div className="overflow-y-auto custom-scrollbar max-h-full" style={{ maxHeight: 'calc(100vh - 340px)' }}>
-            {filteredEmails.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Aucun email</p>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+      <Card className="h-full">
+        <CardContent className="p-4 space-y-4">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">{email.subject}</h3>
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                <span>De: {email.fromName || email.fromAddress}</span>
+                <span>·</span>
+                <span>{new Date(email.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-            ) : (
-              filteredEmails.map((email) => (
-                <div
-                  key={email.id}
-                  onClick={() => handleMarkRead(email)}
-                  className={`flex items-start gap-3 px-3 py-3 border-b cursor-pointer transition-colors hover:bg-accent/50 ${
-                    selectedEmail?.id === email.id ? 'bg-accent' : ''
-                  } ${!email.isRead ? 'email-item-unread' : 'email-item-read'}`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
-                    {getInitials(email.fromName, email.fromAddress)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className={`text-sm truncate ${!email.isRead ? 'font-semibold' : ''}`}>
-                        {email.isSent ? `À: ${email.toAddress}` : email.fromName || email.fromAddress}
-                      </p>
-                      <button
-                        onClick={(e) => handleStar(email, e)}
-                        className="flex-shrink-0 ml-auto"
-                      >
-                        <Star
-                          className={`h-3.5 w-3.5 transition-colors ${
-                            email.isStarred
-                              ? 'text-amber-500 fill-amber-500'
-                              : 'text-muted-foreground/30 hover:text-amber-400'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <p className={`text-sm truncate ${!email.isRead ? 'font-medium' : 'text-muted-foreground'}`}>
-                      {email.subject}
-                    </p>
-                    {email.snippet && (
-                      <p className="text-xs text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
-                    )}
-                    <span className="text-xs text-muted-foreground/40 mt-1 block">
-                      {format(parseISO(email.receivedAt), 'd MMM HH:mm', { locale: fr })}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+              <div className="text-xs text-muted-foreground">À: {email.toAddress}</div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateEmail(email.id, { isStarred: !email.isStarred })}>
+                <Star className={cn('w-4 h-4', email.isStarred && 'fill-amber-400 text-amber-400')} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+                ✕
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Email Detail */}
-        <div className="lg:col-span-3 border rounded-lg overflow-hidden">
-          <AnimatePresence mode="wait">
-            {selectedEmail ? (
-              <motion.div
-                key={selectedEmail.id}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="h-full flex flex-col"
-              >
-                {/* Email header */}
-                <div className="bg-muted/50 px-4 py-3 border-b">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="font-semibold text-sm">{selectedEmail.subject}</h2>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleReply(selectedEmail)}
-                      >
-                        <Reply className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:text-destructive"
-                        onClick={() => handleDelete(selectedEmail.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 lg:hidden"
-                        onClick={() => setSelectedEmail(null)}
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-xs font-medium text-primary">
-                      {getInitials(selectedEmail.fromName, selectedEmail.fromAddress)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {selectedEmail.fromName || selectedEmail.fromAddress}
-                        <span className="text-muted-foreground font-normal ml-2 text-xs">
-                          &lt;{selectedEmail.fromAddress}&gt;
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        À: {selectedEmail.toAddress} • {format(parseISO(selectedEmail.receivedAt), 'd MMMM yyyy HH:mm', { locale: fr })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          {/* Body */}
+          <div className="p-4 rounded-lg bg-secondary/50 text-sm whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto custom-scrollbar">
+            {email.body || email.snippet || 'Pas de contenu'}
+          </div>
 
-                {/* Email body */}
-                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {selectedEmail.body || selectedEmail.snippet || 'Aucun contenu'}
-                  </div>
-                </div>
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerateReply} disabled={generating}>
+              <Sparkles className="w-3 h-3 mr-1" /> {generating ? 'Génération...' : 'Réponse IA'}
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => convertEmailToTask(email.id)}>
+              <ArrowRight className="w-3 h-3 mr-1" /> Convertir en tâche
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => updateEmail(email.id, { isRead: !email.isRead })}>
+              <Mail className="w-3 h-3 mr-1" /> {email.isRead ? 'Marquer non lu' : 'Marquer lu'}
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs text-red-400 hover:text-red-300" onClick={() => { deleteEmail(email.id); onClose() }}>
+              <Trash2 className="w-3 h-3 mr-1" /> Supprimer
+            </Button>
+          </div>
 
-                {/* Reply bar */}
-                <div className="border-t p-3 bg-muted/30">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReply(selectedEmail)}
-                    className="gap-2"
-                  >
-                    <Reply className="h-4 w-4" />
-                    Répondre
-                  </Button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-full flex items-center justify-center text-muted-foreground"
-              >
-                <div className="text-center">
-                  <Mail className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Sélectionnez un email pour le lire</p>
+          {/* AI Reply */}
+          <AnimatePresence>
+            {aiReply && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium">Réponse proposée par l&apos;IA</span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{aiReply}</p>
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white">Utiliser ce brouillon</Button>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setAiReply('')}>Ignorer</Button>
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
+function ComposeEmail() {
+  const [to, setTo] = useState('')
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
+  const { sendEmail } = useAppStore()
+
+  const handleSend = () => {
+    if (!to || !subject) return
+    sendEmail({ to, subject, body })
+    setTo('')
+    setSubject('')
+    setBody('')
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>À *</Label>
+        <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="email@exemple.com" className="bg-secondary" />
+      </div>
+      <div>
+        <Label>Sujet *</Label>
+        <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Sujet de l'email" className="bg-secondary" />
+      </div>
+      <div>
+        <Label>Message</Label>
+        <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Votre message..." className="bg-secondary min-h-[120px]" />
+      </div>
+      <Button onClick={handleSend} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
+        <Send className="w-4 h-4 mr-2" /> Envoyer
+      </Button>
+    </div>
+  )
+}
+
+export function EmailInbox() {
+  const { emails, selectedEmail, setSelectedEmail, emailFilter, setEmailFilter } = useAppStore()
+
+  const categories = [
+    { id: 'all', label: 'Tous', count: emails.filter(e => !e.isSent).length },
+    { id: 'client', label: 'Clients', count: emails.filter(e => !e.isSent && e.category === 'client').length },
+    { id: 'admin', label: 'Admin', count: emails.filter(e => !e.isSent && e.category === 'admin').length },
+    { id: 'newsletter', label: 'Newsletters', count: emails.filter(e => !e.isSent && e.category === 'newsletter').length },
+    { id: 'spam', label: 'Spam', count: emails.filter(e => !e.isSent && e.category === 'spam').length },
+  ]
+
+  const filteredEmails = emails
+    .filter(e => !e.isSent)
+    .filter(e => emailFilter === 'all' || e.category === emailFilter)
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Emails</h2>
+          <p className="text-sm text-muted-foreground">{filteredEmails.length} email(s)</p>
         </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Send className="w-4 h-4 mr-2" /> Nouvel email
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nouvel email</DialogTitle>
+            </DialogHeader>
+            <ComposeEmail />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <EmailCompose
-        open={showCompose}
-        onOpenChange={setShowCompose}
-        replyTo={replyTo ? {
-          fromAddress: replyTo.fromAddress,
-          fromName: replyTo.fromName,
-          subject: replyTo.subject,
-        } : null}
-      />
-    </motion.div>
+      {/* Category Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {categories.map(cat => (
+          <Button
+            key={cat.id}
+            variant={emailFilter === cat.id ? 'default' : 'outline'}
+            size="sm"
+            className={cn('text-xs whitespace-nowrap', emailFilter === cat.id ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : '')}
+            onClick={() => setEmailFilter(cat.id)}
+          >
+            {cat.label}
+            {cat.count > 0 && <Badge variant="secondary" className="ml-1 text-[10px] h-4">{cat.count}</Badge>}
+          </Button>
+        ))}
+      </div>
+
+      {/* Split Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Email List */}
+        <div className={cn('lg:col-span-2 space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto custom-scrollbar', selectedEmail && 'hidden lg:block')}>
+          {filteredEmails.map(email => (
+            <motion.div
+              key={email.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className={cn(
+                'p-3 rounded-lg cursor-pointer transition-all border',
+                selectedEmail?.id === email.id ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-transparent hover:bg-secondary/50',
+                !email.isRead ? 'email-item-unread' : 'email-item-read'
+              )}
+              onClick={() => setSelectedEmail(email)}
+            >
+              <div className="flex items-start gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 text-xs font-medium text-emerald-400">
+                  {(email.fromName || email.fromAddress)[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className={cn('text-sm', !email.isRead && 'font-semibold')}>{email.fromName || email.fromAddress}</span>
+                    <span className="text-[10px] text-muted-foreground">{new Date(email.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                  <p className={cn('text-sm truncate', !email.isRead && 'font-medium')}>{email.subject}</p>
+                  <p className="text-xs text-muted-foreground truncate">{email.snippet}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Badge className={cn('text-[10px] h-4', categoryConfig[email.category]?.color || 'bg-slate-500/20 text-slate-400')}>
+                      {categoryConfig[email.category]?.label || email.category}
+                    </Badge>
+                    {email.isStarred && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
+                    {email.hasTask && <Badge className="text-[10px] h-4 bg-emerald-500/20 text-emerald-400">→ Tâche</Badge>}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+          {filteredEmails.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground">Aucun email</div>
+          )}
+        </div>
+
+        {/* Email Detail */}
+        <div className={cn('lg:col-span-3', !selectedEmail && 'hidden lg:block')}>
+          {selectedEmail ? (
+            <EmailDetail email={selectedEmail} onClose={() => setSelectedEmail(null)} />
+          ) : (
+            <Card className="h-full flex items-center justify-center">
+              <div className="text-center text-muted-foreground py-12">
+                <Mail className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Sélectionnez un email pour le lire</p>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

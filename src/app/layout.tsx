@@ -14,12 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FreeFlow - Productivité Freelance",
-  description: "Système de productivité complet pour freelances - Tâches, Calendrier, Emails, Rappels",
-  keywords: ["freelance", "productivité", "tâches", "calendrier", "emails", "rappels"],
-  authors: [{ name: "FreeFlow" }],
+  title: "Maellis — Copilot Freelance IA",
+  description: "Assistant intelligent pour freelances — Tâches, Calendrier, Emails, Facturation, Time Tracking & IA",
+  keywords: ["freelance", "IA", "productivité", "tâches", "calendrier", "emails", "facturation", "assistant"],
+  authors: [{ name: "Maellis" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 

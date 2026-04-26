@@ -1,29 +1,26 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
-    const category = searchParams.get('category')
-    const userId = searchParams.get('userId') || 'default'
+    const projectId = searchParams.get('projectId')
+    const search = searchParams.get('search')
 
-    // Get or create default user
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
-      })
-    }
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const where: Record<string, unknown> = { userId: user.id }
     if (status) where.status = status
     if (priority) where.priority = priority
-    if (category) where.category = category
+    if (projectId) where.projectId = projectId
+    if (search) where.title = { contains: search }
 
     const tasks = await db.task.findMany({
       where,
+      include: { project: true },
       orderBy: [
         { priority: 'desc' },
         { dueDate: 'asc' },
@@ -32,21 +29,16 @@ export async function GET(request: Request) {
 
     return NextResponse.json(tasks)
   } catch (error) {
-    console.error('Error fetching tasks:', error)
-    return NextResponse.json({ error: 'Erreur lors du chargement des tâches' }, { status: 500 })
+    console.error('Tasks GET error:', error)
+    return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
-      })
-    }
+    const body = await req.json()
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const task = await db.task.create({
       data: {
@@ -57,13 +49,18 @@ export async function POST(request: Request) {
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
         reminderAt: body.reminderAt ? new Date(body.reminderAt) : null,
         category: body.category,
+        estimatedTime: body.estimatedTime,
+        actualTime: body.actualTime,
+        recurrence: body.recurrence,
+        projectId: body.projectId || null,
         userId: user.id,
       },
+      include: { project: true },
     })
 
     return NextResponse.json(task, { status: 201 })
   } catch (error) {
-    console.error('Error creating task:', error)
-    return NextResponse.json({ error: 'Erreur lors de la création de la tâche' }, { status: 500 })
+    console.error('Tasks POST error:', error)
+    return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }
 }

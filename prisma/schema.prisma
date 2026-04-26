@@ -8,32 +8,72 @@ datasource db {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String?
-  avatar       String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  tasks        Task[]
-  events       CalendarEvent[]
-  reminders    Reminder[]
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  avatar        String?
+  profession    String?
+  timezone      String   @default("Europe/Paris")
+  assistantName String   @default("Maellis")
+  assistantTone String   @default("friendly")
+  theme         String   @default("dark")
+  focusMode     Boolean  @default(false)
+  onboardingDone Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tasks         Task[]
+  events        CalendarEvent[]
+  reminders     Reminder[]
   emailAccounts EmailAccount[]
+  projects      Project[]
+  invoices      Invoice[]
+  timeEntries   TimeEntry[]
+  documents     Document[]
+  snippets      Snippet[]
+  notifications Notification[]
+  goals         WeeklyGoal[]
+  chatMessages  ChatMessage[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  clientName  String?
+  color       String   @default("#10b981")
+  status      String   @default("active")
+  budget      Float?
+  deadline    DateTime?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  invoices    Invoice[]
+  documents   Document[]
+  timeEntries TimeEntry[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Task {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("todo")
-  priority    String    @default("medium")
-  dueDate     DateTime?
-  reminderAt  DateTime?
-  completedAt DateTime?
-  category    String?
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  status        String    @default("todo")
+  priority      String    @default("medium")
+  dueDate       DateTime?
+  reminderAt    DateTime?
+  completedAt   DateTime?
+  category      String?
+  estimatedTime Int?
+  actualTime    Int?
+  recurrence    String?
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeEntries   TimeEntry[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model CalendarEvent {
@@ -45,6 +85,8 @@ model CalendarEvent {
   color       String   @default("#10b981")
   allDay      Boolean  @default(false)
   location    String?
+  type        String   @default("meeting")
+  source      String   @default("local")
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -52,17 +94,18 @@ model CalendarEvent {
 }
 
 model Reminder {
-  id        String   @id @default(cuid())
-  title     String
-  message   String?
-  remindAt  DateTime
-  isSent    Boolean  @default(false)
-  type      String   @default("notification")
-  relatedId String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String
+  message     String?
+  remindAt    DateTime
+  isSent      Boolean  @default(false)
+  type        String   @default("in_app")
+  relatedId   String?
+  relatedType String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model EmailAccount {
@@ -94,10 +137,119 @@ model Email {
   isRead         Boolean     @default(false)
   isStarred      Boolean     @default(false)
   isSent         Boolean     @default(false)
-  receivedAt     DateTime
+  category       String      @default("client")
+  hasTask        Boolean     @default(false)
+  scheduledAt    DateTime?
   emailAccountId String
   emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
   userId         String
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  number        String
+  type          String   @default("invoice")
+  clientName    String
+  clientEmail   String?
+  clientAddress String?
+  items         String
+  subtotal      Float
+  taxRate       Float    @default(20.0)
+  taxAmount     Float
+  total         Float
+  currency      String   @default("EUR")
+  status        String   @default("draft")
+  dueDate       DateTime?
+  paidAt        DateTime?
+  notes         String?
+  projectId     String?
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?
+  description String?
+  isBillable  Boolean  @default(true)
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  content   String?
+  fileUrl   String?
+  mimeType  String?
+  size      Int?
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Snippet {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info")
+  channel   String   @default("in_app")
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WeeklyGoal {
+  id        String   @id @default(cuid())
+  title     String
+  target    Int?
+  current   Int      @default(0)
+  unit      String   @default("tasks")
+  weekStart DateTime
+  weekEnd   DateTime
+  completed Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

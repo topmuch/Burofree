@@ -4,23 +4,23 @@ import { db } from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const pending = searchParams.get('pending')
+    const isRead = searchParams.get('isRead')
 
     const user = await db.user.findFirst()
     if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const where: Record<string, unknown> = { userId: user.id }
-    if (pending === 'true') where.isSent = false
+    if (isRead !== null) where.isRead = isRead === 'true'
 
-    const reminders = await db.reminder.findMany({
+    const notifications = await db.notification.findMany({
       where,
-      orderBy: { remindAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(reminders)
+    return NextResponse.json(notifications)
   } catch (error) {
-    console.error('Reminders GET error:', error)
-    return NextResponse.json({ error: 'Failed to fetch reminders' }, { status: 500 })
+    console.error('Notifications GET error:', error)
+    return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
   }
 }
 
@@ -30,21 +30,20 @@ export async function POST(req: NextRequest) {
     const user = await db.user.findFirst()
     if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
-    const reminder = await db.reminder.create({
+    const notification = await db.notification.create({
       data: {
         title: body.title,
         message: body.message,
-        remindAt: new Date(body.remindAt),
-        type: body.type || 'in_app',
-        relatedId: body.relatedId,
-        relatedType: body.relatedType,
+        type: body.type || 'info',
+        channel: body.channel || 'in_app',
+        actionUrl: body.actionUrl,
         userId: user.id,
       },
     })
 
-    return NextResponse.json(reminder, { status: 201 })
+    return NextResponse.json(notification, { status: 201 })
   } catch (error) {
-    console.error('Reminders POST error:', error)
-    return NextResponse.json({ error: 'Failed to create reminder' }, { status: 500 })
+    console.error('Notifications POST error:', error)
+    return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 })
   }
 }

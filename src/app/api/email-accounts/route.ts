@@ -1,35 +1,33 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
-      })
-    }
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const accounts = await db.emailAccount.findMany({
       where: { userId: user.id },
-      orderBy: { isPrimary: 'desc' },
     })
 
     return NextResponse.json(accounts)
   } catch (error) {
-    console.error('Error fetching email accounts:', error)
-    return NextResponse.json({ error: 'Erreur lors du chargement des comptes email' }, { status: 500 })
+    console.error('Email accounts GET error:', error)
+    return NextResponse.json({ error: 'Failed to fetch email accounts' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await req.json()
+    const user = await db.user.findFirst()
+    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
-    let user = await db.user.findFirst()
-    if (!user) {
-      user = await db.user.create({
-        data: { email: 'alex@freelance.dev', name: 'Alex Martin' },
+    // If this is set as primary, unset other primary accounts
+    if (body.isPrimary) {
+      await db.emailAccount.updateMany({
+        where: { userId: user.id, isPrimary: true },
+        data: { isPrimary: false },
       })
     }
 
@@ -50,7 +48,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(account, { status: 201 })
   } catch (error) {
-    console.error('Error creating email account:', error)
-    return NextResponse.json({ error: 'Erreur lors de l\'ajout du compte email' }, { status: 500 })
+    console.error('Email accounts POST error:', error)
+    return NextResponse.json({ error: 'Failed to create email account' }, { status: 500 })
   }
 }
