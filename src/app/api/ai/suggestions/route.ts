@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { createAIEngine } from '@/lib/ai'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -33,26 +33,9 @@ Heure actuelle: ${today.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '
     `.trim()
 
     try {
-      const zai = await ZAI.create()
-      const completion = await zai.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es ${user.assistantName}, l'assistant IA d'un freelancer nommé ${user.name}. Analyse la situation et génère 3-5 suggestions ACTIONABLES et PRIORISÉES. Chaque suggestion doit être concise et spécifique. Réponds en JSON uniquement avec ce format:
-[{"icon": "emoji", "title": "titre court", "message": "description actionnable en 1 phrase", "priority": "high|medium|low", "actionUrl": "#tasks|#emails|#invoices|#calendar|#time"}]
-Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Réponds en français.`
-          },
-          { role: 'user', content: `Voici mon contexte actuel:\n${context}` }
-        ],
-        temperature: 0.6,
-        max_tokens: 600,
-      })
-
-      const responseText = completion.choices[0]?.message?.content || '[]'
-      // Try to parse JSON from response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        const suggestions = JSON.parse(jsonMatch[0])
+      const engine = createAIEngine()
+      const suggestions = await engine.generateSuggestions(context, user.name || 'Freelancer', user.assistantName, user.assistantTone)
+      if (suggestions.length > 0) {
         return NextResponse.json({ suggestions })
       }
     } catch (aiError) {

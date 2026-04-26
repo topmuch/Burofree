@@ -27,6 +27,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore, type TabType } from '@/lib/store'
 import { toast } from 'sonner'
+import { MentalLoadWidget, CoachingTipCard } from '@/components/mental-load-widget'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -580,6 +581,14 @@ export function Dashboard() {
 
         {/* ─── Right Column (40%) ────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Mental Load Widget */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+            <MentalLoadWidget />
+          </motion.div>
+
+          {/* Coaching Tip */}
+          <CoachingTipCard />
 
           {/* Today's Events — Mini Timeline */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>

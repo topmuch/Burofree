@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         location: body.location,
         type: body.type || 'meeting',
         source: body.source || 'local',
+        sourceId: body.sourceId || null,
         userId: user.id,
       },
     })

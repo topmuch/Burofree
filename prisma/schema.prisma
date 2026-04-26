@@ -25,14 +25,17 @@ model User {
   events        CalendarEvent[]
   reminders     Reminder[]
   emailAccounts EmailAccount[]
+  accounts      Account[]
+  sessions      Session[]
   projects      Project[]
   invoices      Invoice[]
   timeEntries   TimeEntry[]
   documents     Document[]
   snippets      Snippet[]
-  notifications Notification[]
-  goals         WeeklyGoal[]
-  chatMessages  ChatMessage[]
+  notifications     Notification[]
+  goals             WeeklyGoal[]
+  chatMessages      ChatMessage[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Project {
@@ -77,20 +80,21 @@ model Task {
 }
 
 model CalendarEvent {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
   startDate   DateTime
   endDate     DateTime?
-  color       String   @default("#10b981")
-  allDay      Boolean  @default(false)
+  color       String    @default("#10b981")
+  allDay      Boolean   @default(false)
   location    String?
-  type        String   @default("meeting")
-  source      String   @default("local")
+  type        String    @default("meeting")
+  source      String    @default("local")
+  sourceId    String?   @unique
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Reminder {
@@ -109,21 +113,24 @@ model Reminder {
 }
 
 model EmailAccount {
-  id           String   @id @default(cuid())
-  provider     String
-  email        String
-  accessToken  String?
-  refreshToken String?
-  imapHost     String?
-  imapPort     Int?
-  smtpHost     String?
-  smtpPort     Int?
-  isPrimary    Boolean  @default(false)
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emails       Email[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id @default(cuid())
+  provider        String
+  email           String
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiry     DateTime?
+  scopes          String?
+  imapHost        String?
+  imapPort        Int?
+  smtpHost        String?
+  smtpPort        Int?
+  isPrimary       Boolean   @default(false)
+  gmailHistoryId  String?
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emails          Email[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Email {
@@ -140,6 +147,8 @@ model Email {
   category       String      @default("client")
   hasTask        Boolean     @default(false)
   scheduledAt    DateTime?
+  source         String      @default("local")
+  sourceId       String?     @unique
   emailAccountId String
   emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
   userId         String
@@ -252,4 +261,40 @@ model ChatMessage {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

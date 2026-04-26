@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { createAIEngine, type ChatMessage } from '@/lib/ai'
 import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -35,8 +35,6 @@ export async function POST(req: NextRequest) {
       take: 10,
     })
 
-    const zai = await ZAI.create()
-
     const systemPrompt = `Tu es ${user.assistantName}, l'assistant intelligent personnel d'un freelancer nommé ${user.name}. Ton ton est ${user.assistantTone === 'pro' ? 'professionnel et concis' : user.assistantTone === 'friendly' ? 'amical, chaleureux et encourageant' : 'minimaliste et direct'}.
 
 Contexte actuel:
@@ -50,19 +48,14 @@ Contexte actuel:
 
 Tu peux répondre aux questions, suggérer des priorités, aider à organiser la journée, proposer des réponses emails, donner des conseils de productivité. Réponds toujours en français. Sois utile, proactif et concis.`
 
-    const messages = [
+    const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
       ...chatHistory.reverse().map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       { role: 'user', content: message },
     ]
 
-    const completion = await zai.chat.completions.create({
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-    })
-
-    const assistantMessage = completion.choices[0]?.message?.content || 'Désolé, je n\'ai pas pu traiter votre demande.'
+    const engine = createAIEngine()
+    const assistantMessage = await engine.chat(messages, { temperature: 0.7, maxTokens: 500 })
 
     await db.chatMessage.create({ data: { role: 'user', content: message, userId: user.id } })
     await db.chatMessage.create({ data: { role: 'assistant', content: assistantMessage, userId: user.id } })

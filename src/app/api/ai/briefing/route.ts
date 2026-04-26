@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { createAIEngine } from '@/lib/ai'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -42,8 +42,6 @@ export async function GET() {
       db.project.findMany({ where: { userId: user.id, status: 'active' } }),
     ])
 
-    const zai = await ZAI.create()
-
     const briefingContext = `
 Tâches dues aujourd'hui (${tasksToday.length}): ${tasksToday.map(t => `"${t.title}" (${t.priority}${t.project ? `, projet: ${t.project.name}` : ''})`).join(', ')}
 Tâches cette semaine: ${tasksWeek.length}
@@ -54,17 +52,11 @@ Factures en retard: ${overdueInvoices.length}
 Rappels à venir: ${pendingReminders.length}
 Projets actifs: ${activeProjects.length}`
 
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: 'system', content: `Tu es ${user.assistantName}, l'assistant intelligent de ${user.name}. Génère un briefing matinal concis et structuré en français. Utilise des émojis pour la lisibilité. Sois encourageant mais factuel. Le ton est ${user.assistantTone}.` },
-        { role: 'user', content: `Génère mon briefing du jour basé sur: ${briefingContext}` },
-      ],
-      temperature: 0.6,
-      max_tokens: 400,
-    })
+    const engine = createAIEngine()
+    const briefing = await engine.generateBriefing(briefingContext, user.name || 'Freelancer', user.assistantName, user.assistantTone)
 
     return NextResponse.json({
-      briefing: completion.choices[0]?.message?.content || '',
+      briefing,
       stats: {
         tasksToday: tasksToday.length,
         tasksWeek: tasksWeek.length,

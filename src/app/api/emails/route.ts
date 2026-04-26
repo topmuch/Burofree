@@ -93,6 +93,8 @@ export async function POST(req: NextRequest) {
         snippet: body.body?.substring(0, 100),
         isSent: true,
         category: 'client',
+        source: body.source || 'local',
+        sourceId: body.sourceId || null,
         emailAccountId: emailAccount.id,
         userId: user.id,
       },

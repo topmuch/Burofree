@@ -48,6 +48,7 @@ export interface CalendarEvent {
   location: string | null
   type: string
   source: string
+  sourceId: string | null
   userId: string
   createdAt: string
   updatedAt: string
@@ -81,6 +82,8 @@ export interface Email {
   category: string
   hasTask: boolean
   scheduledAt: string | null
+  source: string
+  sourceId: string | null
   emailAccountId: string
   userId: string
   createdAt: string
@@ -93,11 +96,14 @@ export interface EmailAccount {
   email: string
   accessToken: string | null
   refreshToken: string | null
+  tokenExpiry: string | null
+  scopes: string | null
   imapHost: string | null
   imapPort: number | null
   smtpHost: string | null
   smtpPort: number | null
   isPrimary: boolean
+  gmailHistoryId: string | null
   userId: string
   createdAt: string
   updatedAt: string
@@ -291,6 +297,7 @@ interface AppState {
   setEmailFilter: (filter: string) => void
   setChatOpen: (open: boolean) => void
   setAuthModalOpen: (open: boolean) => void
+  setUser: (user: Partial<User> | null) => void
 
   // Fetch - User
   fetchUser: () => Promise<void>
@@ -419,6 +426,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setEmailFilter: (filter) => set({ emailFilter: filter }),
   setChatOpen: (open) => set({ chatOpen: open }),
   setAuthModalOpen: (open) => set({ authModalOpen: open }),
+  setUser: (user) => set((s) => ({
+    user: user ? { ...s.user, ...user } as User : null
+  })),
 
   // Fetch - User
   fetchUser: async () => {

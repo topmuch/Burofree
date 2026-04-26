@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { useAppStore, CalendarEvent } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { CalendarSyncButton } from '@/components/calendar-sync-button'
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -185,19 +186,22 @@ export function CalendarView() {
           <h2 className="text-xl font-bold">Calendrier</h2>
           <p className="text-sm text-muted-foreground">{events.length} événement(s)</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
-              <Plus className="w-4 h-4 mr-2" /> Nouvel événement
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Nouvel événement</DialogTitle>
-            </DialogHeader>
-            <EventForm onSubmit={(data) => createEvent(data as Partial<CalendarEvent>)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <CalendarSyncButton />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Plus className="w-4 h-4 mr-2" /> Nouvel événement
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nouvel événement</DialogTitle>
+              </DialogHeader>
+              <EventForm onSubmit={(data) => createEvent(data as Partial<CalendarEvent>)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -307,6 +311,16 @@ export function CalendarView() {
                             <Badge variant="outline" className="text-[10px] h-4 mt-1">
                               {eventTypeLabels[event.type] || event.type}
                             </Badge>
+                            {event.source === 'google' && (
+                              <Badge variant="outline" className="text-[10px] h-4 mt-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                Google
+                              </Badge>
+                            )}
+                            {event.source === 'outlook' && (
+                              <Badge variant="outline" className="text-[10px] h-4 mt-1 bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                Outlook
+                              </Badge>
+                            )}
                           </div>
                           <Button variant="ghost" size="sm" className="h-6 text-xs text-red-400" onClick={() => deleteEvent(event.id)}>✕</Button>
                         </div>

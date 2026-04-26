@@ -14,10 +14,12 @@ import { TimeTracker } from '@/components/time-tracker'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
-import { Menu, Bell, Eye } from 'lucide-react'
+import { Menu, Bell, Eye, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { RealtimeProvider } from '@/components/realtime-provider'
+import { useRealtimeNotifications } from '@/hooks/use-realtime'
 
 const tabComponents: Record<TabType, React.ComponentType> = {
   dashboard: Dashboard,
@@ -53,6 +55,7 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   const unreadNotifications = notifications.filter(n => !n.isRead).length
+  const { status: realtimeStatus } = useRealtimeNotifications()
 
   // Register service worker
   useEffect(() => {
@@ -156,6 +159,7 @@ export default function HomePage() {
   }
 
   return (
+    <RealtimeProvider>
     <div className="h-screen flex bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
@@ -211,6 +215,19 @@ export default function HomePage() {
           {/* Spacer */}
           <div className="flex-1" />
 
+          {/* Real-time connection indicator */}
+          {user?.onboardingDone && (
+            <div className="flex items-center gap-1">
+              {realtimeStatus === 'connected' ? (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              ) : realtimeStatus === 'connecting' ? (
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+              ) : (
+                <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
+              )}
+            </div>
+          )}
+
           {/* Focus mode indicator */}
           {focusMode && (
             <motion.div
@@ -259,5 +276,6 @@ export default function HomePage() {
       {/* AI Assistant */}
       <AiAssistant />
     </div>
+    </RealtimeProvider>
   )
 }

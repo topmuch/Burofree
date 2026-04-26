@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { useAppStore, Email } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { EmailSyncButton } from '@/components/email-sync-button'
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
   client: { label: 'Client', color: 'bg-emerald-500/20 text-emerald-400' },
@@ -244,19 +245,22 @@ export function EmailInbox() {
           <h2 className="text-xl font-bold">Emails</h2>
           <p className="text-sm text-muted-foreground">{filteredEmails.length} email(s)</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
-              <Send className="w-4 h-4 mr-2" /> Nouvel email
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Nouvel email</DialogTitle>
-            </DialogHeader>
-            <ComposeEmail />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <EmailSyncButton />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Send className="w-4 h-4 mr-2" /> Nouvel email
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nouvel email</DialogTitle>
+              </DialogHeader>
+              <ComposeEmail />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Category Tabs */}
@@ -306,6 +310,16 @@ export function EmailInbox() {
                     <Badge className={cn('text-[10px] h-4', categoryConfig[email.category]?.color || 'bg-slate-500/20 text-slate-400')}>
                       {categoryConfig[email.category]?.label || email.category}
                     </Badge>
+                    {email.sourceId && (
+                      <Badge className={cn(
+                        'text-[10px] h-4',
+                        email.source === 'outlook'
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      )}>
+                        {email.source === 'outlook' ? 'Outlook' : 'Gmail'}
+                      </Badge>
+                    )}
                     {email.isStarred && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
                     {email.hasTask && <Badge className="text-[10px] h-4 bg-emerald-500/20 text-emerald-400">→ Tâche</Badge>}
                   </div>

@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  Settings, User, Palette, Bell, Globe, Bot, Moon, Sun,
-  Mail, Plus, Download, RotateCcw, Shield, LogIn
+  Settings, User, Palette, Bot, Moon, Sun,
+  Download, RotateCcw, Shield, LogIn
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,18 +12,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
-} from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
+import { ConnectedAccounts } from '@/components/connected-accounts'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -55,7 +52,7 @@ const tonePreviewMessages: Record<string, string> = {
 }
 
 export function SettingsPanel() {
-  const { user, focusMode, setFocusMode, emailAccounts, setAuthModalOpen } = useAppStore()
+  const { user, focusMode, setFocusMode, setAuthModalOpen } = useAppStore()
 
   const [name, setName] = useState(user?.name || 'Alex Martin')
   const [profession, setProfession] = useState(user?.profession || 'Développeur Web')
@@ -63,11 +60,6 @@ export function SettingsPanel() {
   const [assistantName, setAssistantName] = useState(user?.assistantName || 'Maellis')
   const [assistantTone, setAssistantTone] = useState(user?.assistantTone || 'professionnel')
   const [darkMode, setDarkMode] = useState(true)
-  const [addAccountOpen, setAddAccountOpen] = useState(false)
-  const [accountProvider, setAccountProvider] = useState('gmail')
-  const [accountEmail, setAccountEmail] = useState('')
-  const [imapHost, setImapHost] = useState('')
-  const [imapPort, setImapPort] = useState('993')
 
   const userEmail = user?.email || 'alex@exemple.fr'
 
@@ -85,30 +77,6 @@ export function SettingsPanel() {
 
   const handleResetData = () => {
     toast.success('Données réinitialisées')
-  }
-
-  const handleAddAccount = () => {
-    if (!accountEmail.trim()) {
-      toast.error('L\'email est requis')
-      return
-    }
-    toast.success('Compte ajouté')
-    setAddAccountOpen(false)
-    setAccountEmail('')
-    setImapHost('')
-    setImapPort('993')
-  }
-
-  const providerBadgeClass: Record<string, string> = {
-    gmail: 'bg-red-500/20 text-red-400',
-    outlook: 'bg-amber-500/20 text-amber-400',
-    imap: 'bg-zinc-500/20 text-zinc-400',
-  }
-
-  const providerLabels: Record<string, string> = {
-    gmail: 'Gmail',
-    outlook: 'Outlook',
-    imap: 'IMAP',
   }
 
   const sectionVariants = {
@@ -306,105 +274,11 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 4. Comptes Email */}
+      {/* 4. Comptes connectés */}
       <motion.div custom={3} variants={sectionVariants} initial="hidden" animate="visible">
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <Mail className="w-4 h-4 text-emerald-400" />
-                Comptes Email
-              </CardTitle>
-              <Dialog open={addAccountOpen} onOpenChange={setAddAccountOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Ajouter un compte
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Ajouter un compte email</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Fournisseur</Label>
-                      <Select value={accountProvider} onValueChange={setAccountProvider}>
-                        <SelectTrigger className="bg-secondary">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gmail">Gmail</SelectItem>
-                          <SelectItem value="outlook">Outlook</SelectItem>
-                          <SelectItem value="imap">IMAP</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        value={accountEmail}
-                        onChange={(e) => setAccountEmail(e.target.value)}
-                        placeholder="votre@email.com"
-                        className="bg-secondary"
-                      />
-                    </div>
-                    {accountProvider === 'imap' && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Hôte IMAP</Label>
-                          <Input
-                            value={imapHost}
-                            onChange={(e) => setImapHost(e.target.value)}
-                            placeholder="imap.example.com"
-                            className="bg-secondary"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Port</Label>
-                          <Input
-                            value={imapPort}
-                            onChange={(e) => setImapPort(e.target.value)}
-                            placeholder="993"
-                            className="bg-secondary"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddAccountOpen(false)}>Annuler</Button>
-                    <Button onClick={handleAddAccount} className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                      Ajouter
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {emailAccounts.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <Mail className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Aucun compte email connecté</p>
-                <p className="text-xs mt-1">Ajoutez un compte pour recevoir vos emails</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {emailAccounts.map(account => (
-                  <div key={account.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
-                    <Badge className={cn('text-xs', providerBadgeClass[account.provider] || providerBadgeClass.imap)}>
-                      {providerLabels[account.provider] || account.provider}
-                    </Badge>
-                    <span className="text-sm">{account.email}</span>
-                    {account.isPrimary && (
-                      <Badge variant="outline" className="text-[10px] h-4 ml-auto border-emerald-500/30 text-emerald-400">
-                        Principal
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+          <CardContent className="pt-6">
+            <ConnectedAccounts />
           </CardContent>
         </Card>
       </motion.div>

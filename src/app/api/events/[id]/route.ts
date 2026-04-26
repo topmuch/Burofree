@@ -16,6 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.location !== undefined) updateData.location = body.location
     if (body.type !== undefined) updateData.type = body.type
     if (body.source !== undefined) updateData.source = body.source
+    if (body.sourceId !== undefined) updateData.sourceId = body.sourceId
 
     const event = await db.calendarEvent.update({
       where: { id },

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { createAIEngine } from '@/lib/ai'
 import { db } from '@/lib/db'
 
 export async function GET() {
@@ -27,17 +27,8 @@ Emails envoyés: ${emailsSent}
 Réunions/événements: ${eventsToday.length}`
 
     try {
-      const zai = await ZAI.create()
-      const completion = await zai.chat.completions.create({
-        messages: [
-          { role: 'system', content: `Tu es ${user.assistantName}. Génère un résumé de fin de journée encourageant et factuel. 3-4 phrases max. Réponds en français.` },
-          { role: 'user', content: `Mon résumé du jour:\n${context}` }
-        ],
-        temperature: 0.6,
-        max_tokens: 200,
-      })
-
-      const summary = completion.choices[0]?.message?.content || ''
+      const engine = createAIEngine()
+      const summary = await engine.generateDailySummary(context, user.name || 'Freelancer', user.assistantName)
       return NextResponse.json({ summary, stats: { completedTasks: completedTasks.length, totalHours, billableHours, emailsSent, events: eventsToday.length } })
     } catch (aiError) {
       console.error('AI summary error:', aiError)
