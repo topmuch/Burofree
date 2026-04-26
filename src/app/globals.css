@@ -1,0 +1,368 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-emerald: var(--emerald);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.002 155);
+  --foreground: oklch(0.145 0.005 155);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.005 155);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.005 155);
+  --primary: oklch(0.696 0.17 162.48);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.962 0.014 155);
+  --secondary-foreground: oklch(0.205 0.005 155);
+  --muted: oklch(0.962 0.014 155);
+  --muted-foreground: oklch(0.5 0.01 155);
+  --accent: oklch(0.962 0.014 155);
+  --accent-foreground: oklch(0.205 0.005 155);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.908 0.014 155);
+  --input: oklch(0.908 0.014 155);
+  --ring: oklch(0.696 0.17 162.48);
+  --chart-1: oklch(0.696 0.17 162.48);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.627 0.265 303.9);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --emerald: oklch(0.696 0.17 162.48);
+  --sidebar: oklch(0.975 0.01 155);
+  --sidebar-foreground: oklch(0.145 0.005 155);
+  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.962 0.014 155);
+  --sidebar-accent-foreground: oklch(0.205 0.005 155);
+  --sidebar-border: oklch(0.908 0.014 155);
+  --sidebar-ring: oklch(0.696 0.17 162.48);
+}
+
+.dark {
+  --background: oklch(0.13 0.005 155);
+  --foreground: oklch(0.985 0.002 155);
+  --card: oklch(0.18 0.008 155);
+  --card-foreground: oklch(0.985 0.002 155);
+  --popover: oklch(0.18 0.008 155);
+  --popover-foreground: oklch(0.985 0.002 155);
+  --primary: oklch(0.696 0.17 162.48);
+  --primary-foreground: oklch(0.13 0.005 155);
+  --secondary: oklch(0.24 0.01 155);
+  --secondary-foreground: oklch(0.985 0.002 155);
+  --muted: oklch(0.24 0.01 155);
+  --muted-foreground: oklch(0.65 0.01 155);
+  --accent: oklch(0.24 0.01 155);
+  --accent-foreground: oklch(0.985 0.002 155);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.696 0.17 162.48);
+  --chart-1: oklch(0.696 0.17 162.48);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.627 0.265 303.9);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --emerald: oklch(0.696 0.17 162.48);
+  --sidebar: oklch(0.16 0.008 155);
+  --sidebar-foreground: oklch(0.985 0.002 155);
+  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.24 0.01 155);
+  --sidebar-accent-foreground: oklch(0.985 0.002 155);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.696 0.17 162.48);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Sidebar transition animations */
+.sidebar-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+.sidebar-collapsed {
+  width: 4.5rem;
+}
+
+.sidebar-expanded {
+  width: 16rem;
+}
+
+/* Calendar event dot indicators */
+.calendar-event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.calendar-day-has-events {
+  position: relative;
+}
+
+.calendar-day-has-events::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: oklch(0.696 0.17 162.48);
+}
+
+/* Kanban column hover effects */
+.kanban-column {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kanban-column:hover {
+  box-shadow: 0 0 0 2px oklch(0.696 0.17 162.48 / 20%);
+}
+
+/* Pulse animation for notifications */
+@keyframes notification-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+.notification-pulse {
+  animation: notification-pulse 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.5 0 0 / 30%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.5 0 0 / 50%);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.7 0 0 / 20%);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.7 0 0 / 40%);
+}
+
+/* Email read/unread visual states */
+.email-item-unread {
+  border-left: 3px solid oklch(0.696 0.17 162.48);
+  background-color: oklch(0.696 0.17 162.48 / 5%);
+}
+
+.email-item-read {
+  border-left: 3px solid transparent;
+  opacity: 0.85;
+}
+
+/* Task priority borders */
+.task-urgent {
+  border-left: 3px solid oklch(0.645 0.246 16.439);
+}
+
+.task-high {
+  border-left: 3px solid oklch(0.769 0.188 70.08);
+}
+
+.task-medium {
+  border-left: 3px solid oklch(0.828 0.189 84.429);
+}
+
+.task-low {
+  border-left: 3px solid oklch(0.696 0.17 162.48);
+}
+
+/* Task due today/overdue indicators */
+.task-due-today {
+  border-color: oklch(0.828 0.189 84.429);
+  box-shadow: 0 0 0 1px oklch(0.828 0.189 84.429 / 30%);
+}
+
+.task-overdue {
+  border-color: oklch(0.645 0.246 16.439);
+  box-shadow: 0 0 0 1px oklch(0.645 0.246 16.439 / 30%);
+}
+
+/* Smooth page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 10%);
+}
+
+/* Drag overlay */
+.drag-overlay {
+  opacity: 0.9;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 24px oklch(0 0 0 / 15%);
+}
+
+/* Mini calendar */
+.mini-calendar-day {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.mini-calendar-day:hover {
+  background-color: oklch(0.696 0.17 162.48 / 15%);
+}
+
+.mini-calendar-day-selected {
+  background-color: oklch(0.696 0.17 162.48);
+  color: white;
+  font-weight: 600;
+}
+
+.mini-calendar-day-today {
+  font-weight: 700;
+  color: oklch(0.696 0.17 162.48);
+}
+
+/* Calendar grid month view */
+.calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.calendar-month-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.5rem;
+  text-align: center;
+  color: oklch(0.5 0.01 155);
+}
+
+.calendar-month-cell {
+  min-height: 100px;
+  padding: 0.25rem;
+  border: 1px solid oklch(0.908 0.014 155 / 50%);
+}
+
+.dark .calendar-month-cell {
+  border-color: oklch(1 0 0 / 8%);
+}
+
+.calendar-event-block {
+  font-size: 0.6875rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.calendar-event-block:hover {
+  opacity: 0.85;
+}
+
+/* Week view time grid */
+.week-time-grid {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+}
+
+.week-time-label {
+  font-size: 0.6875rem;
+  color: oklch(0.5 0.01 155);
+  text-align: right;
+  padding-right: 0.5rem;
+  padding-top: 0.25rem;
+}
