@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Receipt, Plus, Eye, CheckCircle2, Trash2, AlertTriangle,
   TrendingUp, Clock, AlertCircle, DollarSign, FileText, FileSpreadsheet,
-  Send, CalendarDays, X, PlusCircle, MinusCircle
+  Send, CalendarDays, X, PlusCircle, MinusCircle, Printer
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -566,6 +566,15 @@ export function InvoicingPanel() {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
+                              onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, '_blank')}
+                              title="Voir / Imprimer PDF"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </Button>
                             {overdue && (
                               <Button
                                 variant="ghost"
@@ -707,6 +716,13 @@ export function InvoicingPanel() {
                   {viewInvoice.project.name}
                 </Badge>
               )}
+              <Button
+                onClick={() => window.open(`/api/invoices/${viewInvoice.id}/pdf`, '_blank')}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                size="sm"
+              >
+                <Printer className="w-4 h-4 mr-2" /> Voir / Imprimer PDF
+              </Button>
             </div>
           )}
         </DialogContent>

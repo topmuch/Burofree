@@ -18,6 +18,7 @@ import {
   Calendar,
   FolderOpen,
   Bell,
+  Zap,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppStore, type TabType } from '@/lib/store'
+import { toast } from 'sonner'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -184,10 +186,42 @@ export function Dashboard() {
     fetchBriefing,
     fetchSuggestions,
     fetchStats,
+    fetchTasks,
+    updateTask,
     setActiveTab,
   } = useAppStore()
 
   const [loadingBriefing, setLoadingBriefing] = useState(false)
+  const [prioritizing, setPrioritizing] = useState(false)
+  const [priorityUpdates, setPriorityUpdates] = useState<Array<{ id: string; suggestedPriority: string; reason: string }>>([])
+
+  const handleAIPrioritize = async () => {
+    setPrioritizing(true)
+    try {
+      const res = await fetch('/api/ai/prioritize', { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.updates && data.updates.length > 0) {
+          setPriorityUpdates(data.updates)
+          // Apply suggested priorities
+          for (const update of data.updates) {
+            await updateTask(update.id, { priority: update.suggestedPriority })
+          }
+          await fetchTasks()
+          toast.success(`${data.updates.length} tâche(s) re-prioritisée(s) par l'IA`)
+        } else if (data.message) {
+          setPriorityUpdates([])
+          toast.info(data.message)
+        } else {
+          toast.info('Aucun changement de priorité suggéré')
+        }
+      }
+    } catch (e) {
+      console.error('AI prioritize error:', e)
+      toast.error('Erreur lors de la priorisation IA')
+    }
+    setPrioritizing(false)
+  }
 
   useEffect(() => {
     fetchStats()
@@ -462,14 +496,26 @@ export function Dashboard() {
                     <CheckSquare className="w-4 h-4 text-amber-400" />
                     Tâches à venir
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-emerald-400 hover:text-emerald-300"
-                    onClick={() => setActiveTab('tasks')}
-                  >
-                    Voir tout <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                      onClick={handleAIPrioritize}
+                      disabled={prioritizing}
+                    >
+                      {prioritizing ? <RefreshCw className="w-3 h-3 mr-1 animate-spin" /> : <Zap className="w-3 h-3 mr-1" />}
+                      {prioritizing ? 'Analyse...' : 'Prioriser avec l\'IA'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-emerald-400 hover:text-emerald-300"
+                      onClick={() => setActiveTab('tasks')}
+                    >
+                      Voir tout <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">

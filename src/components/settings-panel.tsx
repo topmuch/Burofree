@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Settings, User, Palette, Bell, Globe, Bot, Moon, Sun,
-  Mail, Plus, Download, RotateCcw, Shield
+  Mail, Plus, Download, RotateCcw, Shield, LogIn
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,7 @@ const tonePreviewMessages: Record<string, string> = {
 }
 
 export function SettingsPanel() {
-  const { user, focusMode, setFocusMode, emailAccounts } = useAppStore()
+  const { user, focusMode, setFocusMode, emailAccounts, setAuthModalOpen } = useAppStore()
 
   const [name, setName] = useState(user?.name || 'Alex Martin')
   const [profession, setProfession] = useState(user?.profession || 'Développeur Web')
@@ -187,6 +187,15 @@ export function SettingsPanel() {
               size="sm"
             >
               Sauvegarder
+            </Button>
+            <Button
+              onClick={() => setAuthModalOpen(true)}
+              variant="outline"
+              size="sm"
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+            >
+              <LogIn className="w-3.5 h-3.5 mr-1.5" />
+              Se connecter
             </Button>
           </CardContent>
         </Card>

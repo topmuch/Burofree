@@ -13,9 +13,9 @@ import { InvoicingPanel } from '@/components/invoicing-panel'
 import { TimeTracker } from '@/components/time-tracker'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { SettingsPanel } from '@/components/settings-panel'
-import { Menu, Bell, Sparkles, Eye } from 'lucide-react'
+import { OnboardingWizard } from '@/components/onboarding-wizard'
+import { Menu, Bell, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -45,33 +45,73 @@ const tabTitles: Record<TabType, string> = {
 
 export default function HomePage() {
   const {
-    activeTab, focusMode, notifications, fetchAll, isLoading, fetchReminders
+    activeTab, focusMode, notifications, user, fetchAll, isLoading, fetchReminders, fetchUser
   } = useAppStore()
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   const unreadNotifications = notifications.filter(n => !n.isRead).length
+
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+  }, [])
 
   // Initialize data on mount
   useEffect(() => {
     const initData = async () => {
       try {
-        await fetchAll()
+        // Fetch user first to check onboarding status
+        await fetchUser()
       } catch (error) {
         console.error('Erreur lors du chargement des données :', error)
-      } finally {
-        setLoading(false)
       }
     }
     initData()
-  }, [fetchAll])
+  }, [fetchUser])
+
+  // After user is fetched, check onboarding and fetch other data
+  useEffect(() => {
+    if (user !== undefined && user !== null) {
+      if (!user.onboardingDone) {
+        setShowOnboarding(true)
+        setLoading(false)
+      } else {
+        const loadAll = async () => {
+          try {
+            await fetchAll()
+          } catch (error) {
+            console.error('Erreur lors du chargement des données :', error)
+          } finally {
+            setLoading(false)
+          }
+        }
+        loadAll()
+      }
+    } else if (user === null && !isLoading) {
+      // User was fetched but not found — still load everything
+      const loadAll = async () => {
+        try {
+          await fetchAll()
+        } catch (error) {
+          console.error('Erreur lors du chargement des données :', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      loadAll()
+    }
+  }, [user, fetchAll, fetchUser, isLoading])
 
   // Reminder checking interval
   useEffect(() => {
     const interval = setInterval(() => {
       fetchReminders()
-    }, 60000) // Check every minute
+    }, 60000)
     return () => clearInterval(interval)
   }, [fetchReminders])
 
@@ -84,7 +124,18 @@ export default function HomePage() {
     setMobileMenuOpen(prev => !prev)
   }, [])
 
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false)
+    await fetchUser()
+    await fetchAll()
+  }, [fetchUser, fetchAll])
+
   const ActiveComponent = tabComponents[activeTab]
+
+  // Onboarding wizard
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} />
+  }
 
   // Loading state
   if (loading) {

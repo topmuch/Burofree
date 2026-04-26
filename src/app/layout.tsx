@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo.svg",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -30,6 +31,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#10b981" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

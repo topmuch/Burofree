@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label'
 import { useAppStore, Email } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
   client: { label: 'Client', color: 'bg-emerald-500/20 text-emerald-400' },
@@ -22,26 +23,61 @@ const categoryConfig: Record<string, { label: string; color: string }> = {
 }
 
 function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) {
-  const { updateEmail, deleteEmail, convertEmailToTask } = useAppStore()
-  const [aiReply, setAiReply] = useState('')
+  const { updateEmail, deleteEmail, convertEmailToTask, sendEmail } = useAppStore()
+  const [aiDraft, setAiDraft] = useState<{ subject: string; body: string } | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [composeSubject, setComposeSubject] = useState('')
+  const [composeBody, setComposeBody] = useState('')
+  const [composeTo, setComposeTo] = useState('')
+  const [sending, setSending] = useState(false)
 
-  const handleGenerateReply = async () => {
+  const generateAIDraft = async (emailId: string) => {
     setGenerating(true)
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/ai/email-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `Propose une réponse professionnelle en français à cet email:\nDe: ${email.fromName || email.fromAddress}\nSujet: ${email.subject}\nContenu: ${email.body || email.snippet}` }),
+        body: JSON.stringify({ emailId }),
       })
       if (res.ok) {
         const data = await res.json()
-        setAiReply(data.message)
+        if (data.draft) {
+          setAiDraft(data.draft)
+          toast.success('Brouillon IA généré avec succès')
+        }
+      } else {
+        toast.error('Erreur lors de la génération du brouillon')
       }
     } catch (e) {
-      console.error('AI reply error:', e)
+      console.error('AI draft error:', e)
+      toast.error('Erreur lors de la génération du brouillon')
     }
     setGenerating(false)
+  }
+
+  const useDraft = () => {
+    if (aiDraft) {
+      setComposeTo(email.fromAddress)
+      setComposeSubject(aiDraft.subject || `Re: ${email.subject}`)
+      setComposeBody(aiDraft.body || '')
+      setComposeOpen(true)
+    }
+  }
+
+  const handleSendDraft = async () => {
+    if (!composeTo || !composeSubject) return
+    setSending(true)
+    try {
+      await sendEmail({ to: composeTo, subject: composeSubject, body: composeBody })
+      toast.success('Email envoyé avec succès')
+      setComposeOpen(false)
+      setAiDraft(null)
+    } catch {
+      toast.error("Erreur lors de l'envoi de l'email")
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -76,8 +112,8 @@ function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) 
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="text-xs" onClick={handleGenerateReply} disabled={generating}>
-              <Sparkles className="w-3 h-3 mr-1" /> {generating ? 'Génération...' : 'Réponse IA'}
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => generateAIDraft(email.id)} disabled={generating}>
+              <Sparkles className="w-3 h-3 mr-1" /> {generating ? 'Génération...' : 'Générer une réponse IA'}
             </Button>
             <Button variant="outline" size="sm" className="text-xs" onClick={() => convertEmailToTask(email.id)}>
               <ArrowRight className="w-3 h-3 mr-1" /> Convertir en tâche
@@ -90,19 +126,26 @@ function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) 
             </Button>
           </div>
 
-          {/* AI Reply */}
+          {/* AI Draft Result */}
           <AnimatePresence>
-            {aiReply && (
+            {aiDraft && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                 <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-medium">Réponse proposée par l&apos;IA</span>
+                    <span className="text-sm font-medium">Brouillon proposé par l&apos;IA</span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{aiReply}</p>
-                  <div className="flex gap-2 mt-2">
-                    <Button size="sm" className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white">Utiliser ce brouillon</Button>
-                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setAiReply('')}>Ignorer</Button>
+                  <div className="space-y-1 mb-3">
+                    <p className="text-xs text-muted-foreground">Objet :</p>
+                    <p className="text-sm font-medium">{aiDraft.subject}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Message :</p>
+                    <p className="text-sm whitespace-pre-wrap">{aiDraft.body}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white" onClick={useDraft}>
+                      <Send className="w-3 h-3 mr-1" /> Utiliser ce brouillon
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setAiDraft(null)}>Ignorer</Button>
                   </div>
                 </div>
               </motion.div>
@@ -110,6 +153,35 @@ function EmailDetail({ email, onClose }: { email: Email; onClose: () => void }) 
           </AnimatePresence>
         </CardContent>
       </Card>
+
+      {/* Compose Dialog for AI Draft */}
+      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Répondre avec le brouillon IA</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>À</Label>
+              <Input value={composeTo} onChange={(e) => setComposeTo(e.target.value)} className="bg-secondary" />
+            </div>
+            <div>
+              <Label>Objet</Label>
+              <Input value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} className="bg-secondary" />
+            </div>
+            <div>
+              <Label>Message</Label>
+              <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)} className="bg-secondary min-h-[160px]" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setComposeOpen(false)}>Annuler</Button>
+              <Button onClick={handleSendDraft} disabled={sending} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Send className="w-4 h-4 mr-2" /> {sending ? 'Envoi...' : 'Envoyer'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

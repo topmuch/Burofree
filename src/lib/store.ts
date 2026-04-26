@@ -256,6 +256,7 @@ interface AppState {
   selectedDate: string
   isLoading: boolean
   chatOpen: boolean
+  authModalOpen: boolean
 
   // Data
   user: User | null
@@ -289,6 +290,10 @@ interface AppState {
   setSelectedEmail: (email: Email | null) => void
   setEmailFilter: (filter: string) => void
   setChatOpen: (open: boolean) => void
+  setAuthModalOpen: (open: boolean) => void
+
+  // Fetch - User
+  fetchUser: () => Promise<void>
 
   // Fetch actions
   fetchTasks: () => Promise<void>
@@ -379,6 +384,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedDate: new Date().toISOString().split('T')[0],
   isLoading: false,
   chatOpen: false,
+  authModalOpen: false,
 
   // Data
   user: null,
@@ -412,6 +418,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedEmail: (email) => set({ selectedEmail: email }),
   setEmailFilter: (filter) => set({ emailFilter: filter }),
   setChatOpen: (open) => set({ chatOpen: open }),
+  setAuthModalOpen: (open) => set({ authModalOpen: open }),
+
+  // Fetch - User
+  fetchUser: async () => {
+    try {
+      const res = await fetch('/api/users')
+      if (res.ok) set({ user: await res.json() })
+    } catch (e) { console.error('fetchUser:', e) }
+  },
 
   // Fetch actions
   fetchTasks: async () => {
@@ -541,6 +556,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isLoading: true })
     try {
       await Promise.all([
+        get().fetchUser(),
         get().fetchTasks(),
         get().fetchProjects(),
         get().fetchEvents(),

@@ -1,0 +1,20 @@
+{
+  "name": "Maellis — Assistant Intelligent Freelance",
+  "short_name": "Maellis",
+  "description": "Votre copilote de travail intelligent pour freelancers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "fr"
+}
