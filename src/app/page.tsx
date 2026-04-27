@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAppStore, type TabType } from '@/lib/store'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { AiAssistant } from '@/components/ai-assistant'
+import { GlobalSearch } from '@/components/global-search'
 import { Dashboard } from '@/components/dashboard'
 import { TaskBoard } from '@/components/task-board'
 import { CalendarView } from '@/components/calendar-view'
@@ -15,12 +16,23 @@ import { MeetingsPanel } from '@/components/meetings-panel'
 import { ContractsPanel } from '@/components/contracts-panel'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { SettingsPanel } from '@/components/settings-panel'
+import { AnalyticsPanel } from '@/components/analytics-panel'
+import { TemplatesPanel } from '@/components/templates-panel'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
 import { Menu, Bell, Eye, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { RealtimeProvider, useRealtimeStatus } from '@/components/realtime-provider'
+
+// Placeholder for tabs without dedicated components yet
+function PlaceholderPanel({ title }: { title: string }) {
+  return (
+    <div className="flex items-center justify-center h-64 text-muted-foreground">
+      <p className="text-sm">{title} — bientôt disponible</p>
+    </div>
+  )
+}
 
 const tabComponents: Record<TabType, React.ComponentType> = {
   dashboard: Dashboard,
@@ -33,6 +45,8 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   meetings: MeetingsPanel,
   time: TimeView,
   notifications: NotificationsPanel,
+  analytics: AnalyticsPanel,
+  templates: TemplatesPanel,
   settings: SettingsPanel,
 }
 
@@ -47,6 +61,8 @@ const tabTitles: Record<TabType, string> = {
   meetings: 'Réunions',
   time: 'Temps',
   notifications: 'Notifications',
+  analytics: 'Rapports & Analytics',
+  templates: 'Modèles',
   settings: 'Paramètres',
 }
 
@@ -203,6 +219,9 @@ function AppContent() {
 
       {/* AI Assistant */}
       <AiAssistant />
+
+      {/* Global Search (Cmd/Ctrl+K) */}
+      <GlobalSearch />
     </div>
   )
 }

@@ -21,6 +21,8 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { ConnectedAccounts } from '@/components/connected-accounts'
+import { TagsSection } from '@/components/tags-panel'
+import { AutomationsSection } from '@/components/automations-panel'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -283,8 +285,26 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 5. Données */}
+      {/* 5. Tags & Labels */}
       <motion.div custom={4} variants={sectionVariants} initial="hidden" animate="visible">
+        <Card>
+          <CardContent className="pt-6">
+            <TagsSection />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* 6. Rappels & Automatisations */}
+      <motion.div custom={5} variants={sectionVariants} initial="hidden" animate="visible">
+        <Card>
+          <CardContent className="pt-6">
+            <AutomationsSection />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* 7. Données */}
+      <motion.div custom={6} variants={sectionVariants} initial="hidden" animate="visible">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">

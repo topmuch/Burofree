@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Receipt, Plus, Eye, CheckCircle2, Trash2, AlertTriangle,
@@ -329,6 +329,36 @@ export function InvoicingPanel() {
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null)
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
   const [sendingReminder, setSendingReminder] = useState<string | null>(null)
+  const [openingPdf, setOpeningPdf] = useState<string | null>(null)
+
+  /**
+   * Open the invoice PDF in a new tab with a token for authentication.
+   * Fetches a HMAC token from the server, then opens the PDF URL with it.
+   */
+  const handleOpenPdf = useCallback(async (invoiceId: string) => {
+    setOpeningPdf(invoiceId)
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/pdf-token`)
+      if (res.ok) {
+        const data = await res.json()
+        window.open(`/api/invoices/${invoiceId}/pdf?token=${data.token}`, '_blank')
+      } else {
+        toast.error('Impossible de g\u00e9n\u00e9rer le lien PDF')
+      }
+    } catch {
+      toast.error('Erreur de connexion')
+    } finally {
+      setOpeningPdf(null)
+    }
+  }, [])
+
+  /**
+   * Print the current invoice from the dialog.
+   * Uses window.print() with print-optimized CSS.
+   */
+  const handlePrintInvoice = useCallback(() => {
+    window.print()
+  }, [])
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -616,10 +646,11 @@ export function InvoicingPanel() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
-                              onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, '_blank')}
+                              onClick={() => handleOpenPdf(invoice.id)}
+                              disabled={openingPdf === invoice.id}
                               title="Voir / Imprimer PDF"
                             >
-                              <Printer className="w-3.5 h-3.5" />
+                              {openingPdf === invoice.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
                             </Button>
                             {invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.clientEmail && (
                               <Button
@@ -721,7 +752,7 @@ export function InvoicingPanel() {
       {/* View Invoice Dialog */}
       <Dialog open={!!viewInvoice} onOpenChange={(open) => { if (!open) setViewInvoice(null) }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <DialogHeader>
+          <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-emerald-400" />
               {viewInvoice?.number}
@@ -729,6 +760,20 @@ export function InvoicingPanel() {
           </DialogHeader>
           {viewInvoice && (
             <div className="space-y-4">
+              {/* Print header - only visible when printing */}
+              <div className="hidden print:block print:mb-8">
+                <div className="flex justify-between items-start border-b-2 border-emerald-500 pb-4 mb-6">
+                  <div>
+                    <h1 className="text-2xl font-bold text-emerald-600">Burofree</h1>
+                    <p className="text-sm text-gray-500">{typeLabels[viewInvoice.type] || viewInvoice.type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold">{viewInvoice.number}</p>
+                    <p className="text-sm text-gray-500">{new Date(viewInvoice.createdAt).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Type :</span>
@@ -780,15 +825,27 @@ export function InvoicingPanel() {
                 </Badge>
               )}
 
-              {/* Action buttons */}
-              <div className="space-y-2 pt-2 border-t border-border">
-                <Button
-                  onClick={() => window.open(`/api/invoices/${viewInvoice.id}/pdf`, '_blank')}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                  size="sm"
-                >
-                  <Printer className="w-4 h-4 mr-2" /> Voir / Imprimer PDF
-                </Button>
+              {/* Action buttons - hidden when printing */}
+              <div className="space-y-2 pt-2 border-t border-border print:hidden">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => handleOpenPdf(viewInvoice.id)}
+                    disabled={openingPdf === viewInvoice.id}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                    size="sm"
+                  >
+                    {openingPdf === viewInvoice.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-2" />}
+                    Voir PDF
+                  </Button>
+                  <Button
+                    onClick={handlePrintInvoice}
+                    variant="outline"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                    size="sm"
+                  >
+                    <Printer className="w-4 h-4 mr-2" /> Imprimer
+                  </Button>
+                </div>
 
                 {viewInvoice.clientEmail && viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
                   <Button
@@ -833,6 +890,11 @@ export function InvoicingPanel() {
                     <CheckCircle2 className="w-4 h-4 mr-2" /> Marquer comme pay\u00e9e (manuel)
                   </Button>
                 )}
+              </div>
+
+              {/* Print footer - only visible when printing */}
+              <div className="hidden print:block print:mt-8 print:pt-4 print:border-t print:border-gray-200 print:text-xs print:text-gray-400">
+                <p>G\u00e9n\u00e9r\u00e9 par Burofree \u00b7 {new Date().toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
           )}

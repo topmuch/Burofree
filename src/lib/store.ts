@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'meetings' | 'contracts' | 'notifications' | 'settings'
+export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'meetings' | 'contracts' | 'notifications' | 'settings' | 'templates' | 'analytics'
 
 export interface Task {
   id: string
@@ -344,6 +344,111 @@ export interface Meeting {
   updatedAt: string
 }
 
+export interface Template {
+  id: string
+  name: string
+  description: string | null
+  type: string // contract, quote, email, project_structure, client_response
+  content: string
+  variables: string // JSON array
+  category: string
+  icon: string | null
+  isDefault: boolean
+  usageCount: number
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AutomationPreference {
+  id: string
+  type: string // overdue_tasks, unpaid_invoices, meeting_reminder, email_followup
+  enabled: boolean
+  channel: string // in_app, email, both
+  frequency: string
+  threshold: number
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AutomationLog {
+  id: string
+  type: string
+  action: string
+  details: string | null
+  relatedId: string | null
+  success: boolean
+  userId: string
+  createdAt: string
+}
+
+export interface Tag {
+  id: string
+  name: string
+  color: string
+  icon: string | null
+  category: string
+  userId: string
+  _count?: {
+    taskTags: number
+    emailTags: number
+    documentTags: number
+    projectTags: number
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AnalyticsOverview {
+  hoursWorked: number
+  hoursBillable: number
+  revenue: number
+  revenueForecast: number
+  conversionRate: number
+  timeByProject: Array<{
+    projectId: string | null
+    projectName: string
+    projectColor: string
+    totalHours: number
+    billableHours: number
+    revenue: number
+  }>
+  completionRate: number
+  workload: {
+    today: number
+    thisWeek: number
+    tasksByDay: Array<{ day: string; count: number }>
+  }
+  monthlyRevenue: Array<{
+    month: string
+    revenue: number
+    forecast: number
+  }>
+  topClients: Array<{
+    clientName: string
+    revenue: number
+    projectCount: number
+  }>
+}
+
+export interface SearchResult {
+  id: string
+  type: string // task, email, document, contact
+  title: string
+  snippet: string
+  score: number
+  createdAt: string
+}
+
+export interface SearchResponse {
+  results: SearchResult[]
+  total: number
+  page: number
+  limit: number
+  hasMore: boolean
+}
+
 interface AppState {
   // UI state
   activeTab: TabType
@@ -384,6 +489,15 @@ interface AppState {
   timeGoals: TimeGoals | null
   timeReports: TimeReport | null
   breakSuggestion: BreakSuggestion | null
+
+  // Templates, Automations, Tags, Analytics, Search
+  templates: Template[]
+  automationPrefs: AutomationPreference[]
+  automationLogs: AutomationLog[]
+  tags: Tag[]
+  analytics: AnalyticsOverview | null
+  searchResults: SearchResponse | null
+  searchQuery: string
 
   // Actions - UI
   setActiveTab: (tab: TabType) => void
@@ -496,6 +610,36 @@ interface AppState {
 
   // AI Chat
   sendChatMessage: (message: string) => Promise<void>
+
+  // Templates
+  fetchTemplates: () => Promise<void>
+  createTemplate: (template: Partial<Template>) => Promise<void>
+  updateTemplate: (id: string, data: Partial<Template>) => Promise<void>
+  deleteTemplate: (id: string) => Promise<void>
+  applyTemplate: (id: string, variables: Record<string, string>) => Promise<{ content: string; missing: string[] }>
+  seedTemplates: () => Promise<void>
+
+  // Automations
+  fetchAutomationPrefs: () => Promise<void>
+  updateAutomationPref: (type: string, data: Partial<AutomationPreference>) => Promise<void>
+  fetchAutomationLogs: (page?: number) => Promise<void>
+  runAutomationChecks: () => Promise<void>
+
+  // Tags
+  fetchTags: () => Promise<void>
+  createTag: (tag: Partial<Tag>) => Promise<void>
+  updateTag: (id: string, data: Partial<Tag>) => Promise<void>
+  deleteTag: (id: string) => Promise<void>
+  assignTag: (tagId: string, entityType: string, entityIds: string[]) => Promise<void>
+  unassignTag: (tagId: string, entityType: string, entityIds: string[]) => Promise<void>
+  seedTags: () => Promise<void>
+
+  // Analytics
+  fetchAnalytics: (range?: string) => Promise<void>
+
+  // Search
+  search: (query: string, type?: string, filters?: string) => Promise<void>
+  setSearchQuery: (query: string) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -539,6 +683,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   timeReports: null,
   breakSuggestion: null,
 
+  // Templates, Automations, Tags, Analytics, Search
+  templates: [],
+  automationPrefs: [],
+  automationLogs: [],
+  tags: [],
+  analytics: null,
+  searchResults: null,
+  searchQuery: '',
+
   // UI Actions
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -581,6 +734,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch('/api/time-entries/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       if (res.ok) { await get().fetchTimeGoals(); await get().fetchStats() }
     } catch (e) { console.error('setBillingGoal:', e) }
+  },
+
+  fetchAnalytics: async (range?: string) => {
+    try {
+      const r = range || 'month'
+      const res = await fetch(`/api/analytics/overview?range=${r}`)
+      if (res.ok) set({ analytics: await res.json() })
+    } catch (e) { console.error('fetchAnalytics:', e) }
   },
 
   // Fetch - User
@@ -742,6 +903,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().fetchGoals(),
         get().fetchStats(),
         get().fetchSuggestions(),
+        get().fetchTemplates(),
+        get().fetchTags(),
+        get().fetchAutomationPrefs(),
       ])
       // Log any failures (non-blocking)
       results.forEach((r, i) => {
@@ -1046,6 +1210,49 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e) { console.error('deleteGoal:', e) }
   },
 
+  // Templates
+  fetchTemplates: async () => {
+    try {
+      const res = await fetch('/api/templates')
+      if (res.ok) set({ templates: await res.json() })
+    } catch (e) { console.error('fetchTemplates:', e) }
+  },
+  createTemplate: async (template) => {
+    try {
+      const res = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('createTemplate:', e) }
+  },
+  updateTemplate: async (id, data) => {
+    try {
+      const res = await fetch(`/api/templates/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('updateTemplate:', e) }
+  },
+  deleteTemplate: async (id) => {
+    try {
+      const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('deleteTemplate:', e) }
+  },
+  applyTemplate: async (id, variables) => {
+    try {
+      const res = await fetch(`/api/templates/${id}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variables }) })
+      if (res.ok) {
+        const data = await res.json()
+        await get().fetchTemplates()
+        return { content: data.content, missing: data.missingVariables || [] }
+      }
+      return { content: '', missing: [] }
+    } catch (e) { console.error('applyTemplate:', e); return { content: '', missing: [] } }
+  },
+  seedTemplates: async () => {
+    try {
+      const res = await fetch('/api/templates/seed', { method: 'POST' })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('seedTemplates:', e) }
+  },
+
   // AI Chat
   sendChatMessage: async (message) => {
     try {
@@ -1057,5 +1264,136 @@ export const useAppStore = create<AppState>((set, get) => ({
         set((s) => ({ chatMessages: [...s.chatMessages, { id: `ai-${Date.now()}`, role: 'assistant', content: data.message, userId: '', createdAt: new Date().toISOString() }] }))
       }
     } catch (e) { console.error('sendChatMessage:', e) }
+  },
+
+  // Templates
+  fetchTemplates: async () => {
+    try {
+      const res = await fetch('/api/templates')
+      if (res.ok) set({ templates: await res.json() })
+    } catch (e) { console.error('fetchTemplates:', e) }
+  },
+  createTemplate: async (template) => {
+    try {
+      const res = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('createTemplate:', e) }
+  },
+  updateTemplate: async (id, data) => {
+    try {
+      const res = await fetch(`/api/templates/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('updateTemplate:', e) }
+  },
+  deleteTemplate: async (id) => {
+    try {
+      const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('deleteTemplate:', e) }
+  },
+  applyTemplate: async (id, variables) => {
+    try {
+      const res = await fetch(`/api/templates/${id}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variables }) })
+      if (res.ok) return await res.json()
+      return { content: '', missing: [] }
+    } catch (e) { console.error('applyTemplate:', e); return { content: '', missing: [] } }
+  },
+  seedTemplates: async () => {
+    try {
+      const res = await fetch('/api/templates/seed', { method: 'POST' })
+      if (res.ok) { await get().fetchTemplates() }
+    } catch (e) { console.error('seedTemplates:', e) }
+  },
+
+  // Automations
+  fetchAutomationPrefs: async () => {
+    try {
+      const res = await fetch('/api/automations/preferences')
+      if (res.ok) set({ automationPrefs: await res.json() })
+    } catch (e) { console.error('fetchAutomationPrefs:', e) }
+  },
+  updateAutomationPref: async (type, data) => {
+    try {
+      const res = await fetch('/api/automations/preferences', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, ...data }) })
+      if (res.ok) { await get().fetchAutomationPrefs() }
+    } catch (e) { console.error('updateAutomationPref:', e) }
+  },
+  fetchAutomationLogs: async (page = 1) => {
+    try {
+      const res = await fetch(`/api/automations/logs?page=${page}`)
+      if (res.ok) set({ automationLogs: await res.json() })
+    } catch (e) { console.error('fetchAutomationLogs:', e) }
+  },
+  runAutomationChecks: async () => {
+    try {
+      const res = await fetch('/api/automations/check', { method: 'POST' })
+      if (res.ok) { await get().fetchAutomationLogs(); await get().fetchNotifications() }
+    } catch (e) { console.error('runAutomationChecks:', e) }
+  },
+
+  // Tags
+  fetchTags: async () => {
+    try {
+      const res = await fetch('/api/tags')
+      if (res.ok) set({ tags: await res.json() })
+    } catch (e) { console.error('fetchTags:', e) }
+  },
+  createTag: async (tag) => {
+    try {
+      const res = await fetch('/api/tags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tag) })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('createTag:', e) }
+  },
+  updateTag: async (id, data) => {
+    try {
+      const res = await fetch(`/api/tags/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('updateTag:', e) }
+  },
+  deleteTag: async (id) => {
+    try {
+      const res = await fetch(`/api/tags/${id}`, { method: 'DELETE' })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('deleteTag:', e) }
+  },
+  assignTag: async (tagId, entityType, entityIds) => {
+    try {
+      const res = await fetch('/api/tags/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tagId, entityType, entityIds }) })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('assignTag:', e) }
+  },
+  unassignTag: async (tagId, entityType, entityIds) => {
+    try {
+      const res = await fetch('/api/tags/unassign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tagId, entityType, entityIds }) })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('unassignTag:', e) }
+  },
+  seedTags: async () => {
+    try {
+      const res = await fetch('/api/tags/seed', { method: 'POST' })
+      if (res.ok) { await get().fetchTags() }
+    } catch (e) { console.error('seedTags:', e) }
+  },
+
+  // Analytics
+  fetchAnalytics: async (range) => {
+    try {
+      const query = range ? `?range=${range}` : ''
+      const res = await fetch(`/api/analytics/overview${query}`)
+      if (res.ok) set({ analytics: await res.json() })
+    } catch (e) { console.error('fetchAnalytics:', e) }
+  },
+
+  // Search
+  setSearchQuery: (query) => set({ searchQuery: query }),
+
+  search: async (query, type, filters) => {
+    try {
+      const params = new URLSearchParams({ q: query, page: '1', limit: '20' })
+      if (type) params.set('type', type)
+      if (filters) params.set('filters', filters)
+      const res = await fetch(`/api/search?${params.toString()}`)
+      if (res.ok) set({ searchResults: await res.json() })
+    } catch (e) { console.error('search:', e) }
   },
 }))

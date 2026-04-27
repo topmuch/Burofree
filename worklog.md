@@ -1,27 +1,30 @@
 ---
-Task ID: 2
-Agent: Super Z (main)
-Task: Fix invoice PDF printing + add Meetings & Contracts modules
+Task ID: 1
+Agent: Main Agent
+Task: Implement PRIORITÉ 2 — Productivité (5 features)
 
 Work Log:
-- Diagnosed invoice PDF issue: Chromium was not installed, PDF generation fell back to HTML
-- Installed Chromium via Playwright (npx playwright install chromium)
-- Updated pdf-generator.ts to search Playwright Chromium paths + dynamic fallback
-- Fixed logo 'M' → 'B' in PDF template
-- Added Meeting and Contract models to Prisma schema
-- Added project relations for Meeting and Contract
-- Ran prisma db push to sync schema
-- Created API routes: /api/meetings, /api/meetings/[id], /api/contracts, /api/contracts/[id]
-- Created MeetingsPanel component with: status filters, create/edit dialog, meeting cards, upcoming meetings section, stats bar
-- Created ContractsPanel component with: type/status filters, create dialog, contract table, view dialog with status change, stat cards, expiration detection
-- Updated store.ts: added Meeting/Contract interfaces, CRUD methods, fetchMeetings/fetchContracts in fetchAll
-- Updated TabType to include 'meetings' | 'contracts'
-- Updated sidebar-nav.tsx: added Contrats (FileText icon) and Réunions (Video icon) entries
-- Updated page.tsx: imported and registered MeetingsPanel/ContractsPanel in tabComponents/tabTitles
-- Build verified successfully
+- Extended Prisma schema with 7 new models: Template, AutomationPreference, AutomationLog, Tag, TaskTag, EmailTag, DocumentTag, ProjectTag
+- Added tag relations to existing models: Task, Email, Document, Project
+- Pushed schema changes to SQLite database
+- Created API routes for Templates (CRUD + apply + seed)
+- Created API routes for Automations (preferences + logs + check)
+- Created API routes for Analytics (overview + export CSV/PDF)
+- Created API routes for Search (full-text search with LIKE, scoring, snippets)
+- Created API routes for Tags (CRUD + assign/unassign bulk + seed)
+- Created utility modules: search-utils.ts, automation-cron.ts, invoice-token.ts
+- Created UI components: templates-panel.tsx, analytics-panel.tsx, global-search.tsx, tags-panel.tsx, automations-panel.tsx
+- Updated Zustand store with 7 new interfaces, 20 new actions
+- Updated TabType to include 'templates' | 'analytics'
+- Updated sidebar-nav.tsx with Modèles (LayoutTemplate) and Analytics (BarChart3)
+- Updated page.tsx with TemplatesPanel, AnalyticsPanel, GlobalSearch
+- Updated settings-panel.tsx with TagsSection and AutomationsSection
+- Fixed invoice viewing/printing bug (HMAC token-based PDF auth)
+- Build succeeds with 72 API routes
 
 Stage Summary:
-- Invoice PDF now works (Chromium installed + detected)
-- Two new modules fully functional: Réunions and Contrats
-- Both modules have full CRUD: API routes, Zustand store, UI panels
-- Sidebar and page routing updated for new tabs
+- All 5 features of PRIORITÉ 2 are implemented
+- Invoice PDF viewing/printing bug is fixed
+- New sidebar entries: Modèles, Analytics
+- Tags and Automations integrated into Settings panel
+- Global search available via Cmd/Ctrl+K

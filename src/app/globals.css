@@ -354,6 +354,67 @@
     background: white !important;
     color: black !important;
   }
+
+  /* Hide everything except the dialog content when printing */
+  /* Hide sidebar, navigation, and other UI elements */
+  nav,
+  aside,
+  header,
+  .sidebar-transition,
+  [data-sidebar],
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Make the dialog overlay transparent and full-width */
+  [role="dialog"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 2rem !important;
+  }
+
+  /* Hide dialog overlay backdrop */
+  [data-state="open"][role="dialog"] + div,
+  div[data-state="open"] {
+    background: white !important;
+  }
+
+  /* Ensure print content is visible */
+  .print\:block {
+    display: block !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Print-friendly colors */
+  .text-emerald-400,
+  .text-emerald-600 {
+    color: #059669 !important;
+  }
+  .text-muted-foreground {
+    color: #6b7280 !important;
+  }
+
+  /* Remove border-radius for print */
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl {
+    border-radius: 0 !important;
+  }
+
+  /* Ensure proper page breaks */
+  .print\:block {
+    page-break-inside: avoid;
+  }
 }
 
 /* Smooth transitions for all interactive elements */

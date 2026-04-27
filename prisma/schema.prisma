@@ -45,6 +45,10 @@ model User {
   pushSubscriptions PushSubscription[]
   meetings          Meeting[]
   contracts         Contract[]
+  templates         Template[]
+  automationPrefs   AutomationPreference[]
+  automationLogs    AutomationLog[]
+  tags              Tag[]
 }
 
 model Project {
@@ -64,6 +68,7 @@ model Project {
   timeEntries TimeEntry[]
   meetings    Meeting[]
   contracts   Contract[]
+  tags        ProjectTag[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -86,6 +91,7 @@ model Task {
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   timeEntries   TimeEntry[]
+  tags          TaskTag[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -163,6 +169,7 @@ model Email {
   emailAccountId String
   emailAccount   EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
   userId         String
+  tags           EmailTag[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 }
@@ -224,6 +231,7 @@ model Document {
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags      DocumentTag[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -363,4 +371,116 @@ model Contract {
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+}
+
+// ─── PRIORITÉ 2 — Productivité ───────────────────────────────────────────────────
+
+/// Système de templates réutilisables avec variables dynamiques
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   // contract, quote, email, project_structure, client_response
+  content     String   // Contenu avec variables {client_name}, {date}, etc.
+  variables   String   @default("[]") // JSON array of variable names
+  category    String   @default("general") // Catégorie pour le tri
+  icon        String?  // Nom d'icône Lucide
+  isDefault   Boolean  @default(false) // Template prédéfini
+  usageCount  Int      @default(0)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Préférences utilisateur pour les rappels automatiques
+model AutomationPreference {
+  id        String   @id @default(cuid())
+  type      String   // overdue_tasks, unpaid_invoices, meeting_reminder, email_followup
+  enabled   Boolean  @default(true)
+  channel   String   @default("in_app") // in_app, email, both
+  frequency String   @default("15min") // 15min, 30min, 1h, daily
+  threshold Int      @default(7) // Seuil en jours/minutes selon le type
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Journal des actions automatisées
+model AutomationLog {
+  id         String   @id @default(cuid())
+  type       String   // overdue_tasks, unpaid_invoices, meeting_reminder, email_followup
+  action     String   // notification_sent, email_sent, reminder_created
+  details    String?  // JSON with context details
+  relatedId  String?  // ID de l'entité concernée
+  success    Boolean  @default(true)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+/// Tags multi-dimensionnels avec couleur et catégorie
+model Tag {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#10b981")
+  icon        String?  // Nom d'icône Lucide
+  category    String   @default("general") // urgent, client, status, billing, custom
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskTags    TaskTag[]
+  emailTags   EmailTag[]
+  documentTags DocumentTag[]
+  projectTags ProjectTag[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, name])
+}
+
+/// Junction table: Task ↔ Tag
+model TaskTag {
+  id      String @id @default(cuid())
+  taskId  String
+  tagId   String
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tagId])
+}
+
+/// Junction table: Email ↔ Tag
+model EmailTag {
+  id      String @id @default(cuid())
+  emailId String
+  tagId   String
+  email   Email  @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([emailId, tagId])
+}
+
+/// Junction table: Document ↔ Tag
+model DocumentTag {
+  id         String   @id @default(cuid())
+  documentId String
+  tagId      String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tagId])
+}
+
+/// Junction table: Project ↔ Tag
+model ProjectTag {
+  id        String  @id @default(cuid())
+  projectId String
+  tagId     String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, tagId])
 }

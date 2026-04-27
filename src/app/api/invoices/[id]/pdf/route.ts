@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateInvoicePDF, type InvoicePDFData } from '@/lib/pdf-generator'
+import { verifyInvoiceToken } from '@/lib/invoice-token'
+import { requireAuth } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  // Authentication: accept either a valid token query param or a NextAuth session
+  const token = req.nextUrl.searchParams.get('token')
+  const isAuthenticated = token ? await verifyInvoiceToken(id, token) : false
+
+  if (!isAuthenticated) {
+    // Fall back to session-based auth
+    const auth = await requireAuth(req)
+    if (!auth.user) {
+      return NextResponse.json(
+        { error: 'Non autorisé. Veuillez vous connecter.' },
+        { status: 401 }
+      )
+    }
+  }
+
   try {
     const invoice = await db.invoice.findUnique({
       where: { id },
