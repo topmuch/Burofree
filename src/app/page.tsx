@@ -24,6 +24,9 @@ import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { RealtimeProvider, useRealtimeStatus } from '@/components/realtime-provider'
+import { FocusOverlay } from '@/features/differentiation/focus/focus-overlay'
+import { VoiceButton } from '@/features/differentiation/voice/voice-button'
+import { DifferentiationPanel } from '@/features/differentiation/differentiation-panel'
 
 // Placeholder for tabs without dedicated components yet
 function PlaceholderPanel({ title }: { title: string }) {
@@ -47,6 +50,7 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   notifications: NotificationsPanel,
   analytics: AnalyticsPanel,
   templates: TemplatesPanel,
+  marketplace: DifferentiationPanel,
   settings: SettingsPanel,
 }
 
@@ -63,6 +67,7 @@ const tabTitles: Record<TabType, string> = {
   notifications: 'Notifications',
   analytics: 'Rapports & Analytics',
   templates: 'Modèles',
+  marketplace: 'Extensions',
   settings: 'Paramètres',
 }
 
@@ -222,6 +227,12 @@ function AppContent() {
 
       {/* Global Search (Cmd/Ctrl+K) */}
       <GlobalSearch />
+
+      {/* Focus Mode Overlay */}
+      <FocusOverlay />
+
+      {/* Voice Command Button */}
+      <VoiceButton />
     </div>
   )
 }

@@ -49,6 +49,11 @@ model User {
   automationPrefs   AutomationPreference[]
   automationLogs    AutomationLog[]
   tags              Tag[]
+  modules           UserModule[]
+  portalInvites     PortalInvite[]
+  integrations      IntegrationConnection[]
+  focusSessions     FocusSession[]
+  voiceLogs         VoiceLog[]
 }
 
 model Project {
@@ -68,9 +73,11 @@ model Project {
   timeEntries TimeEntry[]
   meetings    Meeting[]
   contracts   Contract[]
-  tags        ProjectTag[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  tags           ProjectTag[]
+  portalInvites  PortalInvite[]
+  focusSessions  FocusSession[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Task {
@@ -92,6 +99,7 @@ model Task {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   timeEntries   TimeEntry[]
   tags          TaskTag[]
+  focusSessions FocusSession[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -483,4 +491,159 @@ model ProjectTag {
   tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, tagId])
+}
+
+// ─── PRIORITÉ 3 — Différenciation ────────────────────────────────────────────
+
+// Marketplace modules available for subscription
+model Module {
+  id          String   @id @default(cuid())
+  slug        String   @unique // e.g. "focus-mode", "client-portal", "slack-integration"
+  name        String   // Display name
+  description String?
+  icon        String?  // Lucide icon name
+  category    String   @default("productivity") // productivity, collaboration, integration, premium
+  price       Float    @default(0) // Monthly price in EUR, 0 = free module
+  features    String   @default("[]") // JSON array of feature descriptions
+  isActive    Boolean  @default(true) // Admin can deactivate modules
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userModules UserModule[]
+
+  @@index([slug])
+  @@index([category, isActive])
+}
+
+// User subscription to a module (links to Stripe)
+model UserModule {
+  id        String   @id @default(cuid())
+  userId    String
+  moduleId  String
+  status    String   @default("inactive") // trial, active, expired, cancelled
+  expiresAt DateTime? // null = no expiration (lifetime or active subscription)
+  stripePriceId String? // Links to Stripe price for billing
+  trialStartsAt DateTime?
+  trialEndsAt   DateTime?
+  activatedAt   DateTime?
+  cancelledAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+// Client portal invitations with signed tokens
+model PortalInvite {
+  id          String    @id @default(cuid())
+  projectId   String
+  token       String    @unique // Signed token (nanoid or JWT)
+  email       String    // Client email
+  clientName  String?   // Client display name
+  expiresAt   DateTime  // Configurable expiration
+  accessedAt  DateTime? // Last access timestamp
+  accessCount Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdById String    // The freelancer who created the invite
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  comments  PortalComment[]
+
+  @@index([token])
+  @@index([projectId, isActive])
+  @@index([expiresAt])
+}
+
+// Client comments/approvals on portal
+model PortalComment {
+  id          String   @id @default(cuid())
+  inviteId    String
+  entityType  String   // "task", "document", "milestone"
+  entityId    String   // ID of the entity being commented on
+  action      String   @default("comment") // comment, approve, request_revision
+  content     String?  // Comment text (required for comment, optional for approve/revision)
+  authorName  String   // Client name
+  authorEmail String   // Client email
+  createdAt   DateTime @default(now())
+
+  invite PortalInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  @@index([inviteId, entityType, entityId])
+  @@index([createdAt])
+}
+
+// External service connections (Slack, Zoom, Drive, GitHub, Notion)
+model IntegrationConnection {
+  id            String   @id @default(cuid())
+  userId        String
+  provider      String   // slack, zoom, google_drive, github, notion
+  accessToken   String?  // Encrypted OAuth access token
+  refreshToken  String?  // Encrypted OAuth refresh token
+  tokenExpiry   DateTime?
+  scopes        String?  // JSON array of granted scopes
+  metadata      String   @default("{}") // JSON: workspace_id, channel_id, repo, etc.
+  status        String   @default("connected") // connected, error, expired, disconnected
+  lastSyncAt    DateTime?
+  lastError     String?  // Last sync error message
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId, status])
+  @@index([provider])
+}
+
+// Focus mode / Pomodoro sessions
+model FocusSession {
+  id              String    @id @default(cuid())
+  userId          String
+  type            String    @default("pomodoro") // pomodoro, deep_work, custom
+  durationMinutes Int       @default(25)
+  breakMinutes    Int       @default(5)
+  startedAt       DateTime
+  endedAt         DateTime?
+  pausedAt        DateTime? // When the session was paused (tab visibility)
+  totalPausedSec  Int       @default(0) // Total seconds paused
+  taskId          String?   // Linked task
+  projectId       String?   // Linked project
+  completed       Boolean   @default(false)
+  ambientSound    String?   // rain, forest, cafe, fireplace, white_noise
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startedAt])
+  @@index([userId, completed])
+  @@index([taskId])
+}
+
+// Voice command logs
+model VoiceLog {
+  id          String   @id @default(cuid())
+  userId      String
+  transcript  String   // Raw speech-to-text
+  intent      String?  // Parsed intent: create_task, open_emails, start_focus, etc.
+  confidence  Float?   // Recognition confidence 0-1
+  executed    Boolean  @default(false)
+  error       String?  // Error message if execution failed
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([intent])
 }

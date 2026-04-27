@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'meetings' | 'contracts' | 'notifications' | 'settings' | 'templates' | 'analytics'
+export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'meetings' | 'contracts' | 'notifications' | 'settings' | 'templates' | 'analytics' | 'marketplace'
 
 export interface Task {
   id: string
