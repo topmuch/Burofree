@@ -1,9 +1,48 @@
-const CACHE_NAME = 'burofree-v2';
-const STATIC_CACHE = 'burofree-static-v2';
-const API_CACHE = 'burofree-api-v2';
+/**
+ * Burofree Service Worker v3
+ *
+ * Caching strategies:
+ * - CacheFirst: static assets (JS, CSS, images, fonts)
+ * - StaleWhileRevalidate: API read endpoints (GET)
+ * - NetworkFirst: critical API writes (POST/PUT/DELETE), navigation
+ *
+ * Additional features:
+ * - Background Sync for offline queue
+ * - Push notifications with VAPID
+ * - Periodic background sync for email/calendar
+ */
+
+const CACHE_VERSION = 'burofree-v3';
+const STATIC_CACHE = 'burofree-static-v3';
+const API_CACHE = 'burofree-api-v3';
+const RUNTIME_CACHE = 'burofree-runtime-v3';
+
 const STATIC_ASSETS = ['/', '/logo.svg', '/manifest.json'];
 
-// Install: cache static assets
+// API routes that should use NetworkFirst (critical writes)
+const CRITICAL_API_PREFIXES = [
+  '/api/tasks',
+  '/api/invoices',
+  '/api/time-entries',
+  '/api/projects',
+  '/api/emails',
+  '/api/contracts',
+  '/api/meetings',
+  '/api/offline',
+];
+
+// API routes that should never be cached
+const NO_CACHE_ROUTES = [
+  '/api/notifications/stream',
+  '/api/auth',
+  '/api/stripe/webhook',
+  '/api/stripe/portal',
+];
+
+// Maximum cache age for API responses (5 minutes)
+const API_MAX_AGE = 5 * 60 * 1000;
+
+// ─── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -11,13 +50,13 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
+// ─── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) =>
       Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE && name !== API_CACHE)
+          .filter((name) => ![STATIC_CACHE, API_CACHE, RUNTIME_CACHE].includes(name))
           .map((name) => caches.delete(name))
       )
     )
@@ -25,27 +64,49 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: strategy based on request type
+// ─── Fetch ────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
+  // Skip non-GET requests for caching (POST/PUT handled separately)
+  if (event.request.method !== 'GET') {
+    // For POST/PUT/DELETE, try network first, queue if offline
+    if (isCriticalWrite(event.request)) {
+      event.respondWith(networkFirstWithOfflineQueue(event.request));
+    }
+    return;
+  }
 
-  // SSE stream requests should never be cached
-  if (url.pathname === '/api/notifications/stream') return;
+  // Never cache certain routes
+  if (NO_CACHE_ROUTES.some((route) => url.pathname.startsWith(route))) return;
 
-  // API requests: stale-while-revalidate
+  // Skip cross-origin requests
+  if (url.origin !== self.location.origin) return;
+
+  // Navigation requests: NetworkFirst
+  if (event.request.mode === 'navigate') {
+    event.respondWith(networkFirstNavigation(event.request));
+    return;
+  }
+
+  // Static assets: CacheFirst
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(cacheFirst(event.request));
+    return;
+  }
+
+  // API read endpoints: StaleWhileRevalidate with max age
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(staleWhileRevalidate(event.request));
     return;
   }
 
-  // Static assets: cache-first
-  event.respondWith(cacheFirst(event.request));
+  // Everything else: NetworkFirst with cache fallback
+  event.respondWith(networkFirst(event.request));
 });
 
-// Cache-first strategy for static assets
+// ─── Caching Strategies ──────────────────────────────────────────────────────
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -58,23 +119,39 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
-    // Return offline fallback for navigation
     if (request.mode === 'navigate') {
       return caches.match('/');
     }
-    return new Response('Offline', { status: 503 });
+    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }
 
-// Stale-while-revalidate strategy for API requests
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(API_CACHE);
   const cached = await cache.match(request);
 
+  // Check if cached response is too old
+  if (cached) {
+    const cacheTime = cached.headers.get('sw-cache-time');
+    if (cacheTime && Date.now() - parseInt(cacheTime, 10) > API_MAX_AGE) {
+      // Remove stale entry
+      cache.delete(request);
+    }
+  }
+
   const fetchPromise = fetch(request)
     .then((response) => {
       if (response.ok) {
-        cache.put(request, response.clone());
+        // Clone and add cache timestamp
+        const cloned = response.clone();
+        const headers = new Headers(cloned.headers);
+        headers.set('sw-cache-time', String(Date.now()));
+        const cachedResponse = new Response(cloned.body, {
+          status: cloned.status,
+          statusText: cloned.statusText,
+          headers,
+        });
+        cache.put(request, cachedResponse);
       }
       return response;
     })
@@ -83,7 +160,77 @@ async function staleWhileRevalidate(request) {
   return cached || fetchPromise;
 }
 
-// Push notification handler
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
+    if (request.mode === 'navigate') {
+      return caches.match('/');
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function networkFirstNavigation(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    return caches.match('/');
+  }
+}
+
+async function networkFirstWithOfflineQueue(request) {
+  try {
+    return await fetch(request);
+  } catch {
+    // Network failed — tell client to queue the action
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const client of clients) {
+      client.postMessage({
+        type: 'OFFLINE_ACTION_QUEUED',
+        url: request.url,
+        method: request.method,
+      });
+    }
+    return new Response(
+      JSON.stringify({ queued: true, message: 'Action mise en file d\'attente hors-ligne' }),
+      {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+// ─── Helper Functions ─────────────────────────────────────────────────────────
+
+function isStaticAsset(pathname) {
+  return /\.(js|css|png|jpg|jpeg|svg|gif|ico|woff|woff2|ttf|eot)$/.test(pathname);
+}
+
+function isCriticalWrite(request) {
+  return request.method !== 'GET' &&
+    CRITICAL_API_PREFIXES.some((prefix) =>
+      new URL(request.url).pathname.startsWith(prefix)
+    );
+}
+
+// ─── Push Notifications ──────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
   let data = {
     title: 'Burofree',
@@ -92,6 +239,7 @@ self.addEventListener('push', (event) => {
     badge: '/logo.svg',
     tag: 'burofree-notification',
     url: '/',
+    type: 'info',
   };
 
   if (event.data) {
@@ -121,7 +269,6 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
@@ -131,21 +278,23 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if available
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.navigate(targetUrl);
           return client.focus();
         }
       }
-      // Open new window if none found
       return self.clients.openWindow(targetUrl);
     })
   );
 });
 
-// Background sync handler
+// ─── Background Sync ─────────────────────────────────────────────────────────
 self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-offline') {
+    event.waitUntil(syncOfflineActions());
+  }
+
   if (event.tag === 'sync-emails') {
     event.waitUntil(syncEmails());
   }
@@ -154,6 +303,14 @@ self.addEventListener('sync', (event) => {
     event.waitUntil(syncCalendar());
   }
 });
+
+async function syncOfflineActions() {
+  // Notify clients to trigger their IndexedDB sync
+  const clients = await self.clients.matchAll({ type: 'window' });
+  for (const client of clients) {
+    client.postMessage({ type: 'TRIGGER_OFFLINE_SYNC' });
+  }
+}
 
 async function syncEmails() {
   try {
@@ -197,3 +354,16 @@ async function syncCalendar() {
     // Sync failed, will retry on next sync event
   }
 }
+
+// ─── Message Handler (from clients) ──────────────────────────────────────────
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+
+  if (event.data?.type === 'REGISTER_SYNC') {
+    self.registration.sync.register('sync-offline').catch(() => {
+      // Background sync not supported
+    });
+  }
+});

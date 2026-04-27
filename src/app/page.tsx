@@ -27,6 +27,8 @@ import { RealtimeProvider, useRealtimeStatus } from '@/components/realtime-provi
 import { FocusOverlay } from '@/features/differentiation/focus/focus-overlay'
 import { VoiceButton } from '@/features/differentiation/voice/voice-button'
 import { DifferentiationPanel } from '@/features/differentiation/differentiation-panel'
+import { NetworkStatus } from '@/features/production/pwa/network-status'
+import { InstallPrompt } from '@/features/production/pwa/install-prompt'
 
 // Placeholder for tabs without dedicated components yet
 function PlaceholderPanel({ title }: { title: string }) {
@@ -233,6 +235,12 @@ function AppContent() {
 
       {/* Voice Command Button */}
       <VoiceButton />
+
+      {/* PWA Network Status Banner */}
+      <NetworkStatus />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   )
 }
@@ -244,10 +252,35 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  // Register service worker
+  // Register service worker with offline sync support
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
+
+      // Listen for sync messages from service worker
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.data?.type === 'SYNC_OFFLINE_ACTIONS') {
+          const { getOfflineQueue } = await import('@/features/production/pwa/offline-queue')
+          const queue = getOfflineQueue()
+          if (navigator.onLine) {
+            queue.syncAll().catch(() => {})
+          }
+        }
+      }
+
+      navigator.serviceWorker.addEventListener('message', handleMessage)
+
+      // Register periodic sync if supported
+      navigator.serviceWorker.ready.then((registration) => {
+        if ('periodicSync' in registration) {
+          (registration as unknown as { periodicSync: { register: (tag: string, options: { minInterval: number }) => Promise<void> } }).periodicSync.register('periodic-email-sync', {
+            minInterval: 30 * 60 * 1000,
+          }).catch(() => {})
+          ;(registration as unknown as { periodicSync: { register: (tag: string, options: { minInterval: number }) => Promise<void> } }).periodicSync.register('periodic-calendar-sync', {
+            minInterval: 30 * 60 * 1000,
+          }).catch(() => {})
+        }
+      }).catch(() => {})
     }
   }, [])
 

@@ -54,6 +54,11 @@ model User {
   integrations      IntegrationConnection[]
   focusSessions     FocusSession[]
   voiceLogs         VoiceLog[]
+  teamMemberships   TeamMember[]
+  auditLogs         AuditLog[]
+  exportJobs        ExportJob[]
+  subscriptions     Subscription[]
+  offlineActions    OfflineAction[]
 }
 
 model Project {
@@ -646,4 +651,178 @@ model VoiceLog {
 
   @@index([userId, createdAt])
   @@index([intent])
+}
+
+// ─── PRIORITÉ 4 — Production & Scale ───────────────────────────────────────
+
+// Teams for multi-user collaboration
+model Team {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique // URL-friendly identifier
+  description       String?
+  avatar            String?  // Team avatar URL
+  plan              String   @default("free") // free, pro, enterprise
+  stripeCustomerId  String?  // Stripe customer for team billing
+  stripeSubscriptionId String? // Stripe subscription ID
+  maxMembers        Int      @default(5) // Based on plan
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  members    TeamMember[]
+  auditLogs  AuditLog[]
+
+  @@index([slug])
+  @@index([stripeCustomerId])
+}
+
+// Team membership with role-based access
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   @default("member") // owner, admin, member, viewer
+  status    String   @default("active") // active, invited, suspended, removed
+  invitedAt DateTime @default(now())
+  joinedAt  DateTime? // Set when user accepts invitation
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId, role])
+  @@index([userId, status])
+}
+
+// Audit trail for teams and individual actions
+model AuditLog {
+  id        String   @id @default(cuid())
+  teamId    String?  // Null for individual user actions
+  userId    String
+  action    String   // e.g. "team.member.invite", "export.create", "backup.restore"
+  target    String?  // Entity type (user, project, invoice, etc.)
+  targetId  String?  // Entity ID
+  metadata  String   @default("{}") // JSON: additional context
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action])
+}
+
+// Async export/import jobs (CSV, JSON, PDF)
+model ExportJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String    // export, import
+  format      String    // csv, json, pdf
+  entityType  String    // tasks, invoices, projects, time_entries, all
+  status      String    @default("pending") // pending, processing, completed, failed
+  filePath    String?   // Path to generated file (server-side)
+  fileName    String?   // User-facing filename
+  rowCount    Int       @default(0)
+  errorCount  Int       @default(0)
+  errorMessage String?
+  fileSize    Int?      // File size in bytes
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime? // Signed URL expiration
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// Database backup snapshots
+model BackupSnapshot {
+  id          String   @id @default(cuid())
+  type        String   // hourly, daily, weekly, manual
+  filePath    String   // Path to backup file
+  fileSize    Int      // Size in bytes
+  checksum    String   // SHA-256 checksum for integrity
+  compressed  Boolean  @default(true)
+  encrypted   Boolean  @default(true)
+  status      String   @default("completed") // pending, completed, failed, restoring
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  errorMessage String?
+  retentionUntil DateTime? // When this backup should be deleted
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([retentionUntil])
+  @@index([status])
+}
+
+// Stripe webhook event processing (idempotency)
+model WebhookEvent {
+  id            String   @id @default(cuid())
+  provider      String   // stripe
+  eventId       String   @unique // Stripe event ID for dedup
+  eventType     String   // checkout.session.completed, etc.
+  processed     Boolean  @default(false)
+  payload       String   // Raw JSON payload
+  error         String?  // Processing error if any
+  attempts      Int      @default(0)
+  processedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([provider, processed])
+  @@index([eventId])
+  @@index([createdAt])
+}
+
+// User subscription management (Stripe-powered)
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  stripeSubscriptionId String    @unique
+  stripePriceId        String
+  stripeCustomerId     String
+  status               String    @default("active") // active, past_due, canceled, unpaid, trialing, paused
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime?
+  gracePeriodEnd       DateTime? // Extra time after payment failure
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([stripeCustomerId])
+  @@index([currentPeriodEnd])
+}
+
+// Offline actions queue (synced when back online)
+model OfflineAction {
+  id         String   @id @default(cuid())
+  userId     String
+  actionType String   // create_task, create_note, create_email_draft, update_task
+  entityType String   // task, note, email, time_entry
+  entityId   String?  // Local ID (client-generated cuid)
+  payload    String   // JSON payload of the action
+  status     String   @default("pending") // pending, syncing, completed, failed
+  attempts   Int      @default(0)
+  error      String?
+  createdAt  DateTime @default(now())
+  syncedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
 }
