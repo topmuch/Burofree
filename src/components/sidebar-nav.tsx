@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, CheckSquare, Calendar, Mail, FolderOpen,
   Receipt, Timer, Bell, Settings, ChevronLeft, ChevronRight,
-  Moon, Sun, Sparkles
+  Moon, Sun, Sparkles, Video, FileText
 } from 'lucide-react'
 import { useAppStore, type TabType } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,8 @@ const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'emails', label: 'Emails', icon: Mail },
   { id: 'documents', label: 'Documents', icon: FolderOpen },
   { id: 'invoices', label: 'Facturation', icon: Receipt },
+  { id: 'contracts', label: 'Contrats', icon: FileText },
+  { id: 'meetings', label: 'Réunions', icon: Video },
   { id: 'time', label: 'Temps', icon: Timer },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'settings', label: 'Paramètres', icon: Settings },

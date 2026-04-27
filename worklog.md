@@ -1,29 +1,27 @@
 ---
-Task ID: 1
+Task ID: 2
 Agent: Super Z (main)
-Task: Add missing features to Burofree project (Phase 1 completion)
+Task: Fix invoice PDF printing + add Meetings & Contracts modules
 
 Work Log:
-- Explored entire Burofree codebase to identify missing features
-- Added VerificationToken model to Prisma schema (required by NextAuth)
-- Added passwordHash field to User model in Prisma schema
-- Ran prisma db push to sync schema changes
-- Installed bcryptjs + @types/bcryptjs for password hashing
-- Rewrote NextAuth route with full password authentication (register + login)
-- Added rate limiting on authentication (10 attempts per 15 min per IP+email)
-- Created rate-limit.ts utility with in-memory store
-- Created auth-guard.ts utility for API route session verification
-- Updated middleware.ts to enforce authentication on all API routes
-- Updated AuthModal component with register mode, password fields, show/hide toggle
-- Generated proper NEXTAUTH_SECRET and ENCRYPTION_KEY
-- Updated .env with secure keys and added GROQ_API_KEY, STRIPE variables
-- Created .env.example with detailed setup instructions
-- Fixed Maellis → Burofree AI in: prisma/schema.prisma, seed.ts, NextAuth secret, onboarding wizard, auth modal logo
-- Updated docker-compose.yml and docker-compose.prod.yml (maellis → burofree)
-- Build verified successfully (npx next build)
+- Diagnosed invoice PDF issue: Chromium was not installed, PDF generation fell back to HTML
+- Installed Chromium via Playwright (npx playwright install chromium)
+- Updated pdf-generator.ts to search Playwright Chromium paths + dynamic fallback
+- Fixed logo 'M' → 'B' in PDF template
+- Added Meeting and Contract models to Prisma schema
+- Added project relations for Meeting and Contract
+- Ran prisma db push to sync schema
+- Created API routes: /api/meetings, /api/meetings/[id], /api/contracts, /api/contracts/[id]
+- Created MeetingsPanel component with: status filters, create/edit dialog, meeting cards, upcoming meetings section, stats bar
+- Created ContractsPanel component with: type/status filters, create dialog, contract table, view dialog with status change, stat cards, expiration detection
+- Updated store.ts: added Meeting/Contract interfaces, CRUD methods, fetchMeetings/fetchContracts in fetchAll
+- Updated TabType to include 'meetings' | 'contracts'
+- Updated sidebar-nav.tsx: added Contrats (FileText icon) and Réunions (Video icon) entries
+- Updated page.tsx: imported and registered MeetingsPanel/ContractsPanel in tabComponents/tabTitles
+- Build verified successfully
 
 Stage Summary:
-- All Phase 1 features now complete: OAuth (code ready, needs keys), AI (Groq + Z-AI), Real-time (SSE)
-- Security significantly improved: password auth, rate limiting, route protection, encrypted keys
-- All Maellis references replaced with Burofree branding
-- .env properly configured with secure generated keys
+- Invoice PDF now works (Chromium installed + detected)
+- Two new modules fully functional: Réunions and Contrats
+- Both modules have full CRUD: API routes, Zustand store, UI panels
+- Sidebar and page routing updated for new tabs

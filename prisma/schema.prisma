@@ -43,6 +43,8 @@ model User {
   goals             WeeklyGoal[]
   chatMessages      ChatMessage[]
   pushSubscriptions PushSubscription[]
+  meetings          Meeting[]
+  contracts         Contract[]
 }
 
 model Project {
@@ -60,6 +62,8 @@ model Project {
   invoices    Invoice[]
   documents   Document[]
   timeEntries TimeEntry[]
+  meetings    Meeting[]
+  contracts   Contract[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -315,4 +319,48 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Meeting {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  meetingUrl  String?    // Zoom, Google Meet, Teams link
+  type        String     @default("video") // video, phone, in_person
+  status      String     @default("scheduled") // scheduled, completed, cancelled
+  agenda      String?    // Meeting agenda (markdown)
+  notes       String?    // Meeting notes/minutes (markdown)
+  projectId   String?
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Contract {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  type           String     @default("service") // service, nda, partnership, freelance
+  status         String     @default("draft") // draft, sent, signed, active, expired, terminated
+  clientName     String
+  clientEmail    String?
+  clientAddress  String?
+  startDate      DateTime?
+  endDate        DateTime?
+  value          Float?     // Contract value
+  currency       String     @default("EUR")
+  terms          String?    // Contract terms (markdown)
+  notes          String?
+  fileUrl        String?    // Uploaded contract file
+  projectId      String?
+  project        Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }

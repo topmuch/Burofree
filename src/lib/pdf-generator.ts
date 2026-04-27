@@ -332,7 +332,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
   <!-- Header -->
   <div class="header">
     <div class="logo-area">
-      <div class="logo-icon">M</div>
+      <div class="logo-icon">B</div>
       <div>
         <div class="logo-text">${escapeHtml(emitter.name) || 'Burofree'}</div>
         <div class="logo-sub">${escapeHtml(emitter.profession || '')}</div>
@@ -481,7 +481,16 @@ function findChromium(): string | null {
     process.env.CHROMIUM_PATH || '',
   ]
 
-  for (const p of paths) {
+  // Also check Playwright's installed Chromium
+  const homeDir = process.env.HOME || '/root'
+  const playwrightPaths = [
+    `${homeDir}/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome`,
+    `${homeDir}/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome`,
+  ]
+
+  const allPaths = [...paths, ...playwrightPaths]
+
+  for (const p of allPaths) {
     if (p) {
       try {
         if (existsSync(p)) return p
@@ -490,6 +499,23 @@ function findChromium(): string | null {
       }
     }
   }
+
+  // Dynamic fallback: find any Playwright chromium
+  try {
+    const fs = require('fs')
+    const path = require('path')
+    const playwrightDir = path.join(homeDir, '.cache', 'ms-playwright')
+    if (existsSync(playwrightDir)) {
+      const dirs = fs.readdirSync(playwrightDir).filter(d => d.startsWith('chromium-'))
+      for (const dir of dirs) {
+        const chromePath = path.join(playwrightDir, dir, 'chrome-linux64', 'chrome')
+        if (existsSync(chromePath)) return chromePath
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
   return null
 }
 

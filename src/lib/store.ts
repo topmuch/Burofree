@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'notifications' | 'settings'
+export type TabType = 'dashboard' | 'tasks' | 'calendar' | 'emails' | 'documents' | 'invoices' | 'time' | 'meetings' | 'contracts' | 'notifications' | 'settings'
 
 export interface Task {
   id: string
@@ -145,6 +145,29 @@ export interface TimeEntry {
   isBillable: boolean
   taskId: string | null
   task: Task | null
+  projectId: string | null
+  project: Project | null
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Contract {
+  id: string
+  title: string
+  description: string | null
+  type: string // service, nda, partnership, freelance
+  status: string // draft, sent, signed, active, expired, terminated
+  clientName: string
+  clientEmail: string | null
+  clientAddress: string | null
+  startDate: string | null
+  endDate: string | null
+  value: number | null
+  currency: string
+  terms: string | null
+  notes: string | null
+  fileUrl: string | null
   projectId: string | null
   project: Project | null
   userId: string
@@ -302,6 +325,25 @@ export interface BreakSuggestion {
   isTracking: boolean
 }
 
+export interface Meeting {
+  id: string
+  title: string
+  description?: string | null
+  startDate: string
+  endDate?: string | null
+  location?: string | null
+  meetingUrl?: string | null
+  type: string // video, phone, in_person
+  status: string // scheduled, completed, cancelled
+  agenda?: string | null
+  notes?: string | null
+  projectId?: string | null
+  project?: { id: string; name: string; color: string } | null
+  userId: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface AppState {
   // UI state
   activeTab: TabType
@@ -323,6 +365,8 @@ interface AppState {
   selectedEmail: Email | null
   emailFilter: string
   invoices: Invoice[]
+  meetings: Meeting[]
+  contracts: Contract[]
   timeEntries: TimeEntry[]
   documents: Document[]
   snippets: Snippet[]
@@ -411,6 +455,18 @@ interface AppState {
   updateInvoice: (id: string, data: Partial<Invoice>) => Promise<void>
   deleteInvoice: (id: string) => Promise<void>
 
+  // CRUD - Meetings
+  fetchMeetings: () => Promise<void>
+  createMeeting: (data: Partial<Meeting>) => Promise<void>
+  updateMeeting: (id: string, data: Partial<Meeting>) => Promise<void>
+  deleteMeeting: (id: string) => Promise<void>
+
+  // CRUD - Contracts
+  fetchContracts: () => Promise<void>
+  createContract: (contract: Partial<Contract>) => Promise<void>
+  updateContract: (id: string, data: Partial<Contract>) => Promise<void>
+  deleteContract: (id: string) => Promise<void>
+
   // CRUD - Time Entries
   createTimeEntry: (entry: Partial<TimeEntry>) => Promise<void>
   updateTimeEntry: (id: string, data: Partial<TimeEntry>) => Promise<void>
@@ -463,6 +519,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedEmail: null,
   emailFilter: 'all',
   invoices: [],
+  meetings: [],
+  contracts: [],
   timeEntries: [],
   documents: [],
   snippets: [],
@@ -588,6 +646,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e) { console.error('fetchInvoices:', e) }
   },
 
+  fetchContracts: async () => {
+    try {
+      const res = await fetch('/api/contracts')
+      if (res.ok) set({ contracts: await res.json() })
+    } catch (e) { console.error('fetchContracts:', e) }
+  },
+
   fetchTimeEntries: async () => {
     try {
       const res = await fetch('/api/time-entries')
@@ -669,6 +734,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().fetchEmails(),
         get().fetchEmailAccounts(),
         get().fetchInvoices(),
+        get().fetchContracts(),
         get().fetchTimeEntries(),
         get().fetchDocuments(),
         get().fetchSnippets(),
@@ -812,6 +878,52 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE' })
       if (res.ok) { await get().fetchInvoices() }
     } catch (e) { console.error('deleteInvoice:', e) }
+  },
+
+  // CRUD - Meetings
+  fetchMeetings: async () => {
+    try {
+      const res = await fetch('/api/meetings')
+      if (res.ok) set({ meetings: await res.json() })
+    } catch (e) { console.error('fetchMeetings:', e) }
+  },
+  createMeeting: async (data) => {
+    try {
+      const res = await fetch('/api/meetings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchMeetings() }
+    } catch (e) { console.error('createMeeting:', e) }
+  },
+  updateMeeting: async (id, data) => {
+    try {
+      const res = await fetch(`/api/meetings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchMeetings() }
+    } catch (e) { console.error('updateMeeting:', e) }
+  },
+  deleteMeeting: async (id) => {
+    try {
+      const res = await fetch(`/api/meetings/${id}`, { method: 'DELETE' })
+      if (res.ok) { await get().fetchMeetings() }
+    } catch (e) { console.error('deleteMeeting:', e) }
+  },
+
+  // CRUD - Contracts
+  createContract: async (contract) => {
+    try {
+      const res = await fetch('/api/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(contract) })
+      if (res.ok) { await get().fetchContracts() }
+    } catch (e) { console.error('createContract:', e) }
+  },
+  updateContract: async (id, data) => {
+    try {
+      const res = await fetch(`/api/contracts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.ok) { await get().fetchContracts() }
+    } catch (e) { console.error('updateContract:', e) }
+  },
+  deleteContract: async (id) => {
+    try {
+      const res = await fetch(`/api/contracts/${id}`, { method: 'DELETE' })
+      if (res.ok) { await get().fetchContracts() }
+    } catch (e) { console.error('deleteContract:', e) }
   },
 
   // CRUD - Time Entries

@@ -11,6 +11,8 @@ import { EmailInbox } from '@/components/email-inbox'
 import { DocumentsPanel } from '@/components/documents-panel'
 import { InvoicingPanel } from '@/components/invoicing-panel'
 import { TimeView } from '@/components/time-view'
+import { MeetingsPanel } from '@/components/meetings-panel'
+import { ContractsPanel } from '@/components/contracts-panel'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
@@ -27,6 +29,8 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   emails: EmailInbox,
   documents: DocumentsPanel,
   invoices: InvoicingPanel,
+  contracts: ContractsPanel,
+  meetings: MeetingsPanel,
   time: TimeView,
   notifications: NotificationsPanel,
   settings: SettingsPanel,
@@ -39,6 +43,8 @@ const tabTitles: Record<TabType, string> = {
   emails: 'Emails',
   documents: 'Documents',
   invoices: 'Facturation',
+  contracts: 'Contrats',
+  meetings: 'Réunions',
   time: 'Temps',
   notifications: 'Notifications',
   settings: 'Paramètres',
