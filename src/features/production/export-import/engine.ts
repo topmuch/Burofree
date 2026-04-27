@@ -8,8 +8,6 @@
 
 import { db } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/crypto'
-import { createHash } from 'crypto'
-import { stringify } from '@/lib/csv-stringify'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -122,20 +120,23 @@ async function fetchData(options: ExportOptions): Promise<Record<string, unknown
       // Aggregate unique client names from projects and invoices
       const projects = await db.project.findMany({
         where: { userId, clientName: { not: null } },
-        select: { clientName: true, clientEmail: true },
+        select: { clientName: true },
       })
       const invoices = await db.invoice.findMany({
         where: { userId },
         select: { clientName: true, clientEmail: true },
       })
-      const allContacts = [...projects, ...invoices]
+      const allContacts: Array<{ clientName: string | null; clientEmail?: string | null }> = [
+        ...projects.map(p => ({ clientName: p.clientName })),
+        ...invoices.map(i => ({ clientName: i.clientName, clientEmail: i.clientEmail })),
+      ]
       const unique = new Map<string, { clientName: string; clientEmail?: string }>()
       for (const c of allContacts) {
         if (c.clientName && !unique.has(c.clientName)) {
-          unique.set(c.clientName, c)
+          unique.set(c.clientName, { clientName: c.clientName, clientEmail: c.clientEmail ?? undefined })
         }
       }
-      return Array.from(unique.values())
+      return Array.from(unique.values()) as unknown as Record<string, unknown>[]
     }
 
     case 'all': {
@@ -318,7 +319,7 @@ export async function executeImport(options: ImportOptions): Promise<{
   let skipped = 0
   let errorCount = preview.errors.length
 
-  for (const row of preview.valid) {
+  for (const row of preview.preview) {
     try {
       await importRow(row as Record<string, unknown>, options.userId, options.entityType)
       imported++

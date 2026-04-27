@@ -16,11 +16,11 @@ const offlineActionSchema = z.object({
   actionType: z.enum(['create_task', 'update_task', 'create_note', 'create_email_draft', 'create_time_entry', 'update_project']),
   entityType: z.enum(['task', 'note', 'email', 'time_entry', 'project']),
   entityId: z.string().optional(),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 })
 
 const offlineSyncSchema = z.object({
-  actions: z.array(offlineActionSchema).min(1).max(100, 'Maximum 100 actions par synchronisation'),
+  actions: z.array(offlineActionSchema).min(1).max(100, { message: 'Maximum 100 actions par synchronisation' }),
 })
 
 type ActionResult = { success: true; id: string } | { success: false; error: string }

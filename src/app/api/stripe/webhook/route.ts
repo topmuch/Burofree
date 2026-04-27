@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // Process event
     try {
-      await processEvent(event.type, event.data.object as Record<string, unknown>)
+      await processEvent(event.type, event.data.object as unknown as Record<string, unknown>)
 
       // Mark as processed
       await db.webhookEvent.update({

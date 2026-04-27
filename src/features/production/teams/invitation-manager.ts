@@ -48,7 +48,7 @@ function generateInviteToken(
  */
 function verifyInviteToken(token: string): InviteTokenPayload | null {
   try {
-    const payload = verify(token) as InviteTokenPayload
+    const payload = verify(token) as unknown as InviteTokenPayload
     if (!payload.teamId || !payload.email || !payload.role) return null
     return payload
   } catch {

@@ -14,7 +14,7 @@ import { z } from 'zod'
 const importCreateSchema = z.object({
   format: z.enum(['csv', 'json']).default('json'),
   entityType: z.enum(['tasks', 'invoices', 'projects', 'time_entries']).default('tasks'),
-  data: z.array(z.record(z.unknown())).min(1, 'Au moins un enregistrement requis').max(10000, 'Maximum 10000 enregistrements par import'),
+  data: z.array(z.record(z.string(), z.unknown())).min(1, { message: 'Au moins un enregistrement requis' }).max(10000, { message: 'Maximum 10000 enregistrements par import' }),
   previewOnly: z.boolean().default(false),
   skipDuplicates: z.boolean().default(true),
 })

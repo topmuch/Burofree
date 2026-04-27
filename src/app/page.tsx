@@ -27,6 +27,7 @@ import { RealtimeProvider, useRealtimeStatus } from '@/components/realtime-provi
 import { FocusOverlay } from '@/features/differentiation/focus/focus-overlay'
 import { VoiceButton } from '@/features/differentiation/voice/voice-button'
 import { DifferentiationPanel } from '@/features/differentiation/differentiation-panel'
+import { ProductionPanel } from '@/features/production/production-panel'
 import { NetworkStatus } from '@/features/production/pwa/network-status'
 import { InstallPrompt } from '@/features/production/pwa/install-prompt'
 
@@ -53,6 +54,7 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   analytics: AnalyticsPanel,
   templates: TemplatesPanel,
   marketplace: DifferentiationPanel,
+  production: ProductionPanel,
   settings: SettingsPanel,
 }
 
@@ -70,6 +72,7 @@ const tabTitles: Record<TabType, string> = {
   analytics: 'Rapports & Analytics',
   templates: 'Modèles',
   marketplace: 'Extensions',
+  production: 'Production',
   settings: 'Paramètres',
 }
 
@@ -263,7 +266,7 @@ export default function HomePage() {
           const { getOfflineQueue } = await import('@/features/production/pwa/offline-queue')
           const queue = getOfflineQueue()
           if (navigator.onLine) {
-            queue.syncAll().catch(() => {})
+            queue.syncToServer().catch(() => {})
           }
         }
       }

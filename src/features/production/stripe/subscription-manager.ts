@@ -175,9 +175,9 @@ export async function handleCheckoutCompleted(
       create: {
         userId,
         stripeSubscriptionId: subscription.id as string,
-        stripePriceId: (subscription as Record<string, unknown>).items?.data?.[0]?.price?.id as string || '',
+        stripePriceId: ((subscription as unknown as Record<string, unknown>)?.items as Record<string, unknown>)?.data ? (((subscription as unknown as Record<string, unknown>).items as { data: Array<Record<string, unknown>> }).data?.[0]?.price as Record<string, unknown>)?.id as string || '' : '',
         stripeCustomerId: customerId,
-        status: ((subscription as Record<string, unknown>).status as string) || 'active',
+        status: ((subscription as unknown as Record<string, unknown>).status as string) || 'active',
         trialStart: (subscription as Record<string, unknown>).trial_start
           ? new Date((subscription as Record<string, unknown>).trial_start as number * 1000)
           : null,
@@ -189,15 +189,15 @@ export async function handleCheckoutCompleted(
         cancelAtPeriodEnd: (subscription as Record<string, unknown>).cancel_at_period_end as boolean || false,
       },
       update: {
-        status: ((subscription as Record<string, unknown>).status as string) || 'active',
-        currentPeriodStart: new Date(((subscription as Record<string, unknown>).current_period_start as number) * 1000),
-        currentPeriodEnd: new Date(((subscription as Record<string, unknown>).current_period_end as number) * 1000),
-        cancelAtPeriodEnd: (subscription as Record<string, unknown>).cancel_at_period_end as boolean || false,
+        status: ((subscription as unknown as Record<string, unknown>).status as string) || 'active',
+        currentPeriodStart: new Date(((subscription as unknown as Record<string, unknown>).current_period_start as number) * 1000),
+        currentPeriodEnd: new Date(((subscription as unknown as Record<string, unknown>).current_period_end as number) * 1000),
+        cancelAtPeriodEnd: (subscription as unknown as Record<string, unknown>).cancel_at_period_end as boolean || false,
       },
     })
 
     // Update user module entitlements
-    const priceId = (subscription as Record<string, unknown>).items?.data?.[0]?.price?.id as string
+    const priceId = ((subscription as unknown as Record<string, unknown>)?.items as Record<string, unknown>)?.data ? (((subscription as unknown as Record<string, unknown>).items as { data: Array<Record<string, unknown>> }).data?.[0]?.price as Record<string, unknown>)?.id as string : ''
     const plan = PLANS.find(p => p.priceId === priceId)
     if (plan) {
       // Activate all modules included in the plan
@@ -235,6 +235,8 @@ export async function handleSubscriptionUpdated(
   subscriptionId: string,
 ): Promise<void> {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sub = subscription as any
 
   await db.$transaction(async (tx) => {
     const existing = await tx.subscription.findUnique({
@@ -246,14 +248,14 @@ export async function handleSubscriptionUpdated(
     await tx.subscription.update({
       where: { stripeSubscriptionId: subscriptionId },
       data: {
-        status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
-        trialStart: subscription.trial_start ? new Date(subscription.trial_start * 1000) : null,
-        trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-        gracePeriodEnd: subscription.status === 'past_due'
+        status: sub.status as string,
+        currentPeriodStart: new Date(sub.current_period_start * 1000),
+        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+        cancelAtPeriodEnd: sub.cancel_at_period_end as boolean,
+        canceledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000) : null,
+        trialStart: sub.trial_start ? new Date(sub.trial_start * 1000) : null,
+        trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+        gracePeriodEnd: sub.status === 'past_due'
           ? new Date(Date.now() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
           : null,
       },

@@ -9,14 +9,18 @@ import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AU
  * Handles:
  * 1. OAuth token refresh headers for email/calendar routes
  * 2. API route authentication enforcement
- * 3. Public route whitelisting
+ * 3. Public route whitelisting (health, stripe webhook, team accept)
  * 4. Invoice PDF token-based auth (alternative to session cookie)
+ * 5. Rate limiting
  */
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
   '/api/auth',        // NextAuth routes (login, callback, etc.)
   '/api/',            // Root API health check (exact match handled separately)
+  '/api/health',      // Health check endpoint (monitoring)
+  '/api/stripe/webhook', // Stripe webhooks (uses signature verification, not session)
+  '/api/teams/accept',   // Team invitation acceptance (GET redirect from email)
 ]
 
 // Routes that need OAuth token refresh headers
@@ -41,6 +45,15 @@ export async function middleware(request: NextRequest) {
 
   // 2. NextAuth routes - allow without auth
   if (pathname.startsWith('/api/auth/')) {
+    return NextResponse.next()
+  }
+
+  // 2b. Public API routes (health check, stripe webhook, team accept)
+  if (
+    pathname === '/api/health' ||
+    pathname === '/api/stripe/webhook' ||
+    pathname.startsWith('/api/teams/accept')
+  ) {
     return NextResponse.next()
   }
 

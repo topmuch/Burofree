@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       : format === 'json' ? 'application/json'
       : 'text/html'
 
-    return new NextResponse(result.content, {
+    return new NextResponse(typeof result.content === 'string' ? result.content : String(result.content), {
       status: 200,
       headers: {
         'Content-Type': contentType,
