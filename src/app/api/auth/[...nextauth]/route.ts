@@ -4,6 +4,8 @@ import AzureADProvider from 'next-auth/providers/azure-ad'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/crypto'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
+import bcrypt from 'bcryptjs'
 
 // Token refresh helpers
 async function refreshGoogleToken(refreshToken: string): Promise<{ access_token: string; expires_in: number; refresh_token?: string } | null> {
@@ -103,24 +105,97 @@ export const authOptions: NextAuthOptions = {
         ]
       : []),
     CredentialsProvider({
+      id: 'credentials',
       name: 'Connexion locale',
       credentials: {
         email: { label: 'Email', type: 'email' },
+        password: { label: 'Mot de passe', type: 'password' },
+        mode: { label: 'Mode', type: 'text' }, // 'login' or 'register'
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email) return null
-        let user = await db.user.findUnique({ where: { email: credentials.email } })
-        if (!user) {
-          user = await db.user.create({
-            data: { email: credentials.email, name: credentials.email.split('@')[0] },
-          })
+
+        const email = credentials.email.trim().toLowerCase()
+
+        // Rate limiting: check before processing
+        const requestObj = new Request(req?.headers?.origin || 'http://localhost:3000', {
+          headers: req?.headers as HeadersInit || {},
+        })
+        const rateLimitId = getRateLimitIdentifier(requestObj, email)
+        const rateCheck = checkRateLimit(rateLimitId, DEFAULT_AUTH_OPTIONS)
+
+        if (!rateCheck.allowed) {
+          throw new Error('Trop de tentatives. Veuillez réessayer dans quelques minutes.')
         }
+
+        const mode = credentials.mode || 'login'
+
+        if (mode === 'register') {
+          // --- REGISTRATION ---
+          const password = credentials.password
+          if (!password || password.length < 6) {
+            throw new Error('Le mot de passe doit contenir au moins 6 caractères.')
+          }
+
+          // Check if user already exists
+          const existingUser = await db.user.findUnique({ where: { email } })
+          if (existingUser) {
+            throw new Error('Un compte avec cet email existe déjà.')
+          }
+
+          // Hash the password
+          const passwordHash = await bcrypt.hash(password, 12)
+
+          // Create the user
+          const user = await db.user.create({
+            data: {
+              email,
+              name: email.split('@')[0],
+              passwordHash,
+            },
+          })
+
+          return { id: user.id, email: user.email, name: user.name }
+        }
+
+        // --- LOGIN ---
+        const user = await db.user.findUnique({ where: { email } })
+
+        if (!user) {
+          // Demo mode: auto-create user without password if no password provided
+          // This allows the demo flow to continue working
+          if (!credentials.password) {
+            const newUser = await db.user.create({
+              data: { email, name: email.split('@')[0] },
+            })
+            return { id: newUser.id, email: newUser.email, name: newUser.name }
+          }
+          throw new Error('Email ou mot de passe incorrect.')
+        }
+
+        // If user has a password, verify it
+        if (user.passwordHash) {
+          if (!credentials.password) {
+            throw new Error('Mot de passe requis pour ce compte.')
+          }
+          const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
+          if (!isValid) {
+            throw new Error('Email ou mot de passe incorrect.')
+          }
+        }
+
+        // If user has no password (OAuth-only or demo account), allow login without password
         return { id: user.id, email: user.email, name: user.name }
       },
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile, error }) {
+      // Handle credentials provider errors
+      if (error) {
+        throw new Error(error.message || 'Erreur de connexion')
+      }
+
       // Only handle OAuth providers (google, azure-ad)
       if (account?.provider === 'google' || account?.provider === 'azure-ad') {
         try {
@@ -328,7 +403,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  secret: process.env.NEXTAUTH_SECRET || 'maellis-dev-secret-key-change-in-production',
+  secret: process.env.NEXTAUTH_SECRET || 'burofree-dev-secret-key-change-in-production',
   debug: process.env.NODE_ENV === 'development',
 }
 

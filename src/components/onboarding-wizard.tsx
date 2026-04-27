@@ -285,7 +285,7 @@ function StepWelcome() {
         transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
         className="w-24 h-24 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30"
       >
-        <span className="text-4xl font-bold text-white">M</span>
+        <span className="text-4xl font-bold text-white">B</span>
       </motion.div>
 
       <motion.div

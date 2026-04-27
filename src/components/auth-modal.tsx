@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { motion } from 'framer-motion'
-import { Mail, Lock, Sparkles, ExternalLink } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Mail, Lock, Sparkles, Eye, EyeOff, UserPlus, LogIn, AlertCircle } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '@/components/ui/dialog'
@@ -41,13 +41,32 @@ function MicrosoftIcon({ className }: { className?: string }) {
   )
 }
 
+type AuthMode = 'login' | 'register'
+
 export function AuthModal({ open, onOpenChange }: AuthModalProps) {
+  const [mode, setMode] = useState<AuthMode>('login')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  const googleConfigured = !!(process.env.NEXT_PUBLIC_GOOGLE_CONFIGURED === 'true')
-  const microsoftConfigured = !!(process.env.NEXT_PUBLIC_MICROSOFT_CONFIGURED === 'true')
+  const googleConfigured = process.env.NEXT_PUBLIC_GOOGLE_CONFIGURED === 'true'
+  const microsoftConfigured = process.env.NEXT_PUBLIC_MICROSOFT_CONFIGURED === 'true'
+
+  const resetForm = () => {
+    setEmail('')
+    setPassword('')
+    setConfirmPassword('')
+    setError('')
+    setShowPassword(false)
+  }
+
+  const switchMode = (newMode: AuthMode) => {
+    setMode(newMode)
+    setError('')
+  }
 
   const handleGoogleSignIn = async () => {
     if (!googleConfigured) {
@@ -97,21 +116,46 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     signIn('azure-ad', { callbackUrl: '/' })
   }
 
-  const handleEmailSignIn = async () => {
+  const handleEmailSubmit = async () => {
+    setError('')
+
     if (!email.trim()) {
       setError('Veuillez saisir votre email')
       return
     }
+
+    if (mode === 'register') {
+      if (!password || password.length < 6) {
+        setError('Le mot de passe doit contenir au moins 6 caractères')
+        return
+      }
+      if (password !== confirmPassword) {
+        setError('Les mots de passe ne correspondent pas')
+        return
+      }
+    }
+
     setLoading('email')
     try {
       const result = await signIn('credentials', {
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
+        password: password || undefined,
+        mode: mode,
         redirect: false,
       })
+
       if (result?.error) {
-        setError('Erreur lors de la connexion')
+        // Translate common NextAuth errors
+        const errMsg = result.error
+        if (errMsg.includes('CredentialsSignin')) {
+          setError(mode === 'login'
+            ? 'Email ou mot de passe incorrect'
+            : 'Erreur lors de la création du compte')
+        } else {
+          setError(errMsg)
+        }
       }
-    } catch {
+    } catch (err) {
       setError('Erreur lors de la connexion')
     } finally {
       setLoading(null)
@@ -138,7 +182,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v) }}>
       <DialogContent className="sm:max-w-md border-zinc-800 bg-zinc-950" showCloseButton>
         <DialogHeader className="text-center">
           <div className="mx-auto mb-3">
@@ -148,11 +192,11 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               transition={{ duration: 0.4, ease: 'easeOut' }}
               className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center"
             >
-              <span className="text-2xl font-bold text-emerald-400">M</span>
+              <span className="text-2xl font-bold text-emerald-400">B</span>
             </motion.div>
           </div>
           <DialogTitle className="text-xl font-semibold text-zinc-100">
-            Connexion à Burofree
+            {mode === 'login' ? 'Connexion à Burofree' : 'Créer un compte'}
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
             Votre copilote de travail intelligent
@@ -208,38 +252,112 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             </span>
           </div>
 
-          {/* Email Input + Local Login */}
-          <div className="space-y-2">
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <Input
-                type="email"
-                placeholder="votre@email.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && handleEmailSignIn()}
-                className="pl-10 h-11 bg-zinc-900 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
-                disabled={loading !== null}
-              />
-            </div>
-            <Button
-              onClick={handleEmailSignIn}
-              disabled={loading !== null}
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+          {/* Email + Password Form */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, x: mode === 'login' ? -10 : 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: mode === 'login' ? 10 : -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2"
             >
-              {loading === 'email' ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+              {/* Email */}
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Input
+                  type="email"
+                  placeholder="votre@email.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError('') }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+                  className="pl-10 h-11 bg-zinc-900 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                  disabled={loading !== null}
                 />
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Connexion locale
-                </>
+              </div>
+
+              {/* Password */}
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={mode === 'login' ? 'Mot de passe (optionnel)' : 'Mot de passe (6 car. min)'}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError('') }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+                  className="pl-10 pr-10 h-11 bg-zinc-900 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                  disabled={loading !== null}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Confirm Password (register only) */}
+              {mode === 'register' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="relative"
+                >
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Confirmer le mot de passe"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setError('') }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+                    className="pl-10 h-11 bg-zinc-900 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-emerald-500/50 focus:ring-emerald-500/20"
+                    disabled={loading !== null}
+                  />
+                </motion.div>
               )}
-            </Button>
+
+              {/* Submit Button */}
+              <Button
+                onClick={handleEmailSubmit}
+                disabled={loading !== null}
+                className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+              >
+                {loading === 'email' ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                  />
+                ) : mode === 'login' ? (
+                  <>
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Se connecter
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Créer mon compte
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Switch mode */}
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+              className="text-sm text-zinc-400 hover:text-emerald-400 transition-colors"
+              disabled={loading !== null}
+            >
+              {mode === 'login'
+                ? "Pas encore de compte ? Créer un compte"
+                : 'Déjà un compte ? Se connecter'}
+            </button>
           </div>
 
           {/* Demo Button */}
@@ -268,13 +386,14 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
         {/* Error message */}
         {error && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-red-400 text-center"
+            className="flex items-center gap-2 text-sm text-red-400 mt-2"
           >
-            {error}
-          </motion.p>
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </motion.div>
         )}
 
         {/* Footer note */}

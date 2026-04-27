@@ -2,37 +2,63 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * Token Refresh Middleware
+ * Burofree Middleware
  *
- * Intercepts API calls that need fresh OAuth tokens and adds a header
- * indicating that token refresh may be needed. The actual refresh logic
- * is handled by server-side utilities (see src/lib/token-refresh.ts).
- *
- * This middleware:
- * - Checks for authenticated session (via next-auth cookie)
- * - Adds x-needs-token-refresh header for routes that use OAuth
- * - Lets the route handlers handle the actual refresh via the utility
+ * Handles:
+ * 1. OAuth token refresh headers for email/calendar routes
+ * 2. API route authentication enforcement
+ * 3. Public route whitelisting
  */
+
+// Routes that don't require authentication
+const PUBLIC_ROUTES = [
+  '/api/auth',        // NextAuth routes (login, callback, etc.)
+  '/api/',            // Root API health check (exact match handled separately)
+]
+
+// Routes that need OAuth token refresh headers
+const OAUTH_ROUTES = ['/api/emails', '/api/email-sync', '/api/calendar']
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only intercept API routes that need OAuth tokens
-  const protectedPaths = ['/api/emails', '/api/email-sync', '/api/calendar']
-  const needsToken = protectedPaths.some((p) => pathname.startsWith(p))
-
-  if (!needsToken) {
+  // 1. Root API health check - allow without auth
+  if (pathname === '/api') {
     return NextResponse.next()
   }
 
-  // Check for session token
-  const sessionToken = request.cookies.get('next-auth.session-token')?.value
-    || request.cookies.get('__Secure-next-auth.session-token')?.value
+  // 2. NextAuth routes - allow without auth
+  if (pathname.startsWith('/api/auth/')) {
+    return NextResponse.next()
+  }
 
-  // Create the response
+  // 3. Non-API routes - pass through (client-side auth handled by components)
+  if (!pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // 4. All other API routes - check for session token
+  const sessionToken =
+    request.cookies.get('next-auth.session-token')?.value ||
+    request.cookies.get('__Secure-next-auth.session-token')?.value
+
+  if (!sessionToken) {
+    // For SSE stream, return a simpler response
+    if (pathname === '/api/notifications/stream') {
+      return new Response('Unauthorized', { status: 401 })
+    }
+    return NextResponse.json(
+      { error: 'Non autorisé. Veuillez vous connecter.' },
+      { status: 401 }
+    )
+  }
+
+  // 5. Add OAuth token refresh headers for specific routes
+  const needsToken = OAUTH_ROUTES.some((p) => pathname.startsWith(p))
+
   const response = NextResponse.next()
 
-  // Add header so route handlers know if they should check token freshness
-  if (sessionToken) {
+  if (needsToken) {
     response.headers.set('x-session-token-present', 'true')
     response.headers.set('x-needs-token-refresh', 'true')
   }
@@ -42,8 +68,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/emails/:path*',
-    '/api/email-sync/:path*',
-    '/api/calendar/:path*',
+    '/api/:path*',
   ],
 }

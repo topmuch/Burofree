@@ -12,9 +12,10 @@ model User {
   email         String   @unique
   name          String?
   avatar        String?
+  passwordHash  String?  // null for OAuth-only users
   profession    String?
   timezone      String   @default("Europe/Paris")
-  assistantName String   @default("Maellis")
+  assistantName String   @default("Burofree AI")
   assistantTone String   @default("friendly")
   theme         String   @default("dark")
   focusMode     Boolean  @default(false)
@@ -306,4 +307,12 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
