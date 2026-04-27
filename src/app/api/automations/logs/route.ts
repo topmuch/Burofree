@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { logsQuerySchema } from '@/lib/validations/productivity'
 
 // ─── GET — List automation logs with pagination and optional type filter ─────────
 // Query params:
@@ -11,26 +14,39 @@ import { db } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
+
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate query params
     const { searchParams } = new URL(req.url)
-
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    // Filters
-    const type = searchParams.get('type')
-    const action = searchParams.get('action')
-    const success = searchParams.get('success')
+    const queryParse = logsQuerySchema.safeParse(Object.fromEntries(searchParams.entries()))
+    if (!queryParse.success) {
+      return NextResponse.json(
+        { error: 'Paramètres de requête invalides', details: queryParse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const { type, action, success, page, limit } = queryParse.data
 
     // Pagination
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
     const skip = (page - 1) * limit
 
-    // Build where clause
+    // Build where clause — fix: only filter on success if the param was explicitly provided
     const where: Record<string, unknown> = { userId: user.id }
     if (type) where.type = type
     if (action) where.action = action
-    if (success !== null) where.success = success === 'true'
+    if (searchParams.has('success')) where.success = success === 'true'
 
     // Fetch logs and total count in parallel
     const [logs, total] = await Promise.all([
@@ -54,6 +70,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error('Automation logs GET error:', error)
-    return NextResponse.json({ error: 'Failed to fetch automation logs' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec du chargement des journaux d\'automatisation' }, { status: 500 })
   }
 }

@@ -97,6 +97,65 @@ async function hasRecentLog(userId: string, type: string, relatedId: string, wit
   return !!existing
 }
 
+// ─── Email notification support ──────────────────────────────────────────────────
+
+async function sendEmailNotification(userId: string, subject: string, message: string): Promise<boolean> {
+  // Email sending via Resend (if configured)
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  const EMAIL_FROM = process.env.EMAIL_FROM || 'Burofree <noreply@burofree.app>'
+
+  if (!RESEND_API_KEY) {
+    console.warn('[Email] RESEND_API_KEY not configured, skipping email notification')
+    return false
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true },
+    })
+
+    if (!user?.email) return false
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: user.email,
+        subject,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h1 style="color: #10b981; font-size: 24px; margin: 0;">Burofree</h1>
+            </div>
+            <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+              <p style="margin: 0; color: #374151; font-size: 16px;">Bonjour ${user.name || ''},</p>
+            </div>
+            <div style="padding: 16px 0;">
+              <p style="color: #4b5563; font-size: 14px;">${message}</p>
+            </div>
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 24px;">
+              <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+                Notification automatique de Burofree — 
+                <a href="#" style="color: #10b981;">Gérer mes préférences</a>
+              </p>
+            </div>
+          </div>
+        `,
+      }),
+    })
+
+    return response.ok
+  } catch (error) {
+    console.error('[Email] Failed to send notification:', error)
+    return false
+  }
+}
+
 // ─── Individual check functions ─────────────────────────────────────────────────
 
 interface CheckResult {
@@ -155,6 +214,14 @@ async function checkOverdueTasks(userId: string, threshold: number, channel: str
           userId,
         },
       })
+
+      if (channel === 'email' || channel === 'both') {
+        await sendEmailNotification(
+          userId,
+          `Tâche en retard : ${task.title}`,
+          `La tâche "${task.title}" est en retard depuis plus de ${threshold} jour(s).`
+        )
+      }
 
       result.notified++
       result.details.push({ id: task.id, title: task.title, message })
@@ -230,6 +297,14 @@ async function checkUnpaidInvoices(userId: string, threshold: number, channel: s
           userId,
         },
       })
+
+      if (channel === 'email' || channel === 'both') {
+        await sendEmailNotification(
+          userId,
+          `Facture impayée : ${invoice.number}`,
+          `La facture ${invoice.number} (${invoice.clientName}) de ${invoice.total} ${invoice.currency} est impayée depuis ${daysPastDue} jour${daysPastDue > 1 ? 's' : ''}.`
+        )
+      }
 
       result.notified++
       result.details.push({ id: invoice.id, title: `Facture ${invoice.number}`, message })
@@ -334,6 +409,14 @@ async function checkUpcomingMeetings(userId: string, threshold: number, channel:
         },
       })
 
+      if (channel === 'email' || channel === 'both') {
+        await sendEmailNotification(
+          userId,
+          `Rappel réunion : ${meeting.title}`,
+          `"${meeting.title}" prévu ${timeLabel} (${formattedDate}).`
+        )
+      }
+
       result.notified++
       result.details.push({ id: meeting.id, title: meeting.title, message })
     } catch (error) {
@@ -410,6 +493,14 @@ async function checkUnansweredEmails(userId: string, threshold: number, channel:
         },
       })
 
+      if (channel === 'email' || channel === 'both') {
+        await sendEmailNotification(
+          userId,
+          `Relance e-mail : ${subject}`,
+          `Aucune réponse depuis ${daysSinceSent} jour${daysSinceSent > 1 ? 's' : ''} pour "${subject}" (envoyé à ${email.toAddress}).`
+        )
+      }
+
       result.notified++
       result.details.push({ id: email.id, title: subject, message })
     } catch (error) {
@@ -484,5 +575,58 @@ export async function runAutomationChecks(userId: string): Promise<AutomationChe
     totalFound,
     totalNotified,
     totalErrors,
+  }
+}
+
+// ─── Cron Scheduler ──────────────────────────────────────────────────────────
+// Runs automation checks every 15 minutes for all users.
+// This should be called once when the server starts (e.g., in instrumentation.ts or layout.tsx).
+
+let cronInterval: NodeJS.Timeout | null = null
+const CRON_INTERVAL_MS = 15 * 60 * 1000 // 15 minutes
+
+export async function runCronForAllUsers(): Promise<void> {
+  try {
+    const users = await db.user.findMany({
+      select: { id: true },
+      where: { onboardingDone: true },
+    })
+
+    console.log(`[Cron] Running automation checks for ${users.length} users`)
+
+    for (const user of users) {
+      try {
+        await runAutomationChecks(user.id)
+      } catch (error) {
+        console.error(`[Cron] Error for user ${user.id}:`, error)
+      }
+    }
+  } catch (error) {
+    console.error('[Cron] Fatal error:', error)
+  }
+}
+
+export function startAutomationCron(): void {
+  if (cronInterval) {
+    console.log('[Cron] Already running')
+    return
+  }
+
+  console.log('[Cron] Starting automation cron (every 15 min)')
+
+  // Run immediately on start
+  runCronForAllUsers().catch(console.error)
+
+  // Then every 15 minutes
+  cronInterval = setInterval(() => {
+    runCronForAllUsers().catch(console.error)
+  }, CRON_INTERVAL_MS)
+}
+
+export function stopAutomationCron(): void {
+  if (cronInterval) {
+    clearInterval(cronInterval)
+    cronInterval = null
+    console.log('[Cron] Stopped')
   }
 }

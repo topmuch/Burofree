@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureDefaultPreferences } from '@/lib/automation-cron'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { automationPrefSchema } from '@/lib/validations/productivity'
 
 // ─── GET — Retrieve all automation preferences for the current user ──────────────
 // If the user has no preferences yet, create defaults automatically.
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
+
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
 
     // Ensure defaults exist, then fetch the full list
     await ensureDefaultPreferences(user.id)
@@ -21,7 +35,7 @@ export async function GET() {
     return NextResponse.json(preferences)
   } catch (error) {
     console.error('Automation preferences GET error:', error)
-    return NextResponse.json({ error: 'Failed to fetch automation preferences' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec du chargement des préférences d\'automatisation' }, { status: 500 })
   }
 }
 
@@ -31,60 +45,49 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
+
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate body with Zod
     const body = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    const validTypes = ['overdue_tasks', 'unpaid_invoices', 'meeting_reminder', 'email_followup']
-    const validChannels = ['in_app', 'email', 'both']
-    const validFrequencies = ['15min', '30min', '1h', 'daily']
-
-    if (!body.type || !validTypes.includes(body.type)) {
+    const parse = automationPrefSchema.safeParse(body)
+    if (!parse.success) {
       return NextResponse.json(
-        { error: `Invalid type. Must be one of: ${validTypes.join(', ')}` },
+        { error: 'Données invalides', details: parse.error.flatten() },
         { status: 400 }
       )
     }
-
-    if (body.channel && !validChannels.includes(body.channel)) {
-      return NextResponse.json(
-        { error: `Invalid channel. Must be one of: ${validChannels.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    if (body.frequency && !validFrequencies.includes(body.frequency)) {
-      return NextResponse.json(
-        { error: `Invalid frequency. Must be one of: ${validFrequencies.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    if (body.threshold !== undefined && (typeof body.threshold !== 'number' || body.threshold < 0)) {
-      return NextResponse.json(
-        { error: 'Threshold must be a non-negative number' },
-        { status: 400 }
-      )
-    }
+    const data = parse.data
 
     // Fetch existing preference to merge updates
     const existing = await db.automationPreference.findUnique({
-      where: { userId_type: { userId: user.id, type: body.type } },
+      where: { userId_type: { userId: user.id, type: data.type } },
     })
 
-    const data = {
-      enabled: body.enabled !== undefined ? body.enabled : existing?.enabled ?? true,
-      channel: body.channel || existing?.channel || 'in_app',
-      frequency: body.frequency || existing?.frequency || '15min',
-      threshold: body.threshold !== undefined ? body.threshold : existing?.threshold ?? 7,
+    const upsertData = {
+      enabled: data.enabled !== undefined ? data.enabled : existing?.enabled ?? true,
+      channel: data.channel || existing?.channel || 'in_app',
+      frequency: data.frequency || existing?.frequency || '15min',
+      threshold: data.threshold !== undefined ? data.threshold : existing?.threshold ?? 7,
     }
 
     const preference = await db.automationPreference.upsert({
-      where: { userId_type: { userId: user.id, type: body.type } },
-      update: data,
+      where: { userId_type: { userId: user.id, type: data.type } },
+      update: upsertData,
       create: {
-        type: body.type,
-        ...data,
+        type: data.type,
+        ...upsertData,
         userId: user.id,
       },
     })
@@ -92,6 +95,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(preference)
   } catch (error) {
     console.error('Automation preferences POST error:', error)
-    return NextResponse.json({ error: 'Failed to update automation preference' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de la mise à jour des préférences d\'automatisation' }, { status: 500 })
   }
 }

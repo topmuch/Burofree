@@ -636,10 +636,12 @@ interface AppState {
 
   // Analytics
   fetchAnalytics: (range?: string) => Promise<void>
+  exportAnalytics: (format: 'csv' | 'pdf', range: 'week' | 'month' | 'year') => Promise<void>
 
   // Search
   search: (query: string, type?: string, filters?: string) => Promise<void>
   setSearchQuery: (query: string) => void
+  clearSearch: () => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -888,6 +890,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       // Use Promise.allSettled so one failing request doesn't block the rest
       const results = await Promise.allSettled([
+        get().fetchUser(),
         get().fetchTasks(),
         get().fetchProjects(),
         get().fetchEvents(),
@@ -903,9 +906,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().fetchGoals(),
         get().fetchStats(),
         get().fetchSuggestions(),
-        get().fetchTemplates(),
-        get().fetchTags(),
+        get().fetchMeetings(),
         get().fetchAutomationPrefs(),
+        get().fetchAutomationLogs(),
+        get().fetchAnalytics(),
+        get().fetchTags(),
+        get().fetchTemplates(),
       ])
       // Log any failures (non-blocking)
       results.forEach((r, i) => {
@@ -1210,49 +1216,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e) { console.error('deleteGoal:', e) }
   },
 
-  // Templates
-  fetchTemplates: async () => {
-    try {
-      const res = await fetch('/api/templates')
-      if (res.ok) set({ templates: await res.json() })
-    } catch (e) { console.error('fetchTemplates:', e) }
-  },
-  createTemplate: async (template) => {
-    try {
-      const res = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(template) })
-      if (res.ok) { await get().fetchTemplates() }
-    } catch (e) { console.error('createTemplate:', e) }
-  },
-  updateTemplate: async (id, data) => {
-    try {
-      const res = await fetch(`/api/templates/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      if (res.ok) { await get().fetchTemplates() }
-    } catch (e) { console.error('updateTemplate:', e) }
-  },
-  deleteTemplate: async (id) => {
-    try {
-      const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' })
-      if (res.ok) { await get().fetchTemplates() }
-    } catch (e) { console.error('deleteTemplate:', e) }
-  },
-  applyTemplate: async (id, variables) => {
-    try {
-      const res = await fetch(`/api/templates/${id}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variables }) })
-      if (res.ok) {
-        const data = await res.json()
-        await get().fetchTemplates()
-        return { content: data.content, missing: data.missingVariables || [] }
-      }
-      return { content: '', missing: [] }
-    } catch (e) { console.error('applyTemplate:', e); return { content: '', missing: [] } }
-  },
-  seedTemplates: async () => {
-    try {
-      const res = await fetch('/api/templates/seed', { method: 'POST' })
-      if (res.ok) { await get().fetchTemplates() }
-    } catch (e) { console.error('seedTemplates:', e) }
-  },
-
   // AI Chat
   sendChatMessage: async (message) => {
     try {
@@ -1294,7 +1257,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   applyTemplate: async (id, variables) => {
     try {
       const res = await fetch(`/api/templates/${id}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variables }) })
-      if (res.ok) return await res.json()
+      if (res.ok) {
+        const data = await res.json()
+        await get().fetchTemplates()
+        return { content: data.content, missing: data.missingVariables || [] }
+      }
       return { content: '', missing: [] }
     } catch (e) { console.error('applyTemplate:', e); return { content: '', missing: [] } }
   },
@@ -1375,17 +1342,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e) { console.error('seedTags:', e) }
   },
 
-  // Analytics
-  fetchAnalytics: async (range) => {
-    try {
-      const query = range ? `?range=${range}` : ''
-      const res = await fetch(`/api/analytics/overview${query}`)
-      if (res.ok) set({ analytics: await res.json() })
-    } catch (e) { console.error('fetchAnalytics:', e) }
-  },
-
   // Search
   setSearchQuery: (query) => set({ searchQuery: query }),
+  clearSearch: () => set({ searchResults: null, searchQuery: '' }),
 
   search: async (query, type, filters) => {
     try {
@@ -1395,5 +1354,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch(`/api/search?${params.toString()}`)
       if (res.ok) set({ searchResults: await res.json() })
     } catch (e) { console.error('search:', e) }
+  },
+
+  // Analytics export
+  exportAnalytics: async (format, range) => {
+    try {
+      const res = await fetch(`/api/analytics/export?format=${format}&range=${range}`)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `analytics-${range}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (e) { console.error('exportAnalytics:', e) }
   },
 }))

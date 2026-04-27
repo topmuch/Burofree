@@ -1,14 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { tagCreateSchema } from '@/lib/validations/productivity'
+import { z } from 'zod'
+
+const tagQuerySchema = z.object({
+  category: z.string().optional(),
+  search: z.string().max(200).optional(),
+})
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const category = searchParams.get('category')
-    const search = searchParams.get('search')
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate query params
+    const { searchParams } = new URL(req.url)
+    const queryParse = tagQuerySchema.safeParse(Object.fromEntries(searchParams.entries()))
+    if (!queryParse.success) {
+      return NextResponse.json(
+        { error: 'Paramètres de requête invalides', details: queryParse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const { category, search } = queryParse.data
 
     const where: Record<string, unknown> = { userId: user.id }
     if (category) where.category = category
@@ -35,42 +62,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(tags)
   } catch (error) {
     console.error('Tags GET error:', error)
-    return NextResponse.json({ error: 'Failed to fetch tags' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec du chargement des tags' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    if (!body.name || typeof body.name !== 'string' || body.name.trim() === '') {
-      return NextResponse.json({ error: 'Tag name is required' }, { status: 400 })
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
     }
 
-    const name = body.name.trim()
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate body with Zod
+    const body = await req.json()
+    const parse = tagCreateSchema.safeParse(body)
+    if (!parse.success) {
+      return NextResponse.json(
+        { error: 'Données invalides', details: parse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const data = parse.data
 
     // Validate name uniqueness per user
     const existing = await db.tag.findFirst({
-      where: { userId: user.id, name },
+      where: { userId: user.id, name: data.name },
     })
     if (existing) {
       return NextResponse.json(
-        { error: `Tag "${name}" already exists` },
+        { error: `Le tag "${data.name}" existe déjà` },
         { status: 409 }
       )
     }
 
-    const validCategories = ['urgent', 'client', 'status', 'billing', 'custom', 'general']
-    const category = validCategories.includes(body.category) ? body.category : 'general'
-
     const tag = await db.tag.create({
       data: {
-        name,
-        color: body.color || '#10b981',
-        icon: body.icon || null,
-        category,
+        name: data.name,
+        color: data.color,
+        icon: data.icon || null,
+        category: data.category,
         userId: user.id,
       },
       include: {
@@ -88,6 +127,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(tag, { status: 201 })
   } catch (error) {
     console.error('Tags POST error:', error)
-    return NextResponse.json({ error: 'Failed to create tag' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de la création du tag' }, { status: 500 })
   }
 }

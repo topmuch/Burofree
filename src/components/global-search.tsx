@@ -58,19 +58,25 @@ const filterTabs = [
 
 type FilterTabKey = (typeof filterTabs)[number]['key']
 
+// ─── Sanitize HTML helper (defense-in-depth) ──────────────────────────────
+
+function sanitizeHtml(html: string): string {
+  // Only allow <mark> and <em> tags, strip everything else
+  return html.replace(/<(?!\/?(mark|em)\b)[^>]*>/gi, '')
+}
+
 // ─── Highlighted text renderer ──────────────────────────────────────────────
 
 function HighlightedText({ html }: { html: string }) {
   // The API returns snippets with <mark> tags for highlighting.
-  // We style <mark> elements via a global CSS class or inline.
+  // First sanitize to strip any dangerous tags, then style <mark> elements.
+  const safeHtml = sanitizeHtml(html).replace(
+    /<mark>/g,
+    '<mark class="bg-amber-400/30 text-amber-200 rounded-sm px-0.5">'
+  )
   return (
     <span
-      dangerouslySetInnerHTML={{
-        __html: html.replace(
-          /<mark>/g,
-          '<mark class="bg-amber-400/30 text-amber-200 rounded-sm px-0.5">'
-        ),
-      }}
+      dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   )
 }
@@ -125,6 +131,7 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const searchResults = useAppStore((s) => s.searchResults)
 
@@ -153,7 +160,18 @@ export function GlobalSearch() {
     }
   }, [open])
 
-  // ── Debounced search ────────────────────────────────────────────────────
+  // ── Clear search function ───────────────────────────────────────────────
+
+  const clearSearch = useCallback(() => {
+    setQuery('')
+    setActiveFilter('all')
+    setSelectedIndex(0)
+    setIsSearching(false)
+    abortControllerRef.current?.abort()
+    useAppStore.getState().setSearchQuery('')
+  }, [])
+
+  // ── Debounced search with AbortController ───────────────────────────────
   useEffect(() => {
     if (!open) return
 
@@ -171,8 +189,25 @@ export function GlobalSearch() {
     setIsSearching(true)
 
     debounceRef.current = setTimeout(async () => {
+      // Cancel previous request
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       try {
-        await useAppStore.getState().search(trimmed, activeFilter)
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(trimmed)}&type=${activeFilter}&limit=20`,
+          { signal: controller.signal }
+        )
+        if (!res.ok) throw new Error('Search failed')
+        const data = await res.json()
+
+        // Update store with results
+        useAppStore.setState({ searchResults: data })
+        useAppStore.getState().setSearchQuery(trimmed)
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') return // cancelled, ignore
+        console.error('Search error:', error)
       } finally {
         setIsSearching(false)
         setSelectedIndex(0)
@@ -183,6 +218,13 @@ export function GlobalSearch() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query, activeFilter, open])
+
+  // ── Cleanup on unmount ──────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   // ── Group results by type ───────────────────────────────────────────────
   const groupedResults = useMemo(() => {
@@ -281,241 +323,275 @@ export function GlobalSearch() {
 
   const totalCount = searchResults?.total ?? 0
 
-  return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="search-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-            onClick={handleClose}
-          />
+  // ── Detect platform for shortcut display ────────────────────────────────
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPod/.test(navigator.userAgent)
 
-          {/* Dialog */}
-          <motion.div
-            key="search-dialog"
-            initial={{ opacity: 0, scale: 0.96, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -10 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="fixed inset-x-0 top-[12%] mx-auto w-[calc(100%-2rem)] max-w-2xl z-50"
-          >
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/40 overflow-hidden flex flex-col max-h-[70vh]">
-              {/* ── Search input ─────────────────────────────────────────── */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-800">
-                  {isSearching ? (
-                    <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 text-zinc-500" />
+  return (
+    <>
+      {/* ── Floating shortcut button when search is closed ──────────────── */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg
+            bg-zinc-900/80 border border-zinc-700/60 text-zinc-400 text-xs
+            hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600
+            backdrop-blur-sm transition-all shadow-lg shadow-black/20
+            group"
+          aria-label="Ouvrir la recherche"
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Rechercher</span>
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded border border-zinc-700 bg-zinc-800 text-zinc-500 ml-1">
+            {isMac ? <Command className="w-2.5 h-2.5 mr-0.5" /> : 'Ctrl'}
+            K
+          </kbd>
+        </button>
+      )}
+
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="search-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              onClick={handleClose}
+            />
+
+            {/* Dialog */}
+            <motion.div
+              key="search-dialog"
+              initial={{ opacity: 0, scale: 0.96, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -10 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="fixed inset-x-0 top-[12%] mx-auto w-[calc(100%-2rem)] max-w-2xl z-50"
+            >
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/40 overflow-hidden flex flex-col max-h-[70vh]">
+                {/* ── Search input ─────────────────────────────────────────── */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-800">
+                    {isSearching ? (
+                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4 text-zinc-500" />
+                    )}
+                  </div>
+
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
+                    placeholder="Rechercher partout…"
+                    className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 outline-none"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+
+                  <div className="flex items-center gap-1 text-zinc-600">
+                    <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
+                      <Command className="w-2.5 h-2.5 mr-0.5" />K
+                    </kbd>
+                    {query.length > 0 && (
+                      <button
+                        onClick={clearSearch}
+                        className="p-1 rounded-md hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        aria-label="Effacer la recherche"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={handleClose}
+                      className="p-1 rounded-md hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      aria-label="Fermer la recherche"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Filter tabs ──────────────────────────────────────────── */}
+                <div className="flex items-center gap-1 px-4 py-2 border-b border-zinc-800 overflow-x-auto custom-scrollbar">
+                  {filterTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => {
+                        setActiveFilter(tab.key)
+                        setSelectedIndex(0)
+                      }}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
+                        activeFilter === tab.key
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent'
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+
+                  {totalCount > 0 && (
+                    <span className="ml-auto text-[10px] text-zinc-600 whitespace-nowrap">
+                      {totalCount} résultat{totalCount > 1 ? 's' : ''}
+                    </span>
                   )}
                 </div>
 
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={handleInputKeyDown}
-                  placeholder="Rechercher partout…"
-                  className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 outline-none"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-
-                <div className="flex items-center gap-1 text-zinc-600">
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
-                    <Command className="w-2.5 h-2.5 mr-0.5" />K
-                  </kbd>
-                  <button
-                    onClick={handleClose}
-                    className="p-1 rounded-md hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
-                    aria-label="Fermer la recherche"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* ── Filter tabs ──────────────────────────────────────────── */}
-              <div className="flex items-center gap-1 px-4 py-2 border-b border-zinc-800 overflow-x-auto custom-scrollbar">
-                {filterTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => {
-                      setActiveFilter(tab.key)
-                      setSelectedIndex(0)
-                    }}
-                    className={cn(
-                      'px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
-                      activeFilter === tab.key
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent'
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-
-                {totalCount > 0 && (
-                  <span className="ml-auto text-[10px] text-zinc-600 whitespace-nowrap">
-                    {totalCount} résultat{totalCount > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-
-              {/* ── Results list ─────────────────────────────────────────── */}
-              <div
-                ref={listRef}
-                className="flex-1 overflow-y-auto custom-scrollbar"
-              >
-                {/* Empty state */}
-                {showEmpty && (
-                  <div className="flex flex-col items-center justify-center py-12 px-4">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center mb-3">
-                      <Search className="w-5 h-5 text-zinc-600" />
-                    </div>
-                    <p className="text-sm text-zinc-400">Aucun résultat</p>
-                    <p className="text-xs text-zinc-600 mt-1">
-                      Essayez avec d&apos;autres mots-clés
-                    </p>
-                  </div>
-                )}
-
-                {/* Idle state – show shortcut hint */}
-                {query.trim().length < 2 && (
-                  <div className="flex flex-col items-center justify-center py-12 px-4">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center mb-3">
-                      <Command className="w-5 h-5 text-zinc-500" />
-                    </div>
-                    <p className="text-sm text-zinc-400">
-                      Recherche avancée full-text
-                    </p>
-                    <p className="text-xs text-zinc-600 mt-1">
-                      Tapez au moins 2 caractères pour rechercher
-                    </p>
-                  </div>
-                )}
-
-                {/* Grouped results */}
-                {groupedResults.map((group) => {
-                  const Icon = group.config.icon
-                  return (
-                    <div key={group.type}>
-                      {/* Section header */}
-                      <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
-                        <Icon className={cn('w-3.5 h-3.5', group.config.color)} />
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                          {group.config.label}
-                        </span>
-                        <span className="text-[10px] text-zinc-700">
-                          {group.items.length}
-                        </span>
+                {/* ── Results list ─────────────────────────────────────────── */}
+                <div
+                  ref={listRef}
+                  className="flex-1 overflow-y-auto custom-scrollbar"
+                >
+                  {/* Empty state */}
+                  {showEmpty && (
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center mb-3">
+                        <Search className="w-5 h-5 text-zinc-600" />
                       </div>
+                      <p className="text-sm text-zinc-400">Aucun résultat</p>
+                      <p className="text-xs text-zinc-600 mt-1">
+                        Essayez avec d&apos;autres mots-clés
+                      </p>
+                    </div>
+                  )}
 
-                      {/* Items */}
-                      {group.items.map((result) => {
-                        const globalIndex = flatResults.indexOf(result)
-                        const isSelected = globalIndex === selectedIndex
+                  {/* Idle state – show shortcut hint */}
+                  {query.trim().length < 2 && (
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center mb-3">
+                        <Command className="w-5 h-5 text-zinc-500" />
+                      </div>
+                      <p className="text-sm text-zinc-400">
+                        Recherche avancée full-text
+                      </p>
+                      <p className="text-xs text-zinc-600 mt-1">
+                        Tapez au moins 2 caractères pour rechercher
+                      </p>
+                    </div>
+                  )}
 
-                        return (
-                          <button
-                            key={`${result.type}-${result.id}`}
-                            data-index={globalIndex}
-                            onClick={() => handleResultClick(result)}
-                            onMouseEnter={() => setSelectedIndex(globalIndex)}
-                            className={cn(
-                              'w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors',
-                              isSelected
-                                ? 'bg-zinc-800/80'
-                                : 'hover:bg-zinc-800/50'
-                            )}
-                          >
-                            {/* Icon */}
-                            <div
+                  {/* Grouped results */}
+                  {groupedResults.map((group) => {
+                    const Icon = group.config.icon
+                    return (
+                      <div key={group.type}>
+                        {/* Section header */}
+                        <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
+                          <Icon className={cn('w-3.5 h-3.5', group.config.color)} />
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                            {group.config.label}
+                          </span>
+                          <span className="text-[10px] text-zinc-700">
+                            {group.items.length}
+                          </span>
+                        </div>
+
+                        {/* Items */}
+                        {group.items.map((result) => {
+                          const globalIndex = flatResults.indexOf(result)
+                          const isSelected = globalIndex === selectedIndex
+
+                          return (
+                            <button
+                              key={`${result.type}-${result.id}`}
+                              data-index={globalIndex}
+                              onClick={() => handleResultClick(result)}
+                              onMouseEnter={() => setSelectedIndex(globalIndex)}
                               className={cn(
-                                'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5',
-                                group.config.bgColor
+                                'w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors',
+                                isSelected
+                                  ? 'bg-zinc-800/80'
+                                  : 'hover:bg-zinc-800/50'
                               )}
                             >
-                              <Icon
-                                className={cn('w-3.5 h-3.5', group.config.color)}
-                              />
-                            </div>
+                              {/* Icon */}
+                              <div
+                                className={cn(
+                                  'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-0.5',
+                                  group.config.bgColor
+                                )}
+                              >
+                                <Icon
+                                  className={cn('w-3.5 h-3.5', group.config.color)}
+                                />
+                              </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-zinc-200 truncate">
-                                {result.title}
-                              </p>
-                              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2 leading-relaxed">
-                                <HighlightedText html={result.snippet} />
-                              </p>
-                            </div>
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-zinc-200 truncate">
+                                  {result.title}
+                                </p>
+                                <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2 leading-relaxed">
+                                  <HighlightedText html={result.snippet} />
+                                </p>
+                              </div>
 
-                            {/* Meta */}
-                            <div className="flex flex-col items-end gap-1 flex-shrink-0 pt-0.5">
-                              <ScoreBar score={result.score} />
-                              <RelativeDate date={result.createdAt} />
-                            </div>
+                              {/* Meta */}
+                              <div className="flex flex-col items-end gap-1 flex-shrink-0 pt-0.5">
+                                <ScoreBar score={result.score} />
+                                <RelativeDate date={result.createdAt} />
+                              </div>
 
-                            {/* Arrow hint */}
-                            {isSelected && (
-                              <ArrowRight className="w-3.5 h-3.5 text-zinc-600 mt-1 flex-shrink-0" />
-                            )}
-                          </button>
-                        )
-                      })}
+                              {/* Arrow hint */}
+                              {isSelected && (
+                                <ArrowRight className="w-3.5 h-3.5 text-zinc-600 mt-1 flex-shrink-0" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+
+                  {/* Loading indicator at bottom */}
+                  {isSearching && (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                      <span className="ml-2 text-xs text-zinc-500">
+                        Recherche en cours…
+                      </span>
                     </div>
-                  )
-                })}
+                  )}
 
-                {/* Loading indicator at bottom */}
-                {isSearching && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-                    <span className="ml-2 text-xs text-zinc-500">
-                      Recherche en cours…
+                  {/* Bottom padding */}
+                  {flatResults.length > 0 && <div className="h-2" />}
+                </div>
+
+                {/* ── Footer hint ──────────────────────────────────────────── */}
+                <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-600">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
+                        ↑↓
+                      </kbd>
+                      Naviguer
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
+                        ↵
+                      </kbd>
+                      Ouvrir
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
+                        esc
+                      </kbd>
+                      Fermer
                     </span>
                   </div>
-                )}
-
-                {/* Bottom padding */}
-                {flatResults.length > 0 && <div className="h-2" />}
-              </div>
-
-              {/* ── Footer hint ──────────────────────────────────────────── */}
-              <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-600">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
-                      ↑↓
-                    </kbd>
-                    Naviguer
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
-                      ↵
-                    </kbd>
-                    Ouvrir
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <kbd className="px-1 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-500">
-                      esc
-                    </kbd>
-                    Fermer
-                  </span>
+                  <span className="text-zinc-700">Burofree Search</span>
                 </div>
-                <span className="text-zinc-700">Burofree Search</span>
               </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

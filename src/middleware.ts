@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyInvoiceToken } from '@/lib/invoice-token'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
 
 /**
  * Burofree Middleware
@@ -19,7 +20,7 @@ const PUBLIC_ROUTES = [
 ]
 
 // Routes that need OAuth token refresh headers
-const OAUTH_ROUTES = ['/api/emails', '/api/email-sync', '/api/calendar']
+const OAUTH_ROUTES = ['/api/emails', '/api/calendar']
 
 /**
  * Check if a path matches the invoice PDF pattern /api/invoices/[id]/pdf
@@ -72,6 +73,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json(
       { error: 'Non autorisé. Veuillez vous connecter.' },
       { status: 401 }
+    )
+  }
+
+  // After confirming session token exists, check rate limit
+  const rateLimitId = getRateLimitIdentifier(request)
+  // Use stricter limits for auth-related endpoints
+  const isAuthRoute = pathname.startsWith('/api/auth/credentials')
+  const rateOptions = isAuthRoute ? DEFAULT_AUTH_OPTIONS : DEFAULT_API_OPTIONS
+  const rateCheck = checkRateLimit(rateLimitId, rateOptions)
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+      { status: 429 }
     )
   }
 

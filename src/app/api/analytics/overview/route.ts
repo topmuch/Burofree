@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { analyticsRangeSchema } from '@/lib/validations/productivity'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,11 +15,30 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const range = searchParams.get('range') || 'month'
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate range param
+    const { searchParams } = new URL(req.url)
+    const rangeParse = analyticsRangeSchema.safeParse(searchParams.get('range') || undefined)
+    if (!rangeParse.success) {
+      return NextResponse.json(
+        { error: 'Paramètre "range" invalide. Valeurs acceptées : week, month, year' },
+        { status: 400 }
+      )
+    }
+    const range = rangeParse.data
 
     // ─── Compute date range ────────────────────────────────────────────────────
     const now = new Date()
@@ -347,7 +369,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Analytics overview GET error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch analytics overview' },
+      { error: 'Échec du chargement des données analytiques' },
       { status: 500 }
     )
   }

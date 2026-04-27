@@ -1,43 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { tagAssignSchema } from '@/lib/validations/productivity'
 
 type EntityType = 'task' | 'email' | 'document' | 'project'
 
-interface UnassignBody {
-  tagId: string
-  entityType: EntityType
-  entityIds: string[]
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const body: UnassignBody = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    const { tagId, entityType, entityIds } = body
-
-    if (!tagId || !entityType || !Array.isArray(entityIds) || entityIds.length === 0) {
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
       return NextResponse.json(
-        { error: 'tagId, entityType, and entityIds (non-empty array) are required' },
-        { status: 400 }
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
       )
     }
 
-    const validTypes: EntityType[] = ['task', 'email', 'document', 'project']
-    if (!validTypes.includes(entityType)) {
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate body with Zod (reuse tagAssignSchema since structure is the same)
+    const body = await req.json()
+    const parse = tagAssignSchema.safeParse(body)
+    if (!parse.success) {
       return NextResponse.json(
-        { error: `entityType must be one of: ${validTypes.join(', ')}` },
+        { error: 'Données invalides', details: parse.error.flatten() },
         { status: 400 }
       )
     }
+    const { tagId, entityType, entityIds } = parse.data
 
     // Verify the tag belongs to the user
     const tag = await db.tag.findFirst({
       where: { id: tagId, userId: user.id },
     })
     if (!tag) {
-      return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Tag non trouvé' }, { status: 404 })
     }
 
     let unassigned = 0
@@ -76,6 +77,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ unassigned })
   } catch (error) {
     console.error('Tags unassign POST error:', error)
-    return NextResponse.json({ error: 'Failed to unassign tags' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec du retrait des tags' }, { status: 500 })
   }
 }

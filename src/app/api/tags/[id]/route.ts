@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { tagUpdateSchema } from '@/lib/validations/productivity'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
+
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
     const { id } = await params
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
 
     const tag = await db.tag.findFirst({
       where: { id, userId: user.id },
@@ -29,13 +44,13 @@ export async function GET(
     })
 
     if (!tag) {
-      return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Tag non trouvé' }, { status: 404 })
     }
 
     return NextResponse.json(tag)
   } catch (error) {
     console.error('Tag GET error:', error)
-    return NextResponse.json({ error: 'Failed to fetch tag' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec du chargement du tag' }, { status: 500 })
   }
 }
 
@@ -44,43 +59,63 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const body = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    const { id } = await params
+
+    // Verify ownership
     const existing = await db.tag.findFirst({
       where: { id, userId: user.id },
     })
     if (!existing) {
-      return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Tag non trouvé' }, { status: 404 })
     }
 
+    // Validate body with Zod
+    const body = await req.json()
+    const parse = tagUpdateSchema.safeParse(body)
+    if (!parse.success) {
+      return NextResponse.json(
+        { error: 'Données invalides', details: parse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const data = parse.data
+
     // If renaming, check uniqueness
-    if (body.name && body.name.trim() !== existing.name) {
+    if (data.name && data.name.trim() !== existing.name) {
       const nameConflict = await db.tag.findFirst({
-        where: { userId: user.id, name: body.name.trim(), NOT: { id } },
+        where: { userId: user.id, name: data.name.trim(), NOT: { id } },
       })
       if (nameConflict) {
         return NextResponse.json(
-          { error: `Tag "${body.name.trim()}" already exists` },
+          { error: `Le tag "${data.name.trim()}" existe déjà` },
           { status: 409 }
         )
       }
     }
 
-    const validCategories = ['urgent', 'client', 'status', 'billing', 'custom', 'general']
-    const data: Record<string, unknown> = {}
-    if (body.name !== undefined) data.name = body.name.trim()
-    if (body.color !== undefined) data.color = body.color
-    if (body.icon !== undefined) data.icon = body.icon
-    if (body.category !== undefined) {
-      data.category = validCategories.includes(body.category) ? body.category : 'general'
-    }
+    const updateData: Record<string, unknown> = {}
+    if (data.name !== undefined) updateData.name = data.name.trim()
+    if (data.color !== undefined) updateData.color = data.color
+    if (data.icon !== undefined) updateData.icon = data.icon
+    if (data.category !== undefined) updateData.category = data.category
 
     const tag = await db.tag.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         _count: {
           select: {
@@ -96,24 +131,37 @@ export async function PUT(
     return NextResponse.json(tag)
   } catch (error) {
     console.error('Tag PUT error:', error)
-    return NextResponse.json({ error: 'Failed to update tag' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de la mise à jour du tag' }, { status: 500 })
   }
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    const { id } = await params
+
+    // Verify ownership
     const existing = await db.tag.findFirst({
       where: { id, userId: user.id },
     })
     if (!existing) {
-      return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Tag non trouvé' }, { status: 404 })
     }
 
     // Deleting the tag will cascade-delete all junction entries (TaskTag, EmailTag, DocumentTag, ProjectTag)
@@ -122,6 +170,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, deleted: id })
   } catch (error) {
     console.error('Tag DELETE error:', error)
-    return NextResponse.json({ error: 'Failed to delete tag' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de la suppression du tag' }, { status: 500 })
   }
 }

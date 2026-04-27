@@ -1,23 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { templateApplySchema } from '@/lib/validations/productivity'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const body = await req.json()
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    const { id } = await params
+
+    // Validate body
+    const body = await req.json()
+    const parse = templateApplySchema.safeParse(body)
+    if (!parse.success) {
+      return NextResponse.json(
+        { error: 'Données invalides', details: parse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const providedVariables = parse.data.variables
 
     const template = await db.template.findFirst({
       where: { id, userId: user.id },
     })
 
     if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Template non trouvé' }, { status: 404 })
     }
 
     // Extract all {variable_name} patterns from content
@@ -29,9 +53,6 @@ export async function POST(
         contentVariables.push(match[1])
       }
     }
-
-    // Accept variables object from request body
-    const providedVariables: Record<string, string> = body.variables || {}
 
     // Replace all variable placeholders with provided values
     let processedContent = template.content
@@ -65,6 +86,6 @@ export async function POST(
     })
   } catch (error) {
     console.error('Template apply error:', error)
-    return NextResponse.json({ error: 'Failed to apply template' }, { status: 500 })
+    return NextResponse.json({ error: 'Échec de l\'application du template' }, { status: 500 })
   }
 }

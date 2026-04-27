@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateSnippet, calculateScore, parseFilters } from '@/lib/search-utils'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { searchQuerySchema } from '@/lib/validations/productivity'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,37 +20,35 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
+
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate query params with Zod
     const { searchParams } = new URL(req.url)
-    const query = (searchParams.get('q') || '').trim()
-    const type = searchParams.get('type') || 'all'
-    const filtersStr = searchParams.get('filters') || ''
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
-
-    // Validate query
-    if (!query || query.length < 2) {
+    const queryParse = searchQuerySchema.safeParse(Object.fromEntries(searchParams.entries()))
+    if (!queryParse.success) {
       return NextResponse.json(
-        { error: 'Query parameter "q" is required and must be at least 2 characters' },
+        { error: 'Paramètres de recherche invalides', details: queryParse.error.flatten() },
         { status: 400 }
       )
     }
-
-    // Validate type
-    const validTypes = ['task', 'email', 'document', 'contact', 'all']
-    if (!validTypes.includes(type)) {
-      return NextResponse.json(
-        { error: `Invalid type. Must be one of: ${validTypes.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    const { q: query, type, filters: filtersStr, page, limit } = queryParse.data
 
     const userId = user.id
 
     // Parse filters
-    const filters = parseFilters(filtersStr)
+    const filters = parseFilters(filtersStr || '')
 
     // ─── Collect results from all searchable entities ──────────────────────────
     const results: Array<{
@@ -351,7 +352,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Search GET error:', error)
     return NextResponse.json(
-      { error: 'Failed to perform search' },
+      { error: 'Échec de la recherche' },
       { status: 500 }
     )
   }

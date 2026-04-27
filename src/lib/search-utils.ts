@@ -6,6 +6,18 @@
  */
 
 /**
+ * Escape HTML special characters to prevent XSS.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
  * Extract a snippet of text around the first occurrence of the query,
  * wrapping matching text in `<mark>` tags.
  *
@@ -62,18 +74,20 @@ export function generateSnippet(
   const prefix = snippetStart > 0 ? '…' : ''
   const suffix = snippetEnd < text.length ? '…' : ''
 
-  // Apply <mark> tags around all occurrences of the query within the snippet
-  const markedSnippet = highlightMatches(rawSnippet, query)
+  // Escape HTML first to prevent XSS, then apply <mark> tags
+  const escapedSnippet = escapeHtml(rawSnippet)
+  const markedSnippet = highlightMatches(escapedSnippet, escapeHtml(query))
 
   return `${prefix}${markedSnippet}${suffix}`
 }
 
 /**
  * Highlight all occurrences of the query in the text with `<mark>` tags.
+ * IMPORTANT: The text should already be HTML-escaped before calling this.
  * Case-insensitive matching while preserving original casing.
  */
-function highlightMatches(text: string, query: string): string {
-  if (!query) return text
+export function highlightMatches(text: string, query: string): string {
+  if (!query.trim()) return text
 
   // Escape special regex characters in the query
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -86,14 +100,14 @@ function highlightMatches(text: string, query: string): string {
  * Truncate text to a maximum length, adding ellipsis if needed.
  */
 function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
+  if (text.length <= maxLength) return escapeHtml(text)
   // Try to break at a word boundary
   const truncated = text.slice(0, maxLength)
   const lastSpace = truncated.lastIndexOf(' ')
   if (lastSpace > maxLength * 0.6) {
-    return truncated.slice(0, lastSpace) + '…'
+    return escapeHtml(truncated.slice(0, lastSpace)) + '…'
   }
-  return truncated + '…'
+  return escapeHtml(truncated) + '…'
 }
 
 /**

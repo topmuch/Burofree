@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { generateInvoicePDF, type InvoicePDFData } from '@/lib/pdf-generator'
+import { requireAuth } from '@/lib/auth-guard'
+import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
+import { analyticsExportSchema } from '@/lib/validations/productivity'
+import { existsSync, readdirSync } from 'fs'
+import { join } from 'path'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,12 +18,33 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const format = searchParams.get('format') || 'csv'
-    const range = searchParams.get('range') || 'month'
+    // Rate limiting
+    const rateLimitId = getRateLimitIdentifier(req)
+    const rateCheck = checkRateLimit(rateLimitId, DEFAULT_API_OPTIONS)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
+        { status: 429, headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, 0, rateCheck.retryAfterMs) }
+      )
+    }
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+    // Auth
+    const { user, response: authResponse } = await requireAuth()
+    if (!user) return authResponse!
+
+    // Validate query params
+    const { searchParams } = new URL(req.url)
+    const queryParse = analyticsExportSchema.safeParse({
+      format: searchParams.get('format') || undefined,
+      range: searchParams.get('range') || undefined,
+    })
+    if (!queryParse.success) {
+      return NextResponse.json(
+        { error: 'Paramètres invalides', details: queryParse.error.flatten() },
+        { status: 400 }
+      )
+    }
+    const { format, range } = queryParse.data
 
     // ─── Compute date range ────────────────────────────────────────────────────
     const now = new Date()
@@ -175,7 +200,8 @@ export async function GET(req: NextRequest) {
         lines.push(`${name},${client},${pTotalHours},${pBillableHours},${pRevenue}`)
       }
 
-      const csvContent = lines.join('\n')
+      // Prepend BOM for proper French character encoding in Excel
+      const csvContent = '\uFEFF' + lines.join('\n')
       const filename = `rapport-analytics-${range}-${now.toISOString().split('T')[0]}.csv`
 
       return new NextResponse(csvContent, {
@@ -186,10 +212,10 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // ─── PDF export (HTML with Puppeteer fallback) ─────────────────────────────
+    // ─── PDF export (real Puppeteer PDF generation) ────────────────────────────
     if (format === 'pdf') {
       const html = generateAnalyticsHTML({
-        user: { name: user.name || 'Burofree', email: user.email, profession: user.profession || '' },
+        user: { name: user.name || 'Burofree', email: user.email, profession: '' },
         range: rangeLabel,
         rangeStart,
         rangeEnd,
@@ -200,64 +226,137 @@ export async function GET(req: NextRequest) {
         projects,
       })
 
-      // Try generating PDF with the same approach as invoices
-      const invoiceDataForPdf: InvoicePDFData = {
-        invoice: {
-          id: '',
-          number: `RAPPORT-${range.toUpperCase()}`,
-          type: 'invoice',
-          clientName: user.name || 'Burofree',
-          clientEmail: user.email,
-          clientAddress: null,
-          items: '[]',
-          subtotal: totalRevenue,
-          taxRate: 0,
-          taxAmount: 0,
-          total: totalRevenue,
-          currency: 'EUR',
-          status: 'paid',
-          dueDate: null,
-          paidAt: null,
-          notes: null,
-          projectId: null,
-          project: null,
-          userId: user.id,
-          createdAt: now.toISOString(),
-          updatedAt: now.toISOString(),
-          projectName: null,
-          projectColor: null,
-        },
-        emitter: {
-          name: user.name || 'Burofree',
-          email: user.email,
-          profession: user.profession || undefined,
-        },
-        items: [],
+      const filename = `rapport-analytics-${range}-${now.toISOString().split('T')[0]}.pdf`
+
+      // Try real PDF generation with Puppeteer
+      const pdfResult = await generatePDF(html)
+      if (pdfResult) {
+        return new NextResponse(new Uint8Array(pdfResult), {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+          },
+        })
       }
 
-      const result = await generateInvoicePDF(invoiceDataForPdf, { format: 'html' })
-
-      // Since we want to use our custom HTML, return it directly
-      // The PDF generator above is just for checking puppeteer availability
-      // We return our custom analytics HTML instead
-      const filename = `rapport-analytics-${range}-${now.toISOString().split('T')[0]}`
-
+      // Fallback: return HTML if Puppeteer/Chromium unavailable
+      const htmlFilename = `rapport-analytics-${range}-${now.toISOString().split('T')[0]}.html`
       return new NextResponse(html, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Content-Disposition': `inline; filename="${filename}.html"`,
+          'Content-Disposition': `inline; filename="${htmlFilename}"`,
         },
       })
     }
 
-    return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
+    return NextResponse.json({ error: 'Format invalide' }, { status: 400 })
   } catch (error) {
     console.error('Analytics export GET error:', error)
     return NextResponse.json(
-      { error: 'Failed to export analytics' },
+      { error: 'Échec de l\'export des données analytiques' },
       { status: 500 }
     )
   }
+}
+
+// ─── Real PDF generation with Puppeteer ─────────────────────────────────────────
+
+let puppeteerAvailable: boolean | null = null
+
+async function generatePDF(html: string): Promise<Buffer | null> {
+  if (puppeteerAvailable === false) return null
+
+  try {
+    const puppeteer = await import('puppeteer-core')
+    const executablePath = findChromium()
+
+    if (!executablePath) {
+      console.warn('[Analytics PDF] Chromium not found, falling back to HTML')
+      puppeteerAvailable = false
+      return null
+    }
+
+    puppeteerAvailable = true
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--font-render-hinting=none',
+      ],
+    })
+
+    try {
+      const page = await browser.newPage()
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 15000 })
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '15mm', right: '12mm', bottom: '15mm', left: '12mm' },
+        landscape: true,
+      })
+
+      return Buffer.from(pdfBuffer)
+    } finally {
+      await browser.close().catch(() => {})
+    }
+  } catch (error) {
+    console.error('[Analytics PDF] PDF generation failed, falling back to HTML:', error)
+    puppeteerAvailable = false
+    return null
+  }
+}
+
+function findChromium(): string | null {
+  // Common Chromium paths on Linux
+  const paths = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/snap/bin/chromium',
+    process.env.CHROMIUM_PATH || '',
+  ]
+
+  // Also check Playwright's installed Chromium
+  const homeDir = process.env.HOME || '/root'
+  const playwrightPaths = [
+    `${homeDir}/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome`,
+    `${homeDir}/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome`,
+  ]
+
+  const allPaths = [...paths, ...playwrightPaths]
+
+  for (const p of allPaths) {
+    if (p) {
+      try {
+        if (existsSync(p)) return p
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  // Dynamic fallback: find any Playwright chromium
+  try {
+    const playwrightDir = join(homeDir, '.cache', 'ms-playwright')
+    if (existsSync(playwrightDir)) {
+      const dirs = readdirSync(playwrightDir).filter((d) => d.startsWith('chromium-'))
+      for (const dir of dirs) {
+        const chromePath = join(playwrightDir, dir, 'chrome-linux64', 'chrome')
+        if (existsSync(chromePath)) return chromePath
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  return null
 }
 
 // ─── Analytics HTML Report Generator ───────────────────────────────────────────

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle, Receipt, Video, Mail, RefreshCw,
-  CheckCircle, XCircle, Clock, Activity, ChevronRight
+  CheckCircle, XCircle, Clock, Activity, ChevronRight, Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ interface AutomationConfig {
 }
 
 interface AutomationPreference {
+  id?: string
   enabled: boolean
   channel: 'in_app' | 'email' | 'both'
   frequency: '15min' | '30min' | '1h' | 'daily'
@@ -102,24 +103,8 @@ const typeIconMap: Record<string, React.ElementType> = {
   unpaid_invoices: Receipt,
   meeting_reminder: Video,
   email_followup: Mail,
+  system: Activity,
 }
-
-// ─── Mock activity logs ──────────────────────────────────────────────
-
-const generateMockLogs = (): ActivityLogEntry[] => [
-  { id: 'log-1', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), type: 'overdue_tasks', action: 'Vérification des tâches', details: '2 tâches en retard détectées', success: true },
-  { id: 'log-2', timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), type: 'unpaid_invoices', action: 'Rappel facture', details: 'Facture INV-2024-031 rappel envoyé', success: true },
-  { id: 'log-3', timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), type: 'meeting_reminder', action: 'Rappel réunion', details: 'Réunion "Sprint Review" dans 2h', success: true },
-  { id: 'log-4', timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), type: 'email_followup', action: 'Suivi email', details: '3 emails sans réponse depuis 48h', success: true },
-  { id: 'log-5', timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(), type: 'overdue_tasks', action: 'Vérification des tâches', details: 'Aucune tâche en retard', success: true },
-  { id: 'log-6', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), type: 'unpaid_invoices', action: 'Rappel facture', details: 'Échec d\'envoi de l\'email de rappel', success: false },
-  { id: 'log-7', timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(), type: 'meeting_reminder', action: 'Rappel réunion', details: 'Réunion "Client Onboarding" dans 1h', success: true },
-  { id: 'log-8', timestamp: new Date(Date.now() - 1000 * 60 * 240).toISOString(), type: 'email_followup', action: 'Suivi email', details: '1 email sans réponse depuis 72h', success: true },
-  { id: 'log-9', timestamp: new Date(Date.now() - 1000 * 60 * 300).toISOString(), type: 'overdue_tasks', action: 'Vérification des tâches', details: '1 tâche en retard détectée', success: true },
-  { id: 'log-10', timestamp: new Date(Date.now() - 1000 * 60 * 360).toISOString(), type: 'unpaid_invoices', action: 'Rappel facture', details: 'Facture INV-2024-028 rappel envoyé', success: true },
-  { id: 'log-11', timestamp: new Date(Date.now() - 1000 * 60 * 420).toISOString(), type: 'meeting_reminder', action: 'Rappel réunion', details: 'Aucune réunion à venir', success: true },
-  { id: 'log-12', timestamp: new Date(Date.now() - 1000 * 60 * 480).toISOString(), type: 'email_followup', action: 'Suivi email', details: 'Échec de connexion au serveur mail', success: false },
-]
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -158,42 +143,169 @@ function getAutomationBgColor(type: string): string {
   }
 }
 
+// Default preference when API hasn't responded yet
+function getDefaultPreference(type: string): AutomationPreference {
+  const config = automationTypes.find(t => t.type === type)
+  return {
+    enabled: true,
+    channel: 'in_app',
+    frequency: '30min',
+    threshold: config?.defaultThreshold || 7,
+  }
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 
 export function AutomationsSection() {
   const { tasks, invoices, meetings, emails } = useAppStore()
 
-  const [preferences, setPreferences] = useState<Record<string, AutomationPreference>>({
-    overdue_tasks: { enabled: true, channel: 'in_app', frequency: '30min', threshold: 1 },
-    unpaid_invoices: { enabled: true, channel: 'email', frequency: 'daily', threshold: 7 },
-    meeting_reminder: { enabled: true, channel: 'both', frequency: '15min', threshold: 24 },
-    email_followup: { enabled: false, channel: 'in_app', frequency: '1h', threshold: 2 },
-  })
-
-  const [logs] = useState<ActivityLogEntry[]>(generateMockLogs())
-  const [logDisplayCount, setLogDisplayCount] = useState(20)
+  const [preferences, setPreferences] = useState<Record<string, AutomationPreference>>({})
+  const [logs, setLogs] = useState<ActivityLogEntry[]>([])
+  const [loadingPrefs, setLoadingPrefs] = useState(true)
+  const [loadingLogs, setLoadingLogs] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
+  const [logsPage, setLogsPage] = useState(1)
+  const [logsTotalPages, setLogsTotalPages] = useState(1)
+  const [loadingMoreLogs, setLoadingMoreLogs] = useState(false)
+
+  // ─── Fetch preferences on mount ───────────────────────────────────
+
+  const fetchPreferences = useCallback(async () => {
+    try {
+      setLoadingPrefs(true)
+      const res = await fetch('/api/automations/preferences')
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      const prefsMap: Record<string, AutomationPreference> = {}
+      for (const p of data) {
+        prefsMap[p.type] = {
+          id: p.id,
+          enabled: p.enabled,
+          channel: p.channel,
+          frequency: p.frequency,
+          threshold: p.threshold,
+        }
+      }
+      // Fill in defaults for any missing types
+      for (const autoType of automationTypes) {
+        if (!prefsMap[autoType.type]) {
+          prefsMap[autoType.type] = getDefaultPreference(autoType.type)
+        }
+      }
+      setPreferences(prefsMap)
+    } catch {
+      toast.error('Erreur lors du chargement des préférences')
+    } finally {
+      setLoadingPrefs(false)
+    }
+  }, [])
+
+  // ─── Fetch logs on mount ──────────────────────────────────────────
+
+  const fetchLogs = useCallback(async (page: number = 1, append: boolean = false) => {
+    try {
+      if (append) {
+        setLoadingMoreLogs(true)
+      } else {
+        setLoadingLogs(true)
+      }
+      const res = await fetch(`/api/automations/logs?page=${page}&limit=20`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      const mappedLogs: ActivityLogEntry[] = (data.logs || []).map((l: Record<string, unknown>) => ({
+        id: l.id as string,
+        timestamp: l.createdAt as string,
+        type: l.type as string,
+        action: l.action as string,
+        details: (l.details as string) || '',
+        success: l.success as boolean,
+      }))
+      if (append) {
+        setLogs(prev => [...prev, ...mappedLogs])
+      } else {
+        setLogs(mappedLogs)
+      }
+      setLogsTotalPages(data.pagination?.totalPages || 1)
+    } catch {
+      toast.error('Erreur lors du chargement des logs')
+    } finally {
+      setLoadingLogs(false)
+      setLoadingMoreLogs(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPreferences()
+    fetchLogs(1)
+  }, [fetchPreferences, fetchLogs])
 
   const displayedLogs = useMemo(() => {
-    return logs.slice(0, logDisplayCount)
-  }, [logs, logDisplayCount])
+    return logs
+  }, [logs])
 
   // ─── Handlers ──────────────────────────────────────────────────────
 
-  const updatePreference = (type: string, field: keyof AutomationPreference, value: unknown) => {
+  const updatePreference = async (type: string, field: keyof AutomationPreference, value: unknown) => {
+    // Optimistic update
+    const prevPrefs = { ...preferences }
     setPreferences(prev => ({
       ...prev,
       [type]: { ...prev[type], [field]: value }
     }))
+
+    try {
+      const res = await fetch('/api/automations/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, [field]: value }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setPreferences(prev => ({
+        ...prev,
+        [type]: {
+          id: updated.id,
+          enabled: updated.enabled,
+          channel: updated.channel,
+          frequency: updated.frequency,
+          threshold: updated.threshold,
+        }
+      }))
+
+      // Toast for toggle changes
+      if (field === 'enabled') {
+        toast.success(value ? `${automationTypes.find(a => a.type === type)?.label} activé` : `${automationTypes.find(a => a.type === type)?.label} désactivé`)
+      } else {
+        toast.success('Préférence mise à jour')
+      }
+    } catch {
+      // Revert on error
+      setPreferences(prevPrefs)
+      toast.error('Erreur lors de la mise à jour')
+    }
   }
 
   const handleCheckNow = async () => {
     setIsChecking(true)
-    toast.info('Vérification en cours...')
-    // Simulate async check
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsChecking(false)
-    toast.success('Vérification terminée — tout est à jour')
+    try {
+      const res = await fetch('/api/automations/check', { method: 'POST' })
+      if (!res.ok) throw new Error()
+      const summary = await res.json()
+      toast.success(`${summary.totalNotified || 0} notification(s) envoyée(s)`)
+      // Refresh logs after check
+      setLogsPage(1)
+      await fetchLogs(1)
+    } catch {
+      toast.error('Erreur lors de la vérification')
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  const handleLoadMoreLogs = async () => {
+    const nextPage = logsPage + 1
+    setLogsPage(nextPage)
+    await fetchLogs(nextPage, true)
   }
 
   // ─── Render ────────────────────────────────────────────────────────
@@ -209,7 +321,10 @@ export function AutomationsSection() {
           <div>
             <h2 className="text-lg font-semibold">Rappels & Automatisations</h2>
             <p className="text-xs text-muted-foreground">
-              {Object.values(preferences).filter(p => p.enabled).length} active{Object.values(preferences).filter(p => p.enabled).length !== 1 ? 's' : ''} sur {automationTypes.length}
+              {loadingPrefs
+                ? 'Chargement...'
+                : `${Object.values(preferences).filter(p => p.enabled).length} active${Object.values(preferences).filter(p => p.enabled).length !== 1 ? 's' : ''} sur ${automationTypes.length}`
+              }
             </p>
           </div>
         </div>
@@ -228,7 +343,7 @@ export function AutomationsSection() {
       {/* Preference Cards */}
       <div className="space-y-3">
         {automationTypes.map((autoType, index) => {
-          const pref = preferences[autoType.type]
+          const pref = preferences[autoType.type] || getDefaultPreference(autoType.type)
           const IconComp = autoType.icon
           const color = getAutomationColor(autoType.type)
           const bgColor = getAutomationBgColor(autoType.type)
@@ -255,11 +370,15 @@ export function AutomationsSection() {
                         </CardDescription>
                       </div>
                     </div>
-                    <Switch
-                      checked={pref.enabled}
-                      onCheckedChange={(checked) => updatePreference(autoType.type, 'enabled', checked)}
-                      className="data-[state=checked]:bg-emerald-500 flex-shrink-0"
-                    />
+                    {loadingPrefs ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Switch
+                        checked={pref.enabled}
+                        onCheckedChange={(checked) => updatePreference(autoType.type, 'enabled', checked)}
+                        className="data-[state=checked]:bg-emerald-500 flex-shrink-0"
+                      />
+                    )}
                   </div>
 
                   {/* Settings row (visible when enabled) */}
@@ -349,11 +468,28 @@ export function AutomationsSection() {
         </div>
 
         <div className="max-h-80 overflow-y-auto custom-scrollbar space-y-1.5">
-          {displayedLogs.length === 0 ? (
+          {loadingLogs ? (
+            // Loading skeletons
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-md animate-pulse">
+                <div className="p-1 rounded flex-shrink-0 mt-0.5 bg-muted">
+                  <div className="w-3.5 h-3.5 bg-muted-foreground/20 rounded" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="h-3 w-32 bg-muted rounded" />
+                  <div className="h-2.5 w-48 bg-muted rounded" />
+                </div>
+                <div className="h-2.5 w-10 bg-muted rounded" />
+              </div>
+            ))
+          ) : displayedLogs.length === 0 ? (
             <Card>
               <CardContent className="py-6 text-center">
                 <Activity className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Aucune activité enregistrée</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cliquez sur &quot;Vérifier maintenant&quot; pour lancer une vérification
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -400,15 +536,24 @@ export function AutomationsSection() {
               })}
             </AnimatePresence>
           )}
+
+          {/* Loading more indicator */}
+          {loadingMoreLogs && (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+              <span className="ml-2 text-xs text-muted-foreground">Chargement...</span>
+            </div>
+          )}
         </div>
 
         {/* Load more */}
-        {logDisplayCount < logs.length && (
+        {logsPage < logsTotalPages && (
           <Button
             variant="ghost"
             size="sm"
             className="w-full text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setLogDisplayCount(prev => prev + 20)}
+            onClick={handleLoadMoreLogs}
+            disabled={loadingMoreLogs}
           >
             Voir plus
             <ChevronRight className="w-3 h-3 ml-1" />
