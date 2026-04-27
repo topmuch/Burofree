@@ -1,5 +1,5 @@
 /**
- * AI Engine Factory for Maellis
+ * AI Engine Factory for Burofree
  * Selects the appropriate AI provider based on environment configuration
  * Supports Groq (primary) and z-ai-web-dev-sdk (fallback)
  */

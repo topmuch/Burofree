@@ -1,5 +1,5 @@
 /**
- * PDF Generation Utility for Maellis
+ * PDF Generation Utility for Burofree
  *
  * Converts HTML invoice templates to PDF using puppeteer-core.
  * Falls back to returning HTML if puppeteer/Chromium is not available.
@@ -334,7 +334,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
     <div class="logo-area">
       <div class="logo-icon">M</div>
       <div>
-        <div class="logo-text">${escapeHtml(emitter.name) || 'Maellis'}</div>
+        <div class="logo-text">${escapeHtml(emitter.name) || 'Burofree'}</div>
         <div class="logo-sub">${escapeHtml(emitter.profession || '')}</div>
       </div>
     </div>
@@ -433,7 +433,7 @@ export function generateInvoiceHTML(data: InvoicePDFData): string {
   <!-- Footer -->
   <div class="footer">
     <div class="footer-left">
-      G&eacute;n&eacute;r&eacute; par Maellis &middot; ${new Date().toLocaleDateString('fr-FR')}
+      G&eacute;n&eacute;r&eacute; par Burofree &middot; ${new Date().toLocaleDateString('fr-FR')}
     </div>
     <div class="footer-right">
       ${invoice.projectName ? `Projet : ${escapeHtml(invoice.projectName)}` : ''}

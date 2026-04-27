@@ -1,6 +1,6 @@
-const CACHE_NAME = 'maellis-v2';
-const STATIC_CACHE = 'maellis-static-v2';
-const API_CACHE = 'maellis-api-v2';
+const CACHE_NAME = 'burofree-v2';
+const STATIC_CACHE = 'burofree-static-v2';
+const API_CACHE = 'burofree-api-v2';
 const STATIC_ASSETS = ['/', '/logo.svg', '/manifest.json'];
 
 // Install: cache static assets
@@ -86,11 +86,11 @@ async function staleWhileRevalidate(request) {
 // Push notification handler
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'Maellis',
+    title: 'Burofree',
     body: 'Nouvelle notification',
     icon: '/logo.svg',
     badge: '/logo.svg',
-    tag: 'maellis-notification',
+    tag: 'burofree-notification',
     url: '/',
   };
 
@@ -106,7 +106,7 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/logo.svg',
     badge: data.badge || '/logo.svg',
-    tag: data.tag || `maellis-${Date.now()}`,
+    tag: data.tag || `burofree-${Date.now()}`,
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',
@@ -164,7 +164,7 @@ async function syncEmails() {
     if (response.ok) {
       const data = await response.json();
       if (data.imported > 0) {
-        self.registration.showNotification('Maellis — Emails synchronisés', {
+        self.registration.showNotification('Burofree — Emails synchronisés', {
           body: `${data.imported} nouvel${data.imported > 1 ? 'aux' : ''} email${data.imported > 1 ? 's' : ''} importé${data.imported > 1 ? 's' : ''}`,
           icon: '/logo.svg',
           tag: 'sync-emails',
@@ -186,7 +186,7 @@ async function syncCalendar() {
       const data = await response.json();
       const total = (data.synced || 0) + (data.updated || 0);
       if (total > 0) {
-        self.registration.showNotification('Maellis — Calendrier synchronisé', {
+        self.registration.showNotification('Burofree — Calendrier synchronisé', {
           body: `${total} événement${total > 1 ? 's' : ''} synchronisé${total > 1 ? 's' : ''}`,
           icon: '/logo.svg',
           tag: 'sync-calendar',

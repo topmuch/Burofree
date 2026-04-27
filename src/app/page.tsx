@@ -44,6 +44,8 @@ const tabTitles: Record<TabType, string> = {
   settings: 'Paramètres',
 }
 
+const LOADING_TIMEOUT_MS = 15000 // 15 seconds max on loading screen
+
 /**
  * Inner app content that only renders after data is loaded.
  * Uses useRealtimeStatus() from the RealtimeProvider context
@@ -126,7 +128,7 @@ function AppContent() {
 
           {/* Mobile logo */}
           <div className="md:hidden w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-            <span className="text-sm font-bold text-emerald-400">M</span>
+            <span className="text-sm font-bold text-emerald-400">B</span>
           </div>
 
           {/* Tab title */}
@@ -204,6 +206,7 @@ export default function HomePage() {
 
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Register service worker
   useEffect(() => {
@@ -211,6 +214,19 @@ export default function HomePage() {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
   }, [])
+
+  // Loading timeout — force the app to render even if data loading hangs
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached — forcing app to render')
+        setLoading(false)
+        setLoadError('Délai de chargement dépassé. Certaines données peuvent être indisponibles.')
+      }
+    }, LOADING_TIMEOUT_MS)
+
+    return () => clearTimeout(timeout)
+  }, [loading])
 
   // Single initialization effect — runs once on mount
   useEffect(() => {
@@ -229,7 +245,16 @@ export default function HomePage() {
       // After fetchUser, read the latest state from the store
       const currentUser = useAppStore.getState().user
 
-      if (currentUser && !currentUser.onboardingDone) {
+      if (!currentUser) {
+        // No user exists in DB — show onboarding to create one
+        if (!cancelled) {
+          setShowOnboarding(true)
+          setLoading(false)
+        }
+        return
+      }
+
+      if (!currentUser.onboardingDone) {
         // User exists but hasn't done onboarding
         if (!cancelled) {
           setShowOnboarding(true)
@@ -258,8 +283,15 @@ export default function HomePage() {
 
   const handleOnboardingComplete = useCallback(async () => {
     setShowOnboarding(false)
-    await fetchUser()
-    await fetchAll()
+    setLoadError(null)
+    setLoading(true)
+    try {
+      await fetchUser()
+      await fetchAll()
+    } catch (error) {
+      console.error('Erreur post-onboarding:', error)
+    }
+    setLoading(false)
   }, [fetchUser, fetchAll])
 
   // Onboarding wizard
@@ -277,9 +309,9 @@ export default function HomePage() {
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto"
           >
-            <span className="text-2xl font-bold text-emerald-400">M</span>
+            <span className="text-2xl font-bold text-emerald-400">B</span>
           </motion.div>
-          <p className="text-sm text-zinc-400">Chargement de Maellis...</p>
+          <p className="text-sm text-zinc-400">Chargement de Burofree...</p>
         </div>
       </div>
     )
@@ -288,6 +320,11 @@ export default function HomePage() {
   // Main app content — wrapped in RealtimeProvider (single SSE connection)
   return (
     <RealtimeProvider>
+      {loadError && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
+          <p className="text-xs text-amber-400">{loadError}</p>
+        </div>
+      )}
       <AppContent />
     </RealtimeProvider>
   )

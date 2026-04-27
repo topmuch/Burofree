@@ -1,5 +1,5 @@
 /**
- * Groq AI Provider for Maellis
+ * Groq AI Provider for Burofree
  * Uses Groq API with Llama 3 models for fast, capable AI responses
  */
 

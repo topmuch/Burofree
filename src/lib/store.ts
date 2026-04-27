@@ -660,8 +660,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchAll: async () => {
     set({ isLoading: true })
     try {
-      await Promise.all([
-        get().fetchUser(),
+      // Use Promise.allSettled so one failing request doesn't block the rest
+      const results = await Promise.allSettled([
         get().fetchTasks(),
         get().fetchProjects(),
         get().fetchEvents(),
@@ -677,6 +677,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         get().fetchStats(),
         get().fetchSuggestions(),
       ])
+      // Log any failures (non-blocking)
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.warn(`fetchAll: request ${i} failed:`, r.reason)
+        }
+      })
     } finally {
       set({ isLoading: false })
     }

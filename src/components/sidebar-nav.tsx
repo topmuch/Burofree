@@ -64,7 +64,7 @@ export function SidebarNav() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="text-lg font-bold text-emerald-400"
               >
-                M
+                B
               </motion.span>
             ) : (
               <motion.span
@@ -74,7 +74,7 @@ export function SidebarNav() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="text-lg font-bold text-emerald-400"
               >
-                M
+                B
               </motion.span>
             )}
           </AnimatePresence>
@@ -87,8 +87,8 @@ export function SidebarNav() {
               exit={{ opacity: 0, x: -10 }}
               className="text-lg font-bold tracking-tight text-zinc-100"
             >
-              <span className="text-emerald-400">Mae</span>
-              <span className="text-zinc-100">llis</span>
+              <span className="text-emerald-400">Buro</span>
+              <span className="text-zinc-100">free</span>
             </motion.span>
           )}
         </AnimatePresence>

@@ -160,7 +160,7 @@ export function AiAssistant() {
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-zinc-100">Maellis</h3>
+                  <h3 className="text-sm font-semibold text-zinc-100">Burofree</h3>
                   <p className="text-[10px] text-zinc-500">Assistant intelligent</p>
                 </div>
               </div>

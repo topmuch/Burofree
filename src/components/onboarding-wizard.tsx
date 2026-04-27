@@ -36,7 +36,7 @@ interface OnboardingData {
 const defaultData: OnboardingData = {
   name: '',
   profession: '',
-  assistantName: 'Maellis',
+  assistantName: 'Burofree',
   assistantTone: 'amical',
   projects: [],
   emailConnected: false,
@@ -294,7 +294,7 @@ function StepWelcome() {
         transition={{ delay: 0.4 }}
       >
         <h1 className="text-3xl font-bold text-white">
-          Bienvenue dans <span className="text-emerald-400">Maellis</span> !
+          Bienvenue dans <span className="text-emerald-400">Burofree</span> !
         </h1>
       </motion.div>
 
@@ -403,7 +403,7 @@ function StepAssistant({ data, updateData }: { data: OnboardingData; updateData:
           <Input
             value={data.assistantName}
             onChange={(e) => updateData('assistantName', e.target.value)}
-            placeholder="Maellis"
+            placeholder="Burofree"
             className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500"
           />
         </div>

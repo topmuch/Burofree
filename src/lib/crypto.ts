@@ -10,9 +10,9 @@ const KEY_LENGTH = 32
  * Falls back to a dev-only key if ENCRYPTION_KEY is not set.
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || 'maellis-dev-encryption-key-do-not-use-in-prod'
+  const secret = process.env.ENCRYPTION_KEY || 'burofree-dev-encryption-key-do-not-use-in-prod'
   // Use scrypt to derive a proper 32-byte key from the secret
-  const salt = 'maellis-encryption-salt-v1'
+  const salt = 'burofree-encryption-salt-v1'
   return scryptSync(secret, salt, KEY_LENGTH)
 }
 

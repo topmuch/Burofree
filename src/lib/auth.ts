@@ -1,4 +1,4 @@
-// Auth utilities for Maellis
+// Auth utilities for Burofree
 // In production, replace mock credentials with real OAuth keys
 
 export const AUTH_CONFIG = {
