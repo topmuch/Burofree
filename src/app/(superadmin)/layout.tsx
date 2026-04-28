@@ -4,21 +4,13 @@
  * IMPORTANT: This layout is completely separate from the main app layout.
  * No user-facing components, sidebar, or CSS from the main app is loaded.
  * The superadmin panel has its own navigation, styling, and security layer.
+ *
+ * NOTE: <html> and <body> are provided by the root layout.tsx.
+ * Route group layouts must NOT render their own <html>/<body>.
  */
 
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import './superadmin-globals.css'
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
 
 export const metadata: Metadata = {
   title: 'Burofree — Superadmin',
@@ -32,12 +24,8 @@ export default function SuperAdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr" className="dark" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-950 text-zinc-100`}
-      >
-        {children}
-      </body>
-    </html>
+    <>
+      {children}
+    </>
   )
 }
