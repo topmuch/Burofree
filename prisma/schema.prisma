@@ -26,6 +26,10 @@ model User {
   maxDailyHours         Float?
   stripeAccountId       String?
   stripeCustomerId      String?
+  role          String   @default("user") // user, admin, superadmin
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret String?  // TOTP secret (encrypted)
+  suspendedAt    DateTime? // Null = active, set = suspended
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   tasks         Task[]
@@ -825,4 +829,97 @@ model OfflineAction {
 
   @@index([userId, status])
   @@index([status, createdAt])
+}
+
+// ─── SUPERADMIN — Platform Administration ───────────────────────────────────
+
+/// Superadmin audit log — every admin action is traced
+model SuperAdminAuditLog {
+  id         String   @id @default(cuid())
+  userId     String   // The admin who performed the action
+  action     String   // e.g. "user.suspend", "config.update", "flag.toggle", "impersonate.start"
+  target     String?  // Entity type (user, subscription, config, flag, etc.)
+  targetId   String?  // Entity ID
+  metadata   String   @default("{}") // JSON: additional context (old/new values, reason, etc.)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@index([target, targetId])
+  @@index([createdAt])
+}
+
+/// Platform-wide configuration key-value store
+model PlatformConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "maintenance_mode", "free_tier_limit", "default_currency"
+  value     String   // JSON-encoded value
+  type      String   @default("string") // string, number, boolean, json
+  category  String   @default("general") // general, billing, features, legal, email
+  description String?
+  updatedAt  DateTime @updatedAt
+  updatedBy String?  // Admin userId who last changed it
+
+  @@index([category])
+  @@index([key])
+}
+
+/// Feature flags for progressive rollout
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "new_dashboard", "ai_copilot", "team_collaboration"
+  name        String   // Display name
+  description String?
+  enabled     Boolean  @default(false) // Global on/off
+  rollout     Int      @default(0) // Percentage 0-100 for gradual rollout
+  segments    String   @default("[]") // JSON: user segments, regions, or userIds
+  variants    String   @default("{}") // JSON: A/B test variants
+  updatedBy   String?  // Admin userId who last changed it
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@index([enabled])
+}
+
+/// Support ticket tracking
+model SupportTicket {
+  id          String    @id @default(cuid())
+  userId      String    // User who created the ticket
+  subject     String
+  description String
+  status      String    @default("open") // open, in_progress, waiting_user, resolved, closed
+  priority    String    @default("normal") // low, normal, high, urgent
+  category    String    @default("general") // general, billing, technical, feature_request
+  assignedTo  String?   // Admin userId
+  resolution  String?   // Resolution notes
+  firstResponseAt DateTime? // SLA tracking
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, priority])
+  @@index([assignedTo])
+  @@index([createdAt])
+}
+
+/// Impersonation session tracking (for security audit)
+model ImpersonationSession {
+  id          String    @id @default(cuid())
+  adminUserId String    // The superadmin who initiated impersonation
+  targetUserId String   // The user being impersonated
+  token       String    @unique // Ephemeral JWT token
+  reason      String?   // Reason for impersonation (mandatory in production)
+  ip          String?
+  expiresAt   DateTime  // Token expiration (max 15 min)
+  endedAt     DateTime? // When the admin ended the session
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId])
+  @@index([token])
+  @@index([expiresAt])
 }
