@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuth, requireTeamAccess } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS } from '@/lib/rate-limit'
 import { contactCreateSchema, contactQuerySchema } from '@/lib/validations/crm'
 import { getContacts, createContact } from '@/features/crm/services/contact-service'
@@ -16,6 +16,14 @@ export async function GET(req: NextRequest) {
   try {
     const params = Object.fromEntries(req.nextUrl.searchParams)
     const filters = contactQuerySchema.parse(params)
+    // If teamId is provided in query, verify team membership
+    const teamId = (filters as any).teamId as string | undefined
+    if (teamId) {
+      const membership = await requireTeamAccess(auth.user.id, teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
     const result = await getContacts(auth.user.id, filters)
     return NextResponse.json(result)
   } catch (err: any) {
@@ -36,6 +44,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = contactCreateSchema.parse(body)
+    // If teamId is provided in body, verify team membership
+    const teamId = (data as any).teamId as string | undefined
+    if (teamId) {
+      const membership = await requireTeamAccess(auth.user.id, teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
     const contact = await createContact(auth.user.id, data)
     return NextResponse.json(contact, { status: 201 })
   } catch (err: any) {

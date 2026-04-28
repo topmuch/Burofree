@@ -235,7 +235,6 @@ export async function handleSubscriptionUpdated(
   subscriptionId: string,
 ): Promise<void> {
   const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sub = subscription as any
 
   await db.$transaction(async (tx) => {

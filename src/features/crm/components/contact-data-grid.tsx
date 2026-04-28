@@ -240,6 +240,7 @@ export function ContactDataGrid({ onSelectContact }: ContactDataGridProps) {
     }),
   ], [columnHelper, onSelectContact, deleteMutation])
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table's useReactTable returns functions that cannot be safely memoized
   const table = useReactTable({
     data: contacts,
     columns,

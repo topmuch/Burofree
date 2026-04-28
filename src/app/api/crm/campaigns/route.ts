@@ -3,7 +3,7 @@
  * POST /api/crm/campaigns — Create campaign
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuth, requireTeamAccess } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS } from '@/lib/rate-limit'
 import { campaignCreateSchema, campaignQuerySchema } from '@/lib/validations/crm'
 import * as campaignSender from '@/features/campaigns/services/campaign-sender'
@@ -17,6 +17,14 @@ export async function GET(req: NextRequest) {
 
   try {
     const params = campaignQuerySchema.parse(Object.fromEntries(req.nextUrl.searchParams))
+    // If teamId is provided in query, verify team membership
+    const teamId = params.teamId
+    if (teamId) {
+      const membership = await requireTeamAccess(auth.user.id, teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
     const result = await campaignSender.getCampaigns(auth.user.id, {
       status: params.status,
       search: params.search,
@@ -39,6 +47,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = campaignCreateSchema.parse(body)
+    // If teamId is provided in body, verify team membership
+    const teamId = data.teamId
+    if (teamId) {
+      const membership = await requireTeamAccess(auth.user.id, teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
     const campaign = await campaignSender.createCampaign(auth.user.id, {
       name: data.name,
       subject: data.subject,

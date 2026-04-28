@@ -97,3 +97,42 @@ export async function requireOnboardedUser(_req?: NextRequest): Promise<{
 
   return { user, response: null }
 }
+
+export interface TeamMembership {
+  teamId: string
+  role: string
+  userId: string
+}
+
+/**
+ * Verify that a user is an active member of a given team.
+ * Returns the team membership with role info, or null if not a member.
+ *
+ * Usage:
+ * ```ts
+ * const membership = await requireTeamAccess(auth.user.id, teamId)
+ * if (!membership) {
+ *   return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+ * }
+ * ```
+ */
+export async function requireTeamAccess(userId: string, teamId: string): Promise<TeamMembership | null> {
+  try {
+    const membership = await db.teamMember.findFirst({
+      where: {
+        userId,
+        teamId,
+        status: 'active',
+      },
+      select: {
+        teamId: true,
+        role: true,
+        userId: true,
+      },
+    })
+
+    return membership
+  } catch {
+    return null
+  }
+}

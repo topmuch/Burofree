@@ -22,23 +22,15 @@ export async function GET() {
     await db.$queryRaw`SELECT 1`
     const dbLatency = Date.now() - dbStart
 
-    // Database size
+    // Database size (PostgreSQL)
     let dbSize = 0
     try {
-      const result = await db.$queryRaw<Array<{ size: number }>>`
-        SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()
+      const pgResult = await db.$queryRaw<Array<{ pg_database_size: bigint }>>`
+        SELECT pg_database_size(current_database()) as pg_database_size
       `
-      dbSize = result[0]?.size || 0
+      dbSize = Number(pgResult[0]?.pg_database_size || 0)
     } catch {
-      // PostgreSQL: SELECT pg_database_size(current_database())
-      try {
-        const pgResult = await db.$queryRaw<Array<{ pg_database_size: bigint }>>`
-          SELECT pg_database_size(current_database()) as pg_database_size
-        `
-        dbSize = Number(pgResult[0]?.pg_database_size || 0)
-      } catch {
-        dbSize = 0
-      }
+      dbSize = 0
     }
 
     // Active connections count

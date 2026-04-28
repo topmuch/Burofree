@@ -3,7 +3,7 @@
  * POST /api/crm/workflows — Create workflow
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth-guard'
+import { requireAuth, requireTeamAccess } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS } from '@/lib/rate-limit'
 import { workflowCreateSchema, workflowQuerySchema } from '@/lib/validations/crm'
 import { db } from '@/lib/db'
@@ -21,6 +21,13 @@ export async function GET(req: NextRequest) {
 
     if (params.isActive !== undefined) where.isActive = params.isActive
     if (params.teamId) where.teamId = params.teamId
+    // If teamId is provided in query, verify team membership
+    if (params.teamId) {
+      const membership = await requireTeamAccess(auth.user.id, params.teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
     if (params.search) {
       where.OR = [
         { name: { contains: params.search } },
@@ -58,6 +65,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = workflowCreateSchema.parse(body)
+
+    // If teamId is provided in body, verify team membership
+    const teamId = data.teamId
+    if (teamId) {
+      const membership = await requireTeamAccess(auth.user.id, teamId)
+      if (!membership) {
+        return NextResponse.json({ error: 'Accès refusé à cet espace' }, { status: 403 })
+      }
+    }
 
     const workflow = await db.workflow.create({
       data: {
