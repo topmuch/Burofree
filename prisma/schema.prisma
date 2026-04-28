@@ -923,3 +923,27 @@ model ImpersonationSession {
   @@index([token])
   @@index([expiresAt])
 }
+
+// ─── LANDING PAGE — Marketing & Lead Capture ────────────────────────────────
+
+/// Landing page lead/waitlist captures
+model LandingLead {
+  id        String   @id @default(cuid())
+  email     String   // Validated email
+  name      String?  // Optional first name
+  source    String   @default("landing") // landing, newsletter, referral, utm_campaign
+  utmSource String?  // UTM source parameter
+  utmMedium String?  // UTM medium parameter
+  utmCampaign String? // UTM campaign parameter
+  utmContent String? // UTM content parameter
+  referralCode String? // Referral code if applicable
+  status    String   @default("pending") // pending, confirmed, unsubscribed, bounced
+  confirmedAt DateTime? // Double opt-in confirmation
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+  @@index([utmCampaign])
+}
