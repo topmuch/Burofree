@@ -136,7 +136,7 @@ function FeatureCard({
     <motion.article
       variants={prefersReducedMotion ? undefined : cardVariants}
       role="listitem"
-      className="group relative p-6 sm:p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-emerald-500/5 dark:hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-zinc-950"
+      className="group relative p-6 sm:p-8 rounded-2xl border border-border bg-card hover:shadow-lg hover:shadow-emerald-500/5 dark:hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2"
     >
       {/* Icon */}
       <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-500 mb-5 group-hover:scale-110 transition-transform duration-300">

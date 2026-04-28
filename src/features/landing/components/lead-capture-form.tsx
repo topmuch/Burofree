@@ -146,7 +146,7 @@ export function LeadCaptureForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Prénom"
-            className={`px-4 py-3 text-sm rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow ${
+            className={`px-4 py-3 text-sm rounded-xl border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow ${
               isInline ? 'flex-1' : ''
             }`}
             aria-label="Prénom (optionnel)"
@@ -169,8 +169,8 @@ export function LeadCaptureForm({
           className={`px-4 py-3 text-sm rounded-xl border ${
             status === 'error'
               ? 'border-red-400 dark:border-red-500 focus:ring-red-500'
-              : 'border-zinc-300 dark:border-zinc-700 focus:ring-emerald-500'
-          } bg-white dark:bg-zinc-900 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:border-transparent transition-shadow ${isInline || isCompact ? 'flex-1' : ''}`}
+              : 'border-input focus:ring-emerald-500'
+          } bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:border-transparent transition-shadow ${isInline || isCompact ? 'flex-1' : ''}`}
           aria-label="Adresse email"
           aria-describedby={errorMsg ? `lead-error-${source}` : undefined}
           aria-invalid={status === 'error'}

@@ -127,14 +127,14 @@ export function PricingSection() {
           <button
             onClick={toggleBilling}
             className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${
-              annual ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'
+              annual ? 'bg-emerald-500' : 'bg-muted-foreground/30'
             }`}
             role="switch"
             aria-checked={annual}
             aria-label="Basculer entre facturation mensuelle et annuelle"
           >
             <span
-              className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+              className={`inline-block h-5 w-5 rounded-full bg-card shadow-sm transition-transform duration-200 ${
                 annual ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
@@ -176,10 +176,10 @@ export function PricingSection() {
                 initial={prefersReducedMotion ? undefined : 'hidden'}
                 whileInView={prefersReducedMotion ? undefined : 'visible'}
                 viewport={{ once: true, margin: '-60px' }}
-                className={`relative flex flex-col rounded-2xl border p-6 sm:p-8 bg-white dark:bg-zinc-900/50 transition-shadow duration-300 hover:shadow-xl hover:shadow-emerald-500/5 ${
+                className={`relative flex flex-col rounded-2xl border p-6 sm:p-8 bg-card transition-shadow duration-300 hover:shadow-xl hover:shadow-emerald-500/5 ${
                   plan.popular
                     ? 'border-emerald-500 dark:border-emerald-500 shadow-lg shadow-emerald-500/10 scale-[1.02] md:scale-105 z-10'
-                    : 'border-zinc-200 dark:border-zinc-800'
+                    : 'border-border'
                 }`}
               >
                 {/* Popular badge */}
@@ -250,7 +250,7 @@ export function PricingSection() {
                     plan.popular
                       ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
                       : plan.monthlyPrice === 0
-                        ? 'bg-zinc-100 dark:bg-zinc-800 text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        ? 'bg-muted text-foreground hover:bg-muted/80'
                         : 'bg-foreground text-background hover:opacity-90'
                   }`}
                 >

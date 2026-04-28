@@ -85,7 +85,7 @@ export function TestimonialsSection() {
               initial={prefersReducedMotion ? undefined : 'hidden'}
               whileInView={prefersReducedMotion ? undefined : 'visible'}
               viewport={{ once: true, margin: '-60px' }}
-              className="relative flex flex-col p-6 sm:p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-emerald-500/5 transition-shadow duration-300"
+              className="relative flex flex-col p-6 sm:p-8 rounded-2xl border border-border bg-card hover:shadow-lg hover:shadow-emerald-500/5 transition-shadow duration-300"
             >
               {/* Quote icon */}
               <Quote

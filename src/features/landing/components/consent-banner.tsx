@@ -58,7 +58,7 @@ export function ConsentBanner() {
           aria-label="Consentement aux cookies"
           aria-modal="false"
         >
-          <div className="max-w-3xl mx-auto bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl shadow-black/10 p-4 sm:p-6">
+          <div className="max-w-3xl mx-auto bg-card rounded-2xl border border-border shadow-2xl shadow-black/10 p-4 sm:p-6">
             <div className="flex items-start gap-4">
               {/* Icon */}
               <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
@@ -92,7 +92,7 @@ export function ConsentBanner() {
                   </button>
                   <button
                     onClick={handleRefuse}
-                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-muted-foreground border border-zinc-300 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-muted-foreground border border-input rounded-lg hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
                   >
                     Refuser
                   </button>
@@ -102,7 +102,7 @@ export function ConsentBanner() {
               {/* Close button */}
               <button
                 onClick={handleRefuse}
-                className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                 aria-label="Fermer"
               >
                 <X className="h-4 w-4" />

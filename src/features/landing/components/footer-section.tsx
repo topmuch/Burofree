@@ -132,7 +132,7 @@ export function FooterSection() {
 
   return (
     <footer
-      className="relative bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800"
+      className="relative bg-muted/30 border-t border-border"
       role="contentinfo"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
@@ -175,7 +175,7 @@ export function FooterSection() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     aria-label={social.label}
                   >
                     <Icon className="h-4 w-4" />
@@ -209,7 +209,7 @@ export function FooterSection() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Prénom (optionnel)"
-                    className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
+                    className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
                     aria-label="Prénom (optionnel)"
                   />
                   <input
@@ -218,7 +218,7 @@ export function FooterSection() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="votre@email.com"
                     required
-                    className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
+                    className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
                     aria-label="Adresse email"
                     aria-describedby={errorMsg ? 'newsletter-error' : undefined}
                     aria-invalid={status === 'error'}
@@ -256,7 +256,7 @@ export function FooterSection() {
         </div>
 
         {/* Link groups */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 py-8 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 py-8 border-t border-border">
           {LINK_GROUPS.map((group) => (
             <div key={group.title}>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
@@ -279,7 +279,7 @@ export function FooterSection() {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-border">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Burofree. Tous droits réservés.
           </p>

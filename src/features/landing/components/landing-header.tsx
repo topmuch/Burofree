@@ -78,7 +78,7 @@ export function LandingHeader() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 shadow-sm'
+          ? 'bg-card/80 backdrop-blur-xl border-b border-border/50 shadow-sm'
           : 'bg-transparent'
       }`}
       role="banner"
@@ -108,7 +108,7 @@ export function LandingHeader() {
               <a
                 key={link.href}
                 href={link.href}
-                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
                 {link.label}
               </a>
@@ -141,7 +141,7 @@ export function LandingHeader() {
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-foreground hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
               aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
@@ -165,7 +165,7 @@ export function LandingHeader() {
             animate={prefersReducedMotion ? undefined : { opacity: 1, height: 'auto' }}
             exit={prefersReducedMotion ? undefined : { opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="md:hidden bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 overflow-hidden"
+            className="md:hidden bg-card border-b border-border overflow-hidden"
             role="menu"
           >
             <div className="px-4 py-4 space-y-1">
@@ -174,17 +174,17 @@ export function LandingHeader() {
                   key={link.href}
                   href={link.href}
                   onClick={handleNavClick}
-                  className="block px-3 py-3 text-base font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                  className="block px-3 py-3 text-base font-medium text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg hover:bg-muted/50 transition-colors"
                   role="menuitem"
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
+              <div className="pt-3 border-t border-border space-y-2">
                 <Link
                   href="/app"
                   onClick={handleNavClick}
-                  className="block px-3 py-3 text-base font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-center"
+                  className="block px-3 py-3 text-base font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors text-center"
                   role="menuitem"
                   prefetch={true}
                 >

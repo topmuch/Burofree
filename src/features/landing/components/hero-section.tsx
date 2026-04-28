@@ -73,7 +73,7 @@ export function HeroSection() {
               <span className="relative inline-block">
                 <span className="relative z-10 text-emerald-500">intelligent</span>
                 <span
-                  className="absolute bottom-1 left-0 w-full h-3 bg-emerald-500/20 dark:bg-emerald-500/30 rounded-sm -z-0"
+                  className="absolute bottom-1 left-0 w-full h-3 bg-emerald-500/20 rounded-sm -z-0"
                   aria-hidden="true"
                 />
               </span>
@@ -103,7 +103,7 @@ export function HeroSection() {
             </Link>
             <Link
               href="#demo"
-              className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-foreground border border-zinc-300 dark:border-zinc-700 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-all duration-200 bg-white dark:bg-transparent"
+              className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-foreground border border-border rounded-xl hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-all duration-200 bg-card dark:bg-transparent"
             >
               <Play className="h-4 w-4 text-emerald-500" />
               Voir la démo
@@ -120,7 +120,7 @@ export function HeroSection() {
               {avatarInitials.map((initials, i) => (
                 <div
                   key={i}
-                  className={`w-8 h-8 rounded-full ${avatarColors[i]} flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-950`}
+                  className={`w-8 h-8 rounded-full ${avatarColors[i]} flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-background`}
                 >
                   {initials}
                 </div>

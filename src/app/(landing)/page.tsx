@@ -139,7 +139,7 @@ function SocialProofBar() {
   ]
 
   return (
-    <section className="py-12 sm:py-16 bg-muted/20 border-y border-zinc-100 dark:border-zinc-800/50" aria-label="Presse et reconnaissance">
+    <section className="py-12 sm:py-16 bg-muted/20 border-y border-border/50" aria-label="Presse et reconnaissance">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <p className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground mb-8">
           Ils parlent de nous

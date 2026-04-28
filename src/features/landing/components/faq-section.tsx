@@ -156,7 +156,7 @@ function FaqAccordion({
       initial={prefersReducedMotion ? undefined : 'hidden'}
       whileInView={prefersReducedMotion ? undefined : 'visible'}
       viewport={{ once: true, margin: '-60px' }}
-      className="divide-y divide-zinc-200 dark:divide-zinc-800 border-y border-zinc-200 dark:border-zinc-800"
+      className="divide-y divide-border border-y border-border"
     >
       {items.map((item, index) => {
         const isOpen = openIndex === index
