@@ -32,6 +32,7 @@ import { NetworkStatus } from '@/features/production/pwa/network-status'
 import { InstallPrompt } from '@/features/production/pwa/install-prompt'
 import { SecurityPanel } from '@/features/security/components/security-panel'
 import { ConsentBanner } from '@/features/security/components/consent-banner'
+import { UnifiedInboxPanel } from '@/features/unified-inbox/unified-inbox-panel'
 
 // Placeholder for tabs without dedicated components yet
 function PlaceholderPanel({ title }: { title: string }) {
@@ -47,6 +48,7 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   tasks: TaskBoard,
   calendar: CalendarView,
   emails: EmailInbox,
+  inbox: UnifiedInboxPanel,
   documents: DocumentsPanel,
   invoices: InvoicingPanel,
   contracts: ContractsPanel,
@@ -66,6 +68,7 @@ const tabTitles: Record<TabType, string> = {
   tasks: 'Tâches & Projets',
   calendar: 'Calendrier',
   emails: 'Emails',
+  inbox: 'Boîte unifiée',
   documents: 'Documents',
   invoices: 'Facturation',
   contracts: 'Contrats',

@@ -876,3 +876,236 @@
 **Validation (1):** lib/validations/security.ts — 8 schémas Zod
 
 **Middleware (1):** middleware.ts — ajout routes publiques DPO/portal/roles/seed
+
+---
+
+## Task ID: 2-3 — Unified Inbox Channel Adapter Pattern & Backend API Routes
+
+**Agent:** Main Agent (Task 2-3)
+
+**Work Log:**
+
+### Channel Adapter Pattern (5 files)
+
+- Créé `features/unified-inbox/channels/types.ts` — Channel Adapter Interface + types
+  - `ChannelType`: 'email' | 'whatsapp' | 'sms' | 'slack'
+  - `ProviderType`: 'gmail' | 'outlook' | 'whatsapp' | 'twilio' | 'slack'
+  - `UnifiedMessage`: normalized message from any channel (externalId, externalThreadId, channel, provider, direction, sender, subject, body, bodyHtml, attachments, timestamp, rawMetadata)
+  - `UnifiedConversation`: normalized conversation (externalThreadId, channel, subject, messages, participants, cursor)
+  - `ChannelAdapter` interface: connect(), disconnect(), fetchIncremental(), subscribeRealtime(), sendMessage(), markRead(), healthCheck()
+  - `PROVIDER_CHANNEL_MAP`: provider → channel type mapping
+
+- Créé `features/unified-inbox/channels/gmail-adapter.ts` — Gmail Channel Adapter
+  - Implémente `ChannelAdapter` via googleapis
+  - `fetchIncremental()`: incremental sync via historyId, initial full sync with recent 50 messages
+  - `sendMessage()`: builds raw RFC 2822 email, supports reply via In-Reply-To/References headers + threadId
+  - `markRead()`: removes UNREAD label via modify API
+  - Token refresh automatique via OAuth2Client 'tokens' event, encrypted storage
+  - Normalizes Gmail API messages → UnifiedMessage (extracts headers, body text/HTML, attachments)
+
+- Créé `features/unified-inbox/channels/outlook-adapter.ts` — Outlook Channel Adapter
+  - Implémente `ChannelAdapter` via Microsoft Graph API (fetch-based)
+  - `fetchIncremental()`: delta query with deltaToken cursor, pagination support
+  - `sendMessage()`: via /me/sendMail and /me/messages/{id}/reply endpoints
+  - `markRead()`: PATCH /me/messages/{id} with isRead: true
+  - Token refresh via /oauth2/v2.0/token endpoint, encrypted storage
+  - Normalizes Outlook Graph API messages → UnifiedMessage
+
+- Créé `features/unified-inbox/channels/registry.ts` — Adapter Registry (Singleton)
+  - `getAdapter(userId, provider)`: returns cached or creates new adapter, auto-connects
+  - `registerAdapter(userId, provider, adapter)`: manual registration (testing)
+  - `disconnectAll(userId)`: cleanup all adapters for user (logout)
+  - `disconnectAdapter(userId, provider)`: cleanup specific adapter
+  - In-memory Map<`${userId}:${provider}`, ChannelAdapter> cache
+
+### Core Inbox Service (1 file)
+
+- Créé `features/unified-inbox/services/inbox-service.ts` — 14 exported business functions
+  - `getConversations(userId, filters)`: paginated list with cursor, filters (status, channel, assignedTo, search, tags)
+  - `getConversation(userId, conversationId)`: single conversation with messages, participants, notes, events
+  - `createConversation(userId, data)`: transaction creates conversation + initial message + participant + event + upserts contact
+  - `updateConversation(userId, conversationId, data)`: update status/priority/assignedTo/tags/star + creates change events
+  - `sendMessage(userId, conversationId, data)`: sends via adapter if available, creates InboxMessage + ConversationEvent
+  - `addInternalNote(userId, conversationId, content)`: creates InternalNote + ConversationEvent
+  - `assignConversation(userId, conversationId, assignedToId)`: delegates to updateConversation
+  - `searchConversations(userId, query)`: full-text search on subject + body + senderName + senderEmail
+  - `syncChannelAccount(userId, channelId)`: fetches from adapter, upserts messages with dedup, auto-creates conversations/contacts
+  - `generateAIReply(userId, conversationId, tone)`: z-ai-web-dev-sdk, 10-message context, temperature 0.3, max 400 tokens, 3 tones (pro/friendly/formal)
+  - `getChannelAccounts(userId)`: list with safe fields (no tokens)
+  - `connectChannelAccount(userId, data)`: upsert with encrypted tokens (AES-256-GCM)
+  - `disconnectChannelAccount(userId, channelId)`: deactivates + disconnects adapter
+  - `getContacts(userId, search?)`: list/search contacts
+  - `upsertContact(userId, data)`: create or update by email match, merges emails/phones/tags/customFields
+
+### API Routes (10 route files, 16 endpoints)
+
+- `api/inbox/conversations/route.ts` — GET (list with pagination + filters) + POST (create)
+- `api/inbox/conversations/[id]/route.ts` — GET (single) + PUT (update) + DELETE (close)
+- `api/inbox/conversations/[id]/messages/route.ts` — GET (list with pagination) + POST (send)
+- `api/inbox/conversations/[id]/notes/route.ts` — GET (list) + POST (add)
+- `api/inbox/conversations/[id]/assign/route.ts` — POST (assign)
+- `api/inbox/conversations/[id]/ai-reply/route.ts` — POST (generate, 10/min rate limit)
+- `api/inbox/contacts/route.ts` — GET (list with search) + POST (upsert)
+- `api/inbox/channels/route.ts` — GET (list) + POST (connect)
+- `api/inbox/channels/[id]/route.ts` — DELETE (disconnect)
+- `api/inbox/channels/[id]/sync/route.ts` — POST (manual sync, 6/min rate limit)
+
+### Validation Schemas (1 file)
+
+- Créé `lib/validations/inbox.ts` — 15 Zod schemas:
+  - channelTypeSchema, providerTypeSchema
+  - conversationStatusSchema, conversationPrioritySchema
+  - listConversationsQuerySchema, createConversationSchema, updateConversationSchema
+  - listMessagesQuerySchema, sendMessageSchema
+  - listNotesQuerySchema, addInternalNoteSchema
+  - assignConversationSchema
+  - generateAiReplySchema, aiReplyToneSchema
+  - listContactsQuerySchema, upsertContactSchema
+  - connectChannelAccountSchema, syncChannelAccountSchema
+
+### Package installed
+
+- `googleapis@171.4.0` — for Gmail Adapter
+
+**Auto-Audit:**
+
+| Route | Method | Auth | Rate Limit | Zod | Status |
+|-------|--------|:----:|:----------:|:---:|:------:|
+| inbox/conversations | GET | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id] | GET | ✅ | ✅ 100/min | N/A | PASS |
+| inbox/conversations/[id] | PUT | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id] | DELETE | ✅ | ✅ 100/min | N/A | PASS |
+| inbox/conversations/[id]/messages | GET | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id]/messages | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id]/notes | GET | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id]/notes | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id]/assign | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/conversations/[id]/ai-reply | POST | ✅ | ✅ 10/min | ✅ | PASS |
+| inbox/contacts | GET | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/contacts | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/channels | GET | ✅ | ✅ 100/min | N/A | PASS |
+| inbox/channels | POST | ✅ | ✅ 100/min | ✅ | PASS |
+| inbox/channels/[id] | DELETE | ✅ | ✅ 100/min | N/A | PASS |
+| inbox/channels/[id]/sync | POST | ✅ | ✅ 6/min | ✅ | PASS |
+
+**Lint:** 0 erreurs dans les nouveaux fichiers ✅
+**TypeScript:** 0 erreurs dans les nouveaux fichiers ✅
+
+### Fichiers créés (16):
+
+**Channel Adapters (4):**
+- features/unified-inbox/channels/types.ts
+- features/unified-inbox/channels/gmail-adapter.ts
+- features/unified-inbox/channels/outlook-adapter.ts
+- features/unified-inbox/channels/registry.ts
+
+**Inbox Service (1):**
+- features/unified-inbox/services/inbox-service.ts
+
+**API Routes (10):**
+- app/api/inbox/conversations/route.ts
+- app/api/inbox/conversations/[id]/route.ts
+- app/api/inbox/conversations/[id]/messages/route.ts
+- app/api/inbox/conversations/[id]/notes/route.ts
+- app/api/inbox/conversations/[id]/assign/route.ts
+- app/api/inbox/conversations/[id]/ai-reply/route.ts
+- app/api/inbox/contacts/route.ts
+- app/api/inbox/channels/route.ts
+- app/api/inbox/channels/[id]/route.ts
+- app/api/inbox/channels/[id]/sync/route.ts
+
+**Validation (1):** lib/validations/inbox.ts
+
+### Configuration additionnelle requise:
+- `GOOGLE_CLIENT_ID/SECRET` — OAuth Gmail
+- `OUTLOOK_CLIENT_ID/SECRET/TENANT_ID` — OAuth Outlook
+- `GMAIL_PUBSUB_TOPIC` — Gmail real-time notifications (optionnel)
+- `OUTLOOK_NOTIFICATION_URL` — Outlook webhook URL (optionnel)
+
+---
+
+## Task ID: 4 — WebSocket Mini-Service (Socket.io) for Real-Time Inbox
+
+**Agent:** Task 4 Agent
+
+**Work Log:**
+
+### Backend: mini-services/inbox-ws/
+
+- Créé `mini-services/inbox-ws/package.json` — Projet bun indépendant avec socket.io@^4.8.1
+  - Script `dev`: `bun --hot index.ts` pour auto-restart
+- Créé `mini-services/inbox-ws/index.ts` — Serveur Socket.io sur port 3002
+  - Path: `/` (requis par Caddy gateway)
+  - CORS activé (origin: `*`, methods: GET/POST)
+  - Ping: 60s timeout, 25s interval
+
+#### Server-side event handlers:
+| Event | Description |
+|-------|-------------|
+| `inbox:join` | User rejoint room `inbox:{userId}` + acknowledged avec `inbox:joined` |
+| `inbox:leave` | User quitte room `inbox:{userId}` |
+| `inbox:typing` | Typing indicator → broadcast `inbox:user-typing` aux autres dans `conversation:{conversationId}` |
+| `inbox:viewing` | Viewing presence → broadcast `inbox:user-viewing` + retourne `inbox:viewing-presence` (collision detection) |
+| `inbox:stop-viewing` | Stop viewing → broadcast `inbox:user-stop-viewing` |
+
+#### Server-to-client events émis:
+| Event | Room | Payload |
+|-------|------|---------|
+| `inbox:new-message` | `inbox:{userId}` | conversationId, messageId, channel, from, subject, preview, timestamp |
+| `inbox:conversation-updated` | `inbox:{userId}` | conversationId, type (status/assignee/priority/tag/archive), previousValue, newValue, updatedBy, timestamp |
+| `inbox:user-typing` | `conversation:{conversationId}` | conversationId, userId, userName, isTyping |
+| `inbox:user-viewing` | `conversation:{conversationId}` | conversationId, userId, userName |
+| `inbox:user-stop-viewing` | `conversation:{conversationId}` | conversationId, userId, userName |
+| `inbox:viewing-presence` | sender only | conversationId, viewers[] (collision detection) |
+| `inbox:unread-count` | `inbox:{userId}` | userId, totalUnread, perChannel |
+| `inbox:sync-status` | `inbox:{userId}` | channel, status (started/completed/failed), message, timestamp |
+
+#### Features implementés:
+- **Room-based communication**: `inbox:{userId}` pour updates personnels, `conversation:{conversationId}` pour présence conversation
+- **Typing indicator**: Auto-clear après 3s d'inactivité (setTimeout)
+- **Viewing presence**: TTL 15s avec heartbeat, cleanup périodique toutes les 5s
+- **Collision detection**: `inbox:viewing-presence` retourne la liste des autres viewers
+- **Cleanup complet**: Déconnexion nettoie typing entries, viewing entries, rooms
+- **Graceful shutdown**: SIGTERM/SIGINT → clear timeouts, disconnect sockets, close server
+
+### Frontend: use-inbox-socket.ts hook
+
+- Créé `src/features/unified-inbox/hooks/use-inbox-socket.ts` — Hook React type-safe
+  - Connection via `io('/?XTransformPort=3002')` (convention gateway Caddy)
+  - Auto-reconnect avec exponential backoff (1s → 30s max)
+  - Auto-join inbox room on connect si userId fourni
+  - 9 event listener callbacks (onNewMessage, onConversationUpdated, onUserTyping, onUserViewing, onUserStopViewing, onViewingPresence, onUnreadCount, onSyncStatus)
+  - 5 emit actions (joinInbox, leaveInbox, emitTyping, emitViewing, emitStopViewing)
+  - Viewing heartbeat automatique (toutes les 10s, TTL serveur 15s)
+  - Cleanup complet on unmount (leave room + disconnect + clear heartbeat)
+  - Full TypeScript types pour tous les payloads (8 interfaces exportées)
+  - `socket` en state (pas ref) pour respecter react-hooks/refs lint rule
+  - 0 erreurs ESLint ✅
+
+### Dependencies:
+- `socket.io@^4.8.1` installé dans `mini-services/inbox-ws/`
+- `socket.io-client@4.8.3` installé dans le projet principal (`/home/z/my-project/`)
+
+**Auto-Audit:**
+| Check | Result |
+|-------|:------:|
+| Socket.io server on port 3002 | ✅ Port OPEN |
+| path: '/' (Caddy compatible) | ✅ |
+| CORS enabled | ✅ origin: * |
+| inbox:join + inbox:leave | ✅ |
+| inbox:typing (3s auto-clear) | ✅ setTimeout |
+| inbox:viewing (15s TTL) | ✅ heartbeat + periodic cleanup |
+| inbox:stop-viewing | ✅ |
+| Collision detection (viewing-presence) | ✅ |
+| Disconnect cleanup | ✅ all entries + rooms |
+| Graceful shutdown | ✅ SIGTERM + SIGINT |
+| use-inbox-socket.ts hook | ✅ 0 lint errors |
+| XTransformPort=3002 in frontend | ✅ |
+| socket.io-client in main project | ✅ v4.8.3 |
+| Mini-service started with bun --hot | ✅ running |
+
+### Fichiers créés (3):
+- `mini-services/inbox-ws/package.json` — Projet bun indépendant
+- `mini-services/inbox-ws/index.ts` — Socket.io server port 3002 (~250 lignes)
+- `src/features/unified-inbox/hooks/use-inbox-socket.ts` — React hook type-safe (~388 lignes)

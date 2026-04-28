@@ -68,6 +68,9 @@ model User {
   gdprRequests      GdprRequest[]
   deletionSchedule  GdprDeletionSchedule[]
   dpoContacts       DpoContact[]
+  contacts           Contact[]
+  conversations      Conversation[]
+  channelAccounts    ChannelAccount[]
 }
 
 model Project {
@@ -1123,4 +1126,163 @@ model DpoContact {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── UNIFIED INBOX — Messagerie Multi-Canaux ──────────────────────────────────
+
+/// Unified Contact — single view of a person across all channels
+model Contact {
+  id              String   @id @default(cuid())
+  name            String
+  emails          String   @default("[]") // JSON string[]
+  phones          String   @default("[]") // JSON string[]
+  slackId         String?
+  telegramId      String?
+  preferredChannel String  @default("email") // email, whatsapp, sms, slack
+  customFields    String   @default("{}") // JSON: arbitrary key-value pairs
+  tags            String   @default("[]") // JSON string[]
+  avatar          String?
+  company         String?
+  notes           String?
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations   ConversationParticipant[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([name])
+}
+
+/// Channel Account — connected provider accounts (Gmail, Outlook, WhatsApp, etc.)
+model ChannelAccount {
+  id              String    @id @default(cuid())
+  userId          String
+  provider        String    // gmail, outlook, whatsapp, twilio, slack
+  email           String?   // Account email (for email providers)
+  accountId       String?   // Provider-specific account ID
+  accessToken     String?   // Encrypted OAuth access token (AES-256-GCM)
+  refreshToken    String?   // Encrypted OAuth refresh token
+  tokenExpiry     DateTime?
+  scopes          String?   // JSON array of granted scopes
+  config          String    @default("{}") // JSON: provider-specific config (historyId, deltaToken, etc.)
+  isActive        Boolean   @default(true)
+  lastSyncAt      DateTime?
+  lastSyncCursor  String?   // Gmail historyId, Outlook deltaToken, etc.
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId, isActive])
+  @@index([provider])
+}
+
+/// Conversation — unified thread across any channel
+model Conversation {
+  id                String    @id @default(cuid())
+  externalThreadId  String?   // Provider's thread/message ID
+  channel           String    @default("email") // email, whatsapp, sms, slack
+  status            String    @default("open") // open, pending, closed, spam
+  priority          String    @default("normal") // low, normal, high, urgent
+  subject           String?   // Email subject or chat topic
+  lastActivityAt    DateTime  @default(now())
+  assignedToId      String?   // User ID of assigned agent
+  projectId         String?   // Linked project
+  tags              String    @default("[]") // JSON string[]
+  metadata          String    @default("{}") // JSON: channel-specific data (headers, msgIds, etc.)
+  isStarred         Boolean   @default(false)
+  unreadCount       Int       @default(0)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          InboxMessage[]
+  participants      ConversationParticipant[]
+  internalNotes     InternalNote[]
+  events            ConversationEvent[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, status, lastActivityAt])
+  @@index([userId, channel])
+  @@index([assignedToId])
+  @@index([projectId])
+  @@index([lastActivityAt])
+}
+
+/// Conversation Participant — links contacts to conversations
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  contactId      String
+  role           String   @default("participant") // sender, recipient, cc, bcc
+  channelId      String?  // Channel-specific identifier (email address, phone, etc.)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  contact      Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, contactId])
+  @@index([conversationId])
+  @@index([contactId])
+}
+
+/// Inbox Message — individual message within a conversation
+model InboxMessage {
+  id              String    @id @default(cuid())
+  conversationId  String
+  direction       String    @default("inbound") // inbound, outbound, internal
+  channel         String    @default("email") // email, whatsapp, sms, slack
+  subject         String?
+  body            String?   // Markdown content
+  bodyHtml        String?   // Original HTML (for email)
+  attachments     String    @default("[]") // JSON: [{name, url, mimeType, size}]
+  metadata        String    @default("{}") // JSON: headers, phones, msgIds, etc.
+  status          String    @default("delivered") // pending, sent, delivered, read, failed
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  aiDraft         Boolean   @default(false) // Generated by AI
+  aiContextUsed   String    @default("{}") // JSON: what context was used for AI generation
+  senderName      String?
+  senderEmail     String?
+  externalId      String?   // Provider's message ID (for dedup)
+  userId          String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([conversationId, createdAt])
+  @@index([userId, status])
+  @@index([externalId])
+  @@index([createdAt])
+}
+
+/// Internal Note — private team notes on a conversation
+model InternalNote {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  content        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([userId])
+}
+
+/// Conversation Event — audit trail for conversations
+model ConversationEvent {
+  id             String   @id @default(cuid())
+  conversationId String
+  type           String   // created, assigned, status_changed, note_added, message_sent, etc.
+  userId         String?
+  metadata       String   @default("{}") // JSON: event-specific data
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([type])
 }
