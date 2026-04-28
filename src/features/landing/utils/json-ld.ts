@@ -146,6 +146,36 @@ export function getOrganizationLD() {
   }
 }
 
+// ─── BreadcrumbList Schema ──────────────────────────────────────────────────────────
+
+/**
+ * Returns a BreadcrumbList JSON-LD schema from an array of breadcrumb items.
+ * Each item should have a name and a URL (absolute or relative).
+ *
+ * @example
+ * ```tsx
+ * getBreadcrumbLD([
+ *   { name: 'Accueil', url: 'https://maellis.com' },
+ *   { name: 'Légal', url: 'https://maellis.com/legal' },
+ *   { name: 'CGV', url: 'https://maellis.com/legal/cgv' },
+ * ])
+ * ```
+ */
+export function getBreadcrumbLD(items: Array<{ name: string; url: string }>) {
+  const baseUrl = SITE_URL
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url.startsWith('http') ? item.url : `${baseUrl}${item.url}`,
+    })),
+  }
+}
+
 // ─── Utility ────────────────────────────────────────────────────────────────────────
 
 /**

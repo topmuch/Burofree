@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Settings, User, Palette, Bot, Moon, Sun,
-  Download, RotateCcw, Shield, LogIn
+  Download, RotateCcw, Shield, LogIn,
+  Mail, Server, CheckCircle2, XCircle, Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -66,6 +67,140 @@ export function SettingsPanel() {
   const [darkMode, setDarkMode] = useState(true)
 
   const userEmail = user?.email || 'alex@exemple.fr'
+
+  // ─── SMTP State ────────────────────────────────────────────────────────
+  const [smtpLoading, setSmtpLoading] = useState(true)
+  const [smtpSaving, setSmtpSaving] = useState(false)
+  const [smtpTesting, setSmtpTesting] = useState(false)
+  const [smtpConfigured, setSmtpConfigured] = useState(false)
+  const [smtpEnabled, setSmtpEnabled] = useState(false)
+  const [smtpHost, setSmtpHost] = useState('')
+  const [smtpPort, setSmtpPort] = useState('587')
+  const [smtpSecure, setSmtpSecure] = useState(false)
+  const [smtpUser, setSmtpUser] = useState('')
+  const [smtpPass, setSmtpPass] = useState('')
+  const [smtpFromName, setSmtpFromName] = useState('Maellis')
+  const [smtpFromEmail, setSmtpFromEmail] = useState('')
+  const [smtpReplyTo, setSmtpReplyTo] = useState('')
+  const [smtpProvider, setSmtpProvider] = useState('custom')
+
+  // Load SMTP config on mount
+  useEffect(() => {
+    async function loadSmtp() {
+      try {
+        const res = await fetch('/api/email/config')
+        if (res.ok) {
+          const data = await res.json()
+          setSmtpConfigured(data.configured)
+          setSmtpEnabled(data.enabled)
+          if (data.configured) {
+            setSmtpHost(data.host || '')
+            setSmtpPort(String(data.port || '587'))
+            setSmtpSecure(data.secure || false)
+            setSmtpUser(data.user || '')
+            setSmtpFromName(data.fromName || 'Maellis')
+            setSmtpFromEmail(data.fromEmail || '')
+            setSmtpReplyTo(data.replyTo || '')
+          }
+        }
+      } catch {
+        // Silently fail — config may not be available
+      } finally {
+        setSmtpLoading(false)
+      }
+    }
+    loadSmtp()
+  }, [])
+
+  const smtpProviders: Record<string, { host: string; port: string; secure: boolean; label: string }> = {
+    gmail: { host: 'smtp.gmail.com', port: '587', secure: false, label: 'Gmail' },
+    outlook: { host: 'smtp.office365.com', port: '587', secure: false, label: 'Outlook / Office 365' },
+    ovh: { host: 'ssl0.ovh.net', port: '465', secure: true, label: 'OVH' },
+    sendgrid: { host: 'smtp.sendgrid.net', port: '587', secure: false, label: 'SendGrid' },
+    scaleway: { host: 'smtp.scaleway.com', port: '587', secure: false, label: 'Scaleway' },
+    custom: { host: '', port: '587', secure: false, label: 'Personnalisé' },
+  }
+
+  const handleProviderChange = (provider: string) => {
+    setSmtpProvider(provider)
+    const preset = smtpProviders[provider]
+    if (preset && provider !== 'custom') {
+      setSmtpHost(preset.host)
+      setSmtpPort(preset.port)
+      setSmtpSecure(preset.secure)
+    }
+  }
+
+  const handleSaveSmtp = async () => {
+    setSmtpSaving(true)
+    try {
+      const res = await fetch('/api/email/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: smtpHost,
+          port: parseInt(smtpPort, 10),
+          secure: smtpSecure,
+          user: smtpUser,
+          pass: smtpPass,
+          fromName: smtpFromName,
+          fromEmail: smtpFromEmail,
+          replyTo: smtpReplyTo || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSmtpConfigured(true)
+        setSmtpEnabled(true)
+        toast.success('Configuration SMTP sauvegardée')
+      } else {
+        toast.error(data.error || 'Erreur lors de la sauvegarde')
+      }
+    } catch {
+      toast.error('Erreur lors de la sauvegarde')
+    } finally {
+      setSmtpSaving(false)
+    }
+  }
+
+  const handleTestSmtp = async () => {
+    if (!smtpFromEmail && !userEmail) {
+      toast.error('Adresse email requise pour le test')
+      return
+    }
+    setSmtpTesting(true)
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('Email de test envoyé avec succès')
+      } else {
+        toast.error(data.error || data.details || 'Échec du test SMTP')
+      }
+    } catch {
+      toast.error('Échec du test SMTP')
+    } finally {
+      setSmtpTesting(false)
+    }
+  }
+
+  const handleDisableSmtp = async () => {
+    try {
+      const res = await fetch('/api/email/config', { method: 'DELETE' })
+      if (res.ok) {
+        setSmtpEnabled(false)
+        toast.success('Notifications SMTP désactivées')
+      } else {
+        toast.error('Erreur lors de la désactivation')
+      }
+    } catch {
+      toast.error('Erreur lors de la désactivation')
+    }
+  }
 
   const handleSaveProfile = () => {
     toast.success('Profil sauvegardé')
@@ -306,8 +441,243 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 5. Tags & Labels */}
+      {/* 5. Configuration SMTP */}
       <motion.div custom={4} variants={sectionVariants} initial="hidden" animate="visible">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Mail className="w-4 h-4 text-emerald-400" />
+              Configuration SMTP
+              {smtpLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />
+              ) : smtpConfigured && smtpEnabled ? (
+                <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Configuré
+                </span>
+              ) : (
+                <span className="ml-auto flex items-center gap-1.5 text-xs text-red-400">
+                  <span className="w-2 h-2 rounded-full bg-red-400" />
+                  Non configuré
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Provider Preset */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Fournisseur</Label>
+              <Select value={smtpProvider} onValueChange={handleProviderChange}>
+                <SelectTrigger className="bg-secondary">
+                  <SelectValue placeholder="Sélectionner un fournisseur" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gmail">Gmail</SelectItem>
+                  <SelectItem value="outlook">Outlook / Office 365</SelectItem>
+                  <SelectItem value="ovh">OVH</SelectItem>
+                  <SelectItem value="sendgrid">SendGrid</SelectItem>
+                  <SelectItem value="scaleway">Scaleway</SelectItem>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Host & Port */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Server className="w-3 h-3" />
+                  Hôte SMTP
+                </Label>
+                <Input
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                  placeholder="smtp.gmail.com"
+                  className="bg-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Port</Label>
+                <Select value={smtpPort} onValueChange={setSmtpPort}>
+                  <SelectTrigger className="bg-secondary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="587">587 (STARTTLS)</SelectItem>
+                    <SelectItem value="465">465 (SSL/TLS)</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="2525">2525</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Secure Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  Connexion sécurisée
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {smtpSecure ? 'SSL/TLS (port 465)' : 'STARTTLS (port 587)'}
+                </p>
+              </div>
+              <Switch
+                checked={smtpSecure}
+                onCheckedChange={setSmtpSecure}
+                className="data-[state=checked]:bg-emerald-500"
+              />
+            </div>
+
+            <Separator />
+
+            {/* Username & Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Nom d&apos;utilisateur</Label>
+                <Input
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  placeholder="user@example.com"
+                  className="bg-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Mot de passe
+                  {smtpConfigured && !smtpPass && (
+                    <span className="ml-1 text-muted-foreground/60">(défini)</span>
+                  )}
+                </Label>
+                <Input
+                  type="password"
+                  value={smtpPass}
+                  onChange={(e) => setSmtpPass(e.target.value)}
+                  placeholder={smtpConfigured ? '••••••••' : 'Mot de passe'}
+                  className="bg-secondary"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* From Name & From Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Nom expéditeur</Label>
+                <Input
+                  value={smtpFromName}
+                  onChange={(e) => setSmtpFromName(e.target.value)}
+                  placeholder="Maellis"
+                  className="bg-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Email expéditeur</Label>
+                <Input
+                  type="email"
+                  value={smtpFromEmail}
+                  onChange={(e) => setSmtpFromEmail(e.target.value)}
+                  placeholder="noreply@example.com"
+                  className="bg-secondary"
+                />
+              </div>
+            </div>
+
+            {/* Reply-To */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                Répondre à <span className="text-muted-foreground/60">(optionnel)</span>
+              </Label>
+              <Input
+                type="email"
+                value={smtpReplyTo}
+                onChange={(e) => setSmtpReplyTo(e.target.value)}
+                placeholder="support@example.com"
+                className="bg-secondary"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                onClick={handleSaveSmtp}
+                disabled={smtpSaving}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                size="sm"
+              >
+                {smtpSaving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Sauvegarde…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                    Sauvegarder
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleTestSmtp}
+                disabled={smtpTesting || !smtpConfigured}
+                variant="outline"
+                size="sm"
+                className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              >
+                {smtpTesting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Test en cours…
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3.5 h-3.5 mr-1.5" />
+                    Envoyer un test
+                  </>
+                )}
+              </Button>
+
+              {smtpConfigured && smtpEnabled && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    >
+                      <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Désactiver
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Désactiver les notifications SMTP ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Les emails ne seront plus envoyés. La configuration sera conservée et pourra être réactivée.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDisableSmtp}
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                      >
+                        Désactiver
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* 6. Tags & Labels */}
+      <motion.div custom={5} variants={sectionVariants} initial="hidden" animate="visible">
         <Card>
           <CardContent className="pt-6">
             <TagsSection />
@@ -315,8 +685,8 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 6. Rappels & Automatisations */}
-      <motion.div custom={5} variants={sectionVariants} initial="hidden" animate="visible">
+      {/* 7. Rappels & Automatisations */}
+      <motion.div custom={6} variants={sectionVariants} initial="hidden" animate="visible">
         <Card>
           <CardContent className="pt-6">
             <AutomationsSection />
@@ -324,13 +694,13 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 7. Sécurité 2FA */}
-      <motion.div custom={6} variants={sectionVariants} initial="hidden" animate="visible">
+      {/* 8. Sécurité 2FA */}
+      <motion.div custom={7} variants={sectionVariants} initial="hidden" animate="visible">
         <TwoFactorStatusCard />
       </motion.div>
 
-      {/* 8. Données & RGPD */}
-      <motion.div custom={7} variants={sectionVariants} initial="hidden" animate="visible">
+      {/* 9. Données & RGPD */}
+      <motion.div custom={8} variants={sectionVariants} initial="hidden" animate="visible">
         <GdprPanel />
       </motion.div>
     </div>

@@ -14,8 +14,10 @@ const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
+  const legalDate = new Date('2025-01-01')
 
   return [
+    // ─── Main Pages ────────────────────────────────────────────────────────────────
     {
       url: SITE_URL,
       lastModified: now,
@@ -34,21 +36,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.9,
     },
+
+    // ─── Legal Pages ───────────────────────────────────────────────────────────────
     {
       url: `${SITE_URL}/legal/cgv`,
-      lastModified: new Date('2025-01-01'),
+      lastModified: legalDate,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/privacy`,
-      lastModified: new Date('2025-01-01'),
+      lastModified: legalDate,
       changeFrequency: 'yearly',
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/mentions`,
-      lastModified: new Date('2025-01-01'),
+      lastModified: legalDate,
       changeFrequency: 'yearly',
       priority: 0.3,
     },

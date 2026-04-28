@@ -938,3 +938,37 @@ Stage Summary:
 - Database connected (SQLite in dev, PostgreSQL-ready)
 - Health endpoint operational
 - All code compiles without errors
+
+---
+Task ID: SMTP-1
+Agent: Main Orchestrator
+Task: Create SMTP email notification configuration + SEO improvements
+
+Work Log:
+- Installed nodemailer + @types/nodemailer
+- Created src/lib/email/smtp.ts — Full SMTP client with config persistence (PlatformConfig table), connection pooling, test connection, enable/disable
+- Created src/lib/email/templates.ts — 7 HTML email templates: welcome, invoice, reminder, notification, password_reset, team_invite, weekly_summary
+- Created src/lib/email/index.ts — Unified EmailService singleton with logging to AutomationLog
+- Created src/app/api/email/config/route.ts — GET/POST/DELETE for SMTP config management
+- Created src/app/api/email/test/route.ts — POST for sending test email
+- Created src/app/api/email/send/route.ts — POST for sending template-based emails
+- Added SMTP configuration section to settings-panel.tsx (provider presets, host/port/secure/user/pass, test email, enable/disable)
+- Created src/app/api/og/route.tsx — Dynamic OG image generation (edge runtime, 1200x630 PNG)
+- Created src/app/not-found.tsx — Professional 404 page
+- Created src/app/error.tsx — Error boundary page
+- Created src/app/loading.tsx — Loading skeleton page
+- Created src/app/(landing)/legal/cgv/page.tsx — CGV with BreadcrumbList JSON-LD
+- Created src/app/(landing)/legal/privacy/page.tsx — Privacy policy with RGPD
+- Created src/app/(landing)/legal/mentions/page.tsx — Mentions légales
+- Enhanced src/app/layout.tsx — Added verification, category, classification, openGraph, twitter, appLinks, robots metadata
+- Added getBreadcrumbLD() to json-ld.ts
+- Removed conflicting public/robots.txt (dynamic robots.ts takes precedence)
+- Added /api/og to middleware public routes
+- All lint checks pass, dev server running stable
+
+Stage Summary:
+- Complete SMTP email notification system with 7 templates and admin configuration UI
+- Full SEO setup: dynamic OG images, enhanced metadata, legal pages, 404/error/loading pages
+- All API endpoints verified (email/config, email/test, email/send, /api/og returns PNG)
+- Legal pages return HTTP 200 with proper SEO metadata
+- sitemap.xml and robots.txt working correctly
