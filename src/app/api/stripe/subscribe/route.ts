@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Check Stripe configuration
     if (!isStripeConfigured()) {
       return NextResponse.json(
-        { error: 'Les paiements ne sont pas encore configurés. Contactez support@burofree.com.' },
+        { error: 'Les paiements ne sont pas encore configurés. Contactez support@maellis.com.' },
         { status: 400 },
       )
     }

@@ -7,13 +7,20 @@ const KEY_LENGTH = 32
 
 /**
  * Derive a 32-byte key from the ENCRYPTION_KEY env variable.
- * Falls back to a dev-only key if ENCRYPTION_KEY is not set.
+ * Throws in production if ENCRYPTION_KEY is not set.
+ * Falls back to a dev-only key in development mode.
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || 'burofree-dev-encryption-key-do-not-use-in-prod'
-  // Use scrypt to derive a proper 32-byte key from the secret
-  const salt = 'burofree-encryption-salt-v1'
-  return scryptSync(secret, salt, KEY_LENGTH)
+  const secret = process.env.ENCRYPTION_KEY
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY environment variable is required in production. Generate one with: openssl rand -base64 32')
+    }
+    console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
+  }
+  const keySource = secret || 'maellis-dev-encryption-key-do-not-use-in-prod'
+  const salt = 'maellis-encryption-salt-v1'
+  return scryptSync(keySource, salt, KEY_LENGTH)
 }
 
 /**

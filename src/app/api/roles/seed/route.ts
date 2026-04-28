@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { seedRolesAndPermissions } from '@/features/security/rbac/seed'
+import { invalidateAllPermissionCaches } from '@/features/security/rbac/checker'
 
 export async function POST(req: NextRequest) {
   const { user, response } = await requireAuth(req)
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await seedRolesAndPermissions()
+    // Seeding creates/updates default roles and permissions — invalidate all caches
+    invalidateAllPermissionCaches()
     return NextResponse.json(
       { message: 'Rôles et permissions initialisés avec succès', ...result },
       { headers: createRateLimitHeaders(DEFAULT_API_OPTIONS, rl.remaining) },

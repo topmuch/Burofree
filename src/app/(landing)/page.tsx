@@ -1,5 +1,5 @@
 /**
- * Landing Page — Burofree Marketing Homepage
+ * Landing Page — Maellis Marketing Homepage
  *
  * Assembles all landing page sections in a conversion-optimized layout:
  *  1. Header (sticky nav)
@@ -43,14 +43,14 @@ import { getFAQPageLD } from '@/features/landing/utils/json-ld'
 
 const FAQ_DATA = [
   {
-    question: 'Burofree est-il gratuit ?',
+    question: 'Maellis est-il gratuit ?',
     answer:
-      'Oui, Burofree propose un plan gratuit sans carte bancaire avec 3 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
+      'Oui, Maellis propose un plan gratuit sans carte bancaire avec 3 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
   },
   {
     question: 'Puis-je connecter ma messagerie ?',
     answer:
-      'Absolument. Burofree supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
+      'Absolument. Maellis supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
   },
   {
     question: 'Comment fonctionne la facturation ?',
@@ -68,7 +68,7 @@ const FAQ_DATA = [
       'Oui, sans engagement. Vous pouvez annuler votre abonnement en un clic depuis vos paramètres.',
   },
   {
-    question: 'Burofree convient-il aux équipes ?',
+    question: 'Maellis convient-il aux équipes ?',
     answer:
       'Le plan Entreprise permet jusqu\'à 25 membres avec des rôles (admin, membre, viewer) et un portail client partagé.',
   },
@@ -181,7 +181,7 @@ function BottomCTASection() {
           <span className="text-emerald-500">vie de freelance</span> ?
         </h2>
         <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
-          Rejoignez plus de 2 500 freelances qui ont déjà gagné du temps grâce à Burofree.
+          Rejoignez plus de 2 500 freelances qui ont déjà gagné du temps grâce à Maellis.
           Essai gratuit, sans carte bancaire.
         </p>
 

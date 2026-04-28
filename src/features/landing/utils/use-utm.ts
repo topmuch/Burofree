@@ -15,7 +15,7 @@ import { parseUTMParams, type UTMParams } from './tracking'
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
 
-const UTM_STORAGE_KEY = 'burofree_utm'
+const UTM_STORAGE_KEY = 'maellis_utm'
 const UTM_EXPIRY_DAYS = 30
 
 interface StoredUTM extends UTMParams {

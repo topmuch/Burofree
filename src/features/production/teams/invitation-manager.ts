@@ -288,15 +288,15 @@ async function sendInvitationEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Burofree <noreply@burofree.com>',
+        from: 'Maellis <noreply@maellis.com>',
         to: email,
-        subject: `${inviter?.name || 'Quelqu\'un'} vous a invité à rejoindre ${teamName} sur Burofree`,
+        subject: `${inviter?.name || 'Quelqu\'un'} vous a invité à rejoindre ${teamName} sur Maellis`,
         html: `
           <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #10b981; font-size: 24px;">Invitation à rejoindre une équipe</h1>
             <p style="color: #d4d4d8; font-size: 16px; line-height: 1.6;">
               <strong>${inviter?.name || 'Un utilisateur'}</strong> vous a invité à rejoindre
-              l'équipe <strong>${teamName}</strong> sur Burofree.
+              l'équipe <strong>${teamName}</strong> sur Maellis.
             </p>
             <a href="${acceptUrl}"
                style="display: inline-block; background: #10b981; color: white; padding: 12px 24px;

@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS } from '@/lib/rate-limit'
 import { createTeamInvitation } from '@/features/production/teams/invitation-manager'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 import type { TeamRole } from '@/features/production/teams/permissions'
 
@@ -45,6 +47,13 @@ export async function POST(req: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 400 })
+  }
+
+  // Invalidate permission cache for the invited user
+  // (even though status is 'invited' not 'active', invalidate defensively for future-proofing)
+  const invitedUser = await db.user.findUnique({ where: { email }, select: { id: true } })
+  if (invitedUser) {
+    invalidatePermissionCache(invitedUser.id)
   }
 
   return NextResponse.json({ success: true, inviteId: result.inviteId }, { status: 201 })

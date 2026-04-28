@@ -1,5 +1,5 @@
 /**
- * 2FA Service Layer for Burofree
+ * 2FA Service Layer for Maellis
  * Orchestrates TOTP setup, enable, disable, verification, and backup code management
  */
 

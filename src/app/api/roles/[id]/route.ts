@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
 import { z } from 'zod'
 
 // ─── Validation ──────────────────────────────────────────────────────────
@@ -177,7 +178,6 @@ export async function PUT(
   }
 
   // Invalidate permission cache for users with this role
-  const { invalidatePermissionCache } = await import('@/features/security/rbac/checker')
   const membersWithRole = await db.teamMember.findMany({
     where: { roleId: id },
     select: { userId: true },
@@ -255,16 +255,25 @@ export async function DELETE(
   }
 
   // Check if role is assigned to any team members
-  const assignedCount = await db.teamMember.count({ where: { roleId: id } })
-  if (assignedCount > 0) {
+  const assignedMembers = await db.teamMember.findMany({
+    where: { roleId: id },
+    select: { userId: true },
+  })
+  if (assignedMembers.length > 0) {
     return NextResponse.json(
-      { error: `Ce rôle est assigné à ${assignedCount} membre(s). Réassignez-les avant de supprimer le rôle.` },
+      { error: `Ce rôle est assigné à ${assignedMembers.length} membre(s). Réassignez-les avant de supprimer le rôle.` },
       { status: 409 },
     )
   }
 
   // Delete role (cascades to rolePermissions)
   await db.role.delete({ where: { id } })
+
+  // Invalidate permission cache for any users who previously had this role
+  // (defensive — the check above should prevent this, but guards against race conditions)
+  for (const member of assignedMembers) {
+    invalidatePermissionCache(member.userId)
+  }
 
   return NextResponse.json(
     { message: `Rôle "${role.name}" supprimé` },

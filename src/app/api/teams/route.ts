@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS } from '@/lib/rate-limit'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
 import { z } from 'zod'
 
 const teamCreateSchema = z.object({
@@ -120,6 +121,9 @@ export async function POST(req: NextRequest) {
 
     return newTeam
   })
+
+  // Invalidate permission cache for the creator (now owner of the new team)
+  invalidatePermissionCache(auth.user!.id)
 
   return NextResponse.json({ team }, { status: 201 })
 }

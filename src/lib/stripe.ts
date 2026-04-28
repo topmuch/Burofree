@@ -1,5 +1,5 @@
 /**
- * Stripe Client Wrapper for Burofree
+ * Stripe Client Wrapper for Maellis
  *
  * Provides utility functions for Stripe payment integration.
  * Works gracefully when Stripe is not configured (uses mock key).

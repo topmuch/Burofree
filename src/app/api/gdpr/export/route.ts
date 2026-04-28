@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const data = await exportUserData(user.id)
 
     // Return as downloadable JSON
-    const filename = `burofree-export-${user.id}-${new Date().toISOString().split('T')[0]}.json`
+    const filename = `maellis-export-${user.id}-${new Date().toISOString().split('T')[0]}.json`
 
     return new NextResponse(JSON.stringify(data, null, 2), {
       status: 200,

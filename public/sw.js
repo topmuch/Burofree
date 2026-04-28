@@ -1,5 +1,5 @@
 /**
- * Burofree Service Worker v3
+ * Maellis Service Worker v3
  *
  * Caching strategies:
  * - CacheFirst: static assets (JS, CSS, images, fonts)
@@ -12,10 +12,10 @@
  * - Periodic background sync for email/calendar
  */
 
-const CACHE_VERSION = 'burofree-v3';
-const STATIC_CACHE = 'burofree-static-v3';
-const API_CACHE = 'burofree-api-v3';
-const RUNTIME_CACHE = 'burofree-runtime-v3';
+const CACHE_VERSION = 'maellis-v3';
+const STATIC_CACHE = 'maellis-static-v3';
+const API_CACHE = 'maellis-api-v3';
+const RUNTIME_CACHE = 'maellis-runtime-v3';
 
 const STATIC_ASSETS = ['/', '/logo.svg', '/manifest.json'];
 
@@ -233,11 +233,11 @@ function isCriticalWrite(request) {
 // ─── Push Notifications ──────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'Burofree',
+    title: 'Maellis',
     body: 'Nouvelle notification',
     icon: '/logo.svg',
     badge: '/logo.svg',
-    tag: 'burofree-notification',
+    tag: 'maellis-notification',
     url: '/',
     type: 'info',
   };
@@ -254,7 +254,7 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/logo.svg',
     badge: data.badge || '/logo.svg',
-    tag: data.tag || `burofree-${Date.now()}`,
+    tag: data.tag || `maellis-${Date.now()}`,
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',
@@ -321,7 +321,7 @@ async function syncEmails() {
     if (response.ok) {
       const data = await response.json();
       if (data.imported > 0) {
-        self.registration.showNotification('Burofree — Emails synchronisés', {
+        self.registration.showNotification('Maellis — Emails synchronisés', {
           body: `${data.imported} nouvel${data.imported > 1 ? 'aux' : ''} email${data.imported > 1 ? 's' : ''} importé${data.imported > 1 ? 's' : ''}`,
           icon: '/logo.svg',
           tag: 'sync-emails',
@@ -343,7 +343,7 @@ async function syncCalendar() {
       const data = await response.json();
       const total = (data.synced || 0) + (data.updated || 0);
       if (total > 0) {
-        self.registration.showNotification('Burofree — Calendrier synchronisé', {
+        self.registration.showNotification('Maellis — Calendrier synchronisé', {
           body: `${total} événement${total > 1 ? 's' : ''} synchronisé${total > 1 ? 's' : ''}`,
           icon: '/logo.svg',
           tag: 'sync-calendar',

@@ -50,9 +50,9 @@ const timezones = [
 ]
 
 const tonePreviewMessages: Record<string, string> = {
-  professionnel: 'Bonjour ! Je suis Burofree, votre assistant professionnel. Comment puis-je vous aider aujourd\'hui ?',
-  amical: 'Salut ! C\'est Burofree, votre assistant. Qu\'est-ce que je peux faire pour vous aujourd\'hui ? 😊',
-  minimaliste: 'Burofree. En quoi puis-je aider ?',
+  professionnel: 'Bonjour ! Je suis Maellis, votre assistant professionnel. Comment puis-je vous aider aujourd\'hui ?',
+  amical: 'Salut ! C\'est Maellis, votre assistant. Qu\'est-ce que je peux faire pour vous aujourd\'hui ? 😊',
+  minimaliste: 'Maellis. En quoi puis-je aider ?',
 }
 
 export function SettingsPanel() {
@@ -61,7 +61,7 @@ export function SettingsPanel() {
   const [name, setName] = useState(user?.name || 'Alex Martin')
   const [profession, setProfession] = useState(user?.profession || 'Développeur Web')
   const [timezone, setTimezone] = useState(user?.timezone || 'Europe/Paris')
-  const [assistantName, setAssistantName] = useState(user?.assistantName || 'Burofree')
+  const [assistantName, setAssistantName] = useState(user?.assistantName || 'Maellis')
   const [assistantTone, setAssistantTone] = useState(user?.assistantTone || 'professionnel')
   const [darkMode, setDarkMode] = useState(true)
 
@@ -84,7 +84,7 @@ export function SettingsPanel() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `burofree-export-${new Date().toISOString().split('T')[0]}.json`
+        a.download = `maellis-export-${new Date().toISOString().split('T')[0]}.json`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)

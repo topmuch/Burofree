@@ -27,5 +27,7 @@ declare module 'next-auth/jwt' {
     provider?: string | null
     accessTokenExpires?: number | null
     userId?: string
+    role?: string
+    suspended?: boolean
   }
 }

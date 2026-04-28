@@ -1,5 +1,5 @@
 /**
- * AI Engine Abstraction Layer for Burofree
+ * AI Engine Abstraction Layer for Maellis
  * Unified interface supporting multiple AI providers (Groq, z-ai-web-dev-sdk)
  */
 

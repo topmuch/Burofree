@@ -3,7 +3,7 @@ services:
   app:
     build: .
     environment:
-      - DATABASE_URL=postgresql://burofree:${DB_PASSWORD}@db:5432/burofree
+      - DATABASE_URL=postgresql://maellis:${DB_PASSWORD}@db:5432/maellis
       - NEXTAUTH_URL=https://${DOMAIN}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
@@ -22,24 +22,24 @@ services:
         condition: service_healthy
     restart: always
     networks:
-      - burofree-network
+      - maellis-network
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: burofree
+      POSTGRES_USER: maellis
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: burofree
+      POSTGRES_DB: maellis
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U burofree"]
+      test: ["CMD-SHELL", "pg_isready -U maellis"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: always
     networks:
-      - burofree-network
+      - maellis-network
 
   nginx:
     image: nginx:alpine
@@ -54,7 +54,7 @@ services:
       - app
     restart: always
     networks:
-      - burofree-network
+      - maellis-network
 
   certbot:
     image: certbot/certbot
@@ -63,10 +63,10 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - burofree-network
+      - maellis-network
 
 networks:
-  burofree-network:
+  maellis-network:
     driver: bridge
 
 volumes:

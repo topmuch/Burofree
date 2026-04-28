@@ -1,5 +1,5 @@
 /**
- * Marketing Tracking Utilities — Burofree Landing Page
+ * Marketing Tracking Utilities — Maellis Landing Page
  *
  * Provides consent-aware tracking functions for GA4, Plausible,
  * and development console logging. All functions are client-side only
@@ -29,8 +29,8 @@ interface TrackProperties {
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
 
-const CONSENT_STORAGE_KEY = 'burofree_consent'
-const CONSENT_EVENT_NAME = 'burofree:consent_update'
+const CONSENT_STORAGE_KEY = 'maellis_consent'
+const CONSENT_EVENT_NAME = 'maellis:consent_update'
 
 // ─── Consent Management ─────────────────────────────────────────────────────────────
 

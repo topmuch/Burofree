@@ -21,9 +21,16 @@ const keyVersionCache = new Map<number, Buffer>()
  * Falls back to a dev-only key if ENCRYPTION_KEY is not set.
  */
 function deriveKey(version: number): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || 'burofree-dev-encryption-key-do-not-use-in-prod'
-  const salt = `burofree-encryption-salt-v${version}`
-  return scryptSync(secret, salt, KEY_LENGTH)
+  const secret = process.env.ENCRYPTION_KEY
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY environment variable is required in production.')
+    }
+    console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
+  }
+  const keySource = secret || 'maellis-dev-encryption-key-do-not-use-in-prod'
+  const salt = `maellis-encryption-salt-v${version}`
+  return scryptSync(keySource, salt, KEY_LENGTH)
 }
 
 /**

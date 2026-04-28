@@ -58,7 +58,7 @@ class SlackProvider implements IntegrationProvider {
       refreshToken: 'slack-refresh-token-demo',
       tokenExpiry: new Date(Date.now() + 3600 * 1000),
       scopes: ['channels:read', 'chat:write', 'users:read'],
-      metadata: { teamId: 'T_DEMO', teamName: 'Burofree Workspace' },
+      metadata: { teamId: 'T_DEMO', teamName: 'Maellis Workspace' },
     }
   }
 

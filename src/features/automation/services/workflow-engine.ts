@@ -130,7 +130,7 @@ export async function executeWorkflow(workflowId: string, context: WorkflowConte
         const hours = Number(action.config.hours ?? 1)
         const scheduledAt = new Date(Date.now() + hours * 3600 * 1000)
 
-        await handleDelay(action, execution.id, scheduledAt)
+        await handleDelay(action, execution.id, scheduledAt, workflowId, context)
 
         logs.push({
           step: i,
@@ -330,8 +330,17 @@ async function executeAction(
 
 // ─── Delay Handling ────────────────────────────────────────────────────────────
 
-async function handleDelay(action: ActionConfig, executionId: string, scheduledAt: Date) {
-  // For SQLite, we store the scheduledAt and use processDelayedWorkflows to check
+async function handleDelay(action: ActionConfig, executionId: string, scheduledAt: Date, workflowId: string, context: WorkflowContext) {
+  const delayMs = Math.max(0, scheduledAt.getTime() - Date.now())
+  if (delayMs > 0) {
+    try {
+      const { queueDelayedWorkflow } = await import('./workflow-worker')
+      await queueDelayedWorkflow(workflowId, executionId, delayMs, context)
+    } catch (error) {
+      // Fallback: if BullMQ is not available, just log (SQLite polling fallback)
+      console.warn(`[WorkflowEngine] BullMQ unavailable, using polling fallback:`, error)
+    }
+  }
   console.log(`[WorkflowEngine] Delay scheduled: execution ${executionId} at ${scheduledAt.toISOString()}`)
 }
 

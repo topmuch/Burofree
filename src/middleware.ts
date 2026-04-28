@@ -4,7 +4,7 @@ import { verifyInvoiceToken } from '@/lib/invoice-token'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
 
 /**
- * Burofree Middleware
+ * Maellis Middleware
  *
  * Handles:
  * 1. OAuth token refresh headers for email/calendar routes
@@ -117,6 +117,35 @@ export async function middleware(request: NextRequest) {
       { error: 'Trop de requêtes. Veuillez réessayer plus tard.' },
       { status: 429 }
     )
+  }
+
+  // 7. Superadmin route protection — check role from session
+  if (pathname.startsWith('/api/superadmin/')) {
+    // Decode JWT to check role without DB call
+    try {
+      const { decode } = await import('next-auth/jwt')
+      const decoded = await decode({
+        token: sessionToken,
+        secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV !== 'production' ? 'maellis-dev-secret-key-do-not-use-in-prod' : ''),
+      })
+      if (decoded?.role !== 'superadmin') {
+        return NextResponse.json(
+          { error: 'Accès refusé. Privilèges superadmin requis.' },
+          { status: 403 }
+        )
+      }
+      if (decoded?.suspended) {
+        return NextResponse.json(
+          { error: 'Compte suspendu.' },
+          { status: 403 }
+        )
+      }
+    } catch {
+      return NextResponse.json(
+        { error: 'Session invalide.' },
+        { status: 401 }
+      )
+    }
   }
 
   // 6. Add OAuth token refresh headers for specific routes

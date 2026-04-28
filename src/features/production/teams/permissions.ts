@@ -17,7 +17,7 @@ export interface Permission {
 }
 
 /**
- * Complete permission matrix for Burofree teams.
+ * Complete permission matrix for Maellis teams.
  * Each permission defines which roles have access.
  */
 export const PERMISSIONS: Permission[] = [

@@ -585,7 +585,7 @@ export function GlobalSearch() {
                       Fermer
                     </span>
                   </div>
-                  <span className="text-zinc-700">Burofree Search</span>
+                  <span className="text-zinc-700">Maellis Search</span>
                 </div>
               </div>
             </motion.div>

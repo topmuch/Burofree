@@ -4,11 +4,6 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Handle BigInt serialization from SQLite queries
-;(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
-  return String(this)
-}
-
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({

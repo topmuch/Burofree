@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const PORTAL_SECRET = process.env.PORTAL_SECRET || process.env.NEXTAUTH_SECRET || 'burofree-portal-dev'
+const PORTAL_SECRET = process.env.PORTAL_SECRET || process.env.NEXTAUTH_SECRET || 'maellis-portal-dev'
 
 /**
  * Generate a secure portal token for a project

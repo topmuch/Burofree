@@ -1,5 +1,5 @@
 /**
- * Z-AI (z-ai-web-dev-sdk) Fallback Provider for Burofree
+ * Z-AI (z-ai-web-dev-sdk) Fallback Provider for Maellis
  * Wraps the existing z-ai-web-dev-sdk into the unified AIEngine interface
  */
 

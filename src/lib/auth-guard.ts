@@ -1,5 +1,5 @@
 /**
- * Auth Guard Utility for Burofree API Routes
+ * Auth Guard Utility for Maellis API Routes
  * Provides server-side session verification for API route handlers
  */
 

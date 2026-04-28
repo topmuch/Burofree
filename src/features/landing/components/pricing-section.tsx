@@ -57,7 +57,7 @@ export function PricingSection() {
 
     // Enterprise: contact
     if (plan.id === 'enterprise') {
-      window.location.href = 'mailto:hello@burofree.com?subject=Demande%20plan%20Enterprise'
+      window.location.href = 'mailto:hello@maellis.com?subject=Demande%20plan%20Enterprise'
       return
     }
 

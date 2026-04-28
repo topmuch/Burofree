@@ -7,7 +7,18 @@
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'burofree-dev-secret-key-change-in-production'
+const getSecret = () => {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('NEXTAUTH_SECRET environment variable is required in production.')
+    }
+    console.warn('[SECURITY] Using development-only JWT secret. Set NEXTAUTH_SECRET in production!')
+    return 'maellis-dev-secret-key-do-not-use-in-prod'
+  }
+  return secret
+}
+const SECRET = getSecret()
 
 interface SignOptions {
   expiresIn?: string // e.g. '7d', '24h', '30m'

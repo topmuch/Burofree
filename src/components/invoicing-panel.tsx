@@ -764,7 +764,7 @@ export function InvoicingPanel() {
               <div className="hidden print:block print:mb-8">
                 <div className="flex justify-between items-start border-b-2 border-emerald-500 pb-4 mb-6">
                   <div>
-                    <h1 className="text-2xl font-bold text-emerald-600">Burofree</h1>
+                    <h1 className="text-2xl font-bold text-emerald-600">Maellis</h1>
                     <p className="text-sm text-gray-500">{typeLabels[viewInvoice.type] || viewInvoice.type}</p>
                   </div>
                   <div className="text-right">
@@ -894,7 +894,7 @@ export function InvoicingPanel() {
 
               {/* Print footer - only visible when printing */}
               <div className="hidden print:block print:mt-8 print:pt-4 print:border-t print:border-gray-200 print:text-xs print:text-gray-400">
-                <p>G\u00e9n\u00e9r\u00e9 par Burofree \u00b7 {new Date().toLocaleDateString('fr-FR')}</p>
+                <p>G\u00e9n\u00e9r\u00e9 par Maellis \u00b7 {new Date().toLocaleDateString('fr-FR')}</p>
               </div>
             </div>
           )}

@@ -215,7 +215,7 @@ function formatPdf(
   fileName: string,
   entityType: EntityType,
 ): ExportResult {
-  const title = `Rapport ${entityType === 'all' ? 'complet' : entityType} — Burofree`
+  const title = `Rapport ${entityType === 'all' ? 'complet' : entityType} — Maellis`
   const date = new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
 
   const html = `<!DOCTYPE html>
@@ -232,7 +232,7 @@ function formatPdf(
 <h1>${title}</h1>
 <p>Généré le ${date} — ${data.length} enregistrement${data.length > 1 ? 's' : ''}</p>
 ${generateHtmlTable(data)}
-<div class="footer">Burofree — Assistant Intelligent Freelance</div>
+<div class="footer">Maellis — Assistant Intelligent Freelance</div>
 </body></html>`
 
   return {
@@ -483,7 +483,7 @@ async function importRow(
 
 function generateFileName(options: ExportOptions): string {
   const date = new Date().toISOString().split('T')[0]
-  return `burofree_${options.entityType}_${date}`
+  return `maellis_${options.entityType}_${date}`
 }
 
 function flattenObject(obj: Record<string, unknown>, prefix: string = ''): Record<string, unknown> {

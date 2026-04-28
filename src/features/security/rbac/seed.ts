@@ -1,5 +1,5 @@
 /**
- * RBAC Seed — Burofree
+ * RBAC Seed — Maellis
  *
  * Seeds default roles and permissions into the database.
  * Idempotent: uses upsert for both permissions and role-permission assignments.

@@ -82,7 +82,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         projectColor: invoice.project?.color || null,
       },
       emitter: {
-        name: user?.name || 'Burofree',
+        name: user?.name || 'Maellis',
         email: user?.email || '',
         profession: user?.profession || undefined,
       },

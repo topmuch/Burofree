@@ -1,5 +1,5 @@
 /**
- * Enhanced Audit Logging System — Burofree
+ * Enhanced Audit Logging System — Maellis
  *
  * Wraps the basic AuditLog model with:
  * - Structured action types

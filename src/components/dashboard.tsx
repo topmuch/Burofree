@@ -377,7 +377,7 @@ export function Dashboard() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                Suggestions de Burofree
+                Suggestions de Maellis
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin, logAdminAction } from '@/features/superadmin/utils/admin-guard'
 import { userUpdateSchema, rgpdDeleteSchema } from '@/lib/validations/superadmin'
 import { db } from '@/lib/db'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
 
 export async function GET(
   req: NextRequest,
@@ -189,6 +190,9 @@ export async function PATCH(
       changes: data,
     }, req)
 
+    // Invalidate permission cache — role or suspension status may have changed
+    invalidatePermissionCache(id)
+
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[SuperAdmin User PATCH] Error:', error)
@@ -261,7 +265,7 @@ export async function DELETE(
     }
 
     // RGPD anonymization: replace all PII
-    const anonymizedEmail = `anonymized-${user.id}@rgpd-deleted.burofree`
+    const anonymizedEmail = `anonymized-${user.id}@rgpd-deleted.maellis`
 
     await db.user.update({
       where: { id },
@@ -278,6 +282,9 @@ export async function DELETE(
         suspendedAt: new Date(),
       },
     })
+
+    // Invalidate permission cache — user status has changed (suspended)
+    invalidatePermissionCache(id)
 
     // End all active sessions
     await db.session.deleteMany({ where: { userId: id } })

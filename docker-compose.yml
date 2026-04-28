@@ -5,7 +5,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://burofree:burofree@db:5432/burofree
+      - DATABASE_URL=postgresql://maellis:maellis@db:5432/maellis
+      - REDIS_URL=redis://redis:6379
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
@@ -22,20 +23,33 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: burofree
-      POSTGRES_PASSWORD: burofree
-      POSTGRES_DB: burofree
+      POSTGRES_USER: maellis
+      POSTGRES_PASSWORD: maellis
+      POSTGRES_DB: maellis
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U burofree"]
+      test: ["CMD-SHELL", "pg_isready -U maellis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

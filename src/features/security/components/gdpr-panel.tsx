@@ -208,7 +208,7 @@ export function GdprPanel() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `burofree-export-${new Date().toISOString().split('T')[0]}.json`
+        a.download = `maellis-export-${new Date().toISOString().split('T')[0]}.json`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -576,7 +576,7 @@ export function GdprPanel() {
                             <AlertDialogTitle>Annuler la demande de suppression ?</AlertDialogTitle>
                             <AlertDialogDescription>
                               Votre compte sera restauré et votre email récupérera son état d&apos;origine.
-                              Vous pourrez continuer à utiliser Burofree normalement.
+                              Vous pourrez continuer à utiliser Maellis normalement.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

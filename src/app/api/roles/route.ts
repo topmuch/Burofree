@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRateLimitHeaders } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
+import { invalidateAllPermissionCaches } from '@/features/security/rbac/checker'
 import { z } from 'zod'
 
 // ─── Validation ──────────────────────────────────────────────────────────
@@ -155,6 +156,9 @@ export async function POST(req: NextRequest) {
       rolePermissions: { include: { permission: true } },
     },
   })
+
+  // Invalidate all permission caches defensively (new role could affect future default role lookups)
+  invalidateAllPermissionCaches()
 
   return NextResponse.json(
     {

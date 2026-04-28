@@ -24,17 +24,17 @@ import './landing-globals.css'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────────
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://burofree.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
 
 // ─── SEO Metadata ──────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
   title: {
-    default: 'Burofree — Le Copilote Intelligent pour Freelances',
-    template: '%s | Burofree',
+    default: 'Maellis — Le Copilote Intelligent pour Freelances',
+    template: '%s | Maellis',
   },
   description:
-    'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burofree automatise le reste avec l\'IA. Essai gratuit, sans carte bancaire.',
+    'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA. Essai gratuit, sans carte bancaire.',
   keywords: [
     'freelance',
     'productivité',
@@ -46,14 +46,14 @@ export const metadata: Metadata = {
     'suivi du temps',
     'Pomodoro',
     'portail client',
-    'Burofree',
+    'Maellis',
     'outil freelance',
     'gestion projet',
     'automatisation',
   ],
-  authors: [{ name: 'Burofree', url: SITE_URL }],
-  creator: 'Burofree',
-  publisher: 'Burofree',
+  authors: [{ name: 'Maellis', url: SITE_URL }],
+  creator: 'Maellis',
+  publisher: 'Maellis',
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: '/',
@@ -62,26 +62,26 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'fr_FR',
     url: SITE_URL,
-    siteName: 'Burofree',
-    title: 'Burofree — Le Copilote Intelligent pour Freelances',
+    siteName: 'Maellis',
+    title: 'Maellis — Le Copilote Intelligent pour Freelances',
     description:
-      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burofree automatise le reste avec l\'IA.',
+      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA.',
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Burofree — Assistant Intelligent Freelance',
+        alt: 'Maellis — Assistant Intelligent Freelance',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Burofree — Le Copilote Intelligent pour Freelances',
+    title: 'Maellis — Le Copilote Intelligent pour Freelances',
     description:
-      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burofree automatise le reste avec l\'IA.',
+      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA.',
     images: [`${SITE_URL}/og-image.png`],
-    creator: '@burofree',
+    creator: '@maellis',
   },
   robots: {
     index: true,

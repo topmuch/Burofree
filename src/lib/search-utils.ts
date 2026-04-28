@@ -1,5 +1,5 @@
 /**
- * Search Utilities for Burofree Full-Text Search
+ * Search Utilities for Maellis Full-Text Search
  *
  * Provides snippet generation, scoring, and filter parsing
  * for the advanced search API endpoint.

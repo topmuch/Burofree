@@ -13,7 +13,7 @@ interface Testimonial {
 const testimonials: Testimonial[] = [
   {
     quote:
-      "Burofree m'a fait gagner 3h par semaine sur la gestion admin. Je me concentre enfin sur mon métier.",
+      "Maellis m'a fait gagner 3h par semaine sur la gestion admin. Je me concentre enfin sur mon métier.",
     name: 'Marie L.',
     role: 'Designer freelance',
     metric: '+3h/semaine',
@@ -71,7 +71,7 @@ export function TestimonialsSection() {
             Ils nous font confiance
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Découvrez comment Burofree transforme le quotidien des freelances.
+            Découvrez comment Maellis transforme le quotidien des freelances.
           </p>
         </motion.div>
 

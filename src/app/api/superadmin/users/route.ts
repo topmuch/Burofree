@@ -8,6 +8,7 @@ import { requireSuperAdmin, logAdminAction } from '@/features/superadmin/utils/a
 import { userSearchSchema, userBulkActionSchema } from '@/lib/validations/superadmin'
 import { db } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
 
 export async function GET(req: NextRequest) {
   const { admin, response } = await requireSuperAdmin(req)
@@ -189,6 +190,7 @@ export async function POST(req: NextRequest) {
             })
             // End all active sessions
             await db.session.deleteMany({ where: { userId } })
+            invalidatePermissionCache(userId)
             results.push({ userId, success: true })
             break
           }
@@ -198,6 +200,7 @@ export async function POST(req: NextRequest) {
               where: { id: userId },
               data: { suspendedAt: null },
             })
+            invalidatePermissionCache(userId)
             results.push({ userId, success: true })
             break
           }
@@ -219,6 +222,7 @@ export async function POST(req: NextRequest) {
 
           case 'delete': {
             await db.user.delete({ where: { id: userId } })
+            invalidatePermissionCache(userId)
             results.push({ userId, success: true })
             break
           }
@@ -228,7 +232,7 @@ export async function POST(req: NextRequest) {
             await db.user.update({
               where: { id: userId },
               data: {
-                email: `anonymized-${userId}@deleted.burofree`,
+                email: `anonymized-${userId}@deleted.maellis`,
                 name: 'Utilisateur supprimé',
                 avatar: null,
                 profession: null,
@@ -240,6 +244,7 @@ export async function POST(req: NextRequest) {
             })
             // End all sessions
             await db.session.deleteMany({ where: { userId } })
+            invalidatePermissionCache(userId)
             results.push({ userId, success: true })
             break
           }

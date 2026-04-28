@@ -150,7 +150,7 @@ export function TwoFactorStatusCard() {
   const handleDownloadCodes = useCallback(() => {
     if (!regenCodes) return
     const content = [
-      'Burofree — Nouveaux codes de secours 2FA',
+      'Maellis — Nouveaux codes de secours 2FA',
       '==========================================',
       'Conservez ces codes en lieu sûr.',
       'Chaque code ne peut être utilisé qu\'une seule fois.',
@@ -164,7 +164,7 @@ export function TwoFactorStatusCard() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'burofree-2fa-backup-codes.txt'
+    a.download = 'maellis-2fa-backup-codes.txt'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

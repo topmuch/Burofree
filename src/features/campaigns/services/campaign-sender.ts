@@ -243,26 +243,35 @@ export async function sendCampaign(id: string, userId: string) {
       }
     }
 
-    // MVP: Simulate sending — mark all as 'sent'
-    const now = new Date()
-    await db.campaignRecipient.updateMany({
-      where: { campaignId: id, status: 'pending' },
-      data: { status: 'sent', sentAt: now },
-    })
+    // Queue campaign emails via BullMQ for background processing
+    try {
+      const { queueCampaignSend } = await import('./campaign-worker')
+      const { queued } = await queueCampaignSend(id, userId)
 
-    // Update campaign stats
-    const sentCount = await db.campaignRecipient.count({ where: { campaignId: id, status: 'sent' } })
-    await db.campaign.update({
-      where: { id },
-      data: {
-        status: 'sent',
-        stats: JSON.stringify({ sent: sentCount, delivered: sentCount, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0, complained: 0 }),
-      },
-    })
+      console.log(`[Campaign] Campaign "${campaign.name}" queued ${queued} emails for sending`)
 
-    console.log(`[Campaign] Campaign "${campaign.name}" sent to ${sentCount} recipients (MVP: simulated)`)
+      return { sent: queued }
+    } catch (error) {
+      // Fallback: if BullMQ is unavailable, use synchronous simulated sending
+      console.warn(`[Campaign] BullMQ unavailable, using sync fallback:`, error)
 
-    return { sent: sentCount }
+      const now = new Date()
+      await db.campaignRecipient.updateMany({
+        where: { campaignId: id, status: 'pending' },
+        data: { status: 'sent', sentAt: now },
+      })
+
+      const sentCount = await db.campaignRecipient.count({ where: { campaignId: id, status: 'sent' } })
+      await db.campaign.update({
+        where: { id },
+        data: {
+          status: 'sent',
+          stats: JSON.stringify({ sent: sentCount, delivered: sentCount, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0, complained: 0 }),
+        },
+      })
+
+      return { sent: sentCount }
+    }
   } catch (error) {
     // Mark campaign as failed/paused
     await db.campaign.update({ where: { id }, data: { status: 'draft' } })

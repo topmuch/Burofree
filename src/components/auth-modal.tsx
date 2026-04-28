@@ -74,7 +74,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       setLoading('google')
       try {
         const result = await signIn('credentials', {
-          email: 'demo.google@burofree.dev',
+          email: 'demo.google@maellis.dev',
           redirect: false,
         })
         if (result?.error) {
@@ -98,7 +98,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       setLoading('microsoft')
       try {
         const result = await signIn('credentials', {
-          email: 'demo.outlook@burofree.dev',
+          email: 'demo.outlook@maellis.dev',
           redirect: false,
         })
         if (result?.error) {
@@ -196,7 +196,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             </motion.div>
           </div>
           <DialogTitle className="text-xl font-semibold text-zinc-100">
-            {mode === 'login' ? 'Connexion à Burofree' : 'Créer un compte'}
+            {mode === 'login' ? 'Connexion à Maellis' : 'Créer un compte'}
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
             Votre copilote de travail intelligent

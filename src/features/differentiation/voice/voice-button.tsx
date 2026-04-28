@@ -17,7 +17,7 @@ import { useAppStore } from '@/lib/store'
 import { parseVoiceIntent, getVoiceCommands } from './voice-parser'
 import { dispatchVoiceIntent, type DispatchAction } from './voice-dispatcher'
 
-const PRIVACY_NOTICE_KEY = 'burofree_voice_notice_shown'
+const PRIVACY_NOTICE_KEY = 'maellis_voice_notice_shown'
 
 /**
  * Generate a human-readable description for a dispatch action

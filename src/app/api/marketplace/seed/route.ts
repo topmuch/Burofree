@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       {
         slug: 'slack-integration',
         name: 'Intégration Slack',
-        description: 'Recevez vos notifications Burofree directement dans Slack et interagissez avec vos tâches sans changer d\'outil.',
+        description: 'Recevez vos notifications Maellis directement dans Slack et interagissez avec vos tâches sans changer d\'outil.',
         icon: 'MessageSquare',
         category: 'integration',
         price: 4.90,
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       {
         slug: 'zoom-integration',
         name: 'Intégration Zoom',
-        description: 'Créez et rejoignez des réunions Zoom directement depuis Burofree. Synchronisation automatique du calendrier.',
+        description: 'Créez et rejoignez des réunions Zoom directement depuis Maellis. Synchronisation automatique du calendrier.',
         icon: 'Video',
         category: 'integration',
         price: 4.90,
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       {
         slug: 'notion-integration',
         name: 'Notion',
-        description: 'Synchronisez vos pages Notion avec Burofree pour une documentation de projet unifiée.',
+        description: 'Synchronisez vos pages Notion avec Maellis pour une documentation de projet unifiée.',
         icon: 'BookOpen',
         category: 'integration',
         price: 4.90,
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       {
         slug: 'voice-commands',
         name: 'Commandes Vocales',
-        description: 'Contrôlez Burofree à la voix : créez des tâches, lancez le mode focus, et plus encore.',
+        description: 'Contrôlez Maellis à la voix : créez des tâches, lancez le mode focus, et plus encore.',
         icon: 'Mic',
         category: 'productivity',
         price: 0,
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       {
         slug: 'marketplace',
         name: 'Marketplace',
-        description: 'Découvrez et activez de nouvelles extensions pour personnaliser votre expérience Burofree.',
+        description: 'Découvrez et activez de nouvelles extensions pour personnaliser votre expérience Maellis.',
         icon: 'Store',
         category: 'productivity',
         price: 0,

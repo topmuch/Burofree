@@ -10,6 +10,7 @@ import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 import { restoreFromBackup } from '@/features/production/backup/backup-manager'
+import { invalidateAllPermissionCaches } from '@/features/security/rbac/checker'
 import { z } from 'zod'
 
 const restoreSchema = z.object({
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
+
+  // Backup restore may change roles, permissions, or team memberships — invalidate all caches
+  invalidateAllPermissionCaches()
 
   return NextResponse.json({
     success: true,

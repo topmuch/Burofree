@@ -11,14 +11,14 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
   {
-    question: 'Burofree est-il gratuit ?',
+    question: 'Maellis est-il gratuit ?',
     answer:
-      'Oui, Burofree propose un plan gratuit sans carte bancaire avec 5 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
+      'Oui, Maellis propose un plan gratuit sans carte bancaire avec 5 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
   },
   {
     question: 'Puis-je connecter ma messagerie ?',
     answer:
-      'Absolument. Burofree supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
+      'Absolument. Maellis supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
   },
   {
     question: 'Comment fonctionne la facturation ?',
@@ -36,7 +36,7 @@ const faqItems: FaqItem[] = [
       'Oui, sans engagement. Vous pouvez annuler votre abonnement en un clic depuis vos paramètres.',
   },
   {
-    question: 'Burofree convient-il aux équipes ?',
+    question: 'Maellis convient-il aux équipes ?',
     answer:
       'Le plan Entreprise permet jusqu\'à 10 membres avec des rôles (admin, membre, viewer) et un portail client partagé.',
   },
@@ -66,7 +66,7 @@ export function FaqSection() {
             Questions fréquentes
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Tout ce que vous devez savoir sur Burofree.
+            Tout ce que vous devez savoir sur Maellis.
           </p>
         </motion.div>
 

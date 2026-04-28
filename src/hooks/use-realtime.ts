@@ -48,7 +48,7 @@ export function useRealtimeNotifications() {
         const relatedType = payload.relatedType as string | null
 
         showBrowserNotification(
-          '⏰ Rappel - Burofree',
+          '⏰ Rappel - Maellis',
           message,
           relatedType === 'task' ? '#tasks' : relatedType === 'invoice' ? '#invoices' : undefined
         )
@@ -65,7 +65,7 @@ export function useRealtimeNotifications() {
         const priority = payload.priority as string
 
         showBrowserNotification(
-          '📋 Échéance proche - Burofree',
+          '📋 Échéance proche - Maellis',
           `La tâche "${taskTitle}" arrive à échéance`,
           '#tasks'
         )
@@ -84,7 +84,7 @@ export function useRealtimeNotifications() {
         const clientName = payload.clientName as string
 
         showBrowserNotification(
-          '💰 Facture en retard - Burofree',
+          '💰 Facture en retard - Maellis',
           `Facture ${invoiceNumber} (${clientName}) est en retard`,
           '#invoices'
         )
@@ -99,7 +99,7 @@ export function useRealtimeNotifications() {
         const count = payload.count as number
         if (count > 0) {
           showBrowserNotification(
-            '📧 Emails non lus - Burofree',
+            '📧 Emails non lus - Maellis',
             `Vous avez ${count} email${count > 1 ? 's' : ''} non lu${count > 1 ? 's' : ''}`,
             '#emails'
           )
@@ -117,7 +117,7 @@ export function useRealtimeNotifications() {
         const actionUrl = payload.actionUrl as string | null
 
         showBrowserNotification(
-          `🔔 ${notifTitle} - Burofree`,
+          `🔔 ${notifTitle} - Maellis`,
           notifMessage,
           actionUrl || undefined
         )

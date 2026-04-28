@@ -102,7 +102,7 @@ async function hasRecentLog(userId: string, type: string, relatedId: string, wit
 async function sendEmailNotification(userId: string, subject: string, message: string): Promise<boolean> {
   // Email sending via Resend (if configured)
   const RESEND_API_KEY = process.env.RESEND_API_KEY
-  const EMAIL_FROM = process.env.EMAIL_FROM || 'Burofree <noreply@burofree.app>'
+  const EMAIL_FROM = process.env.EMAIL_FROM || 'Maellis <noreply@maellis.app>'
 
   if (!RESEND_API_KEY) {
     console.warn('[Email] RESEND_API_KEY not configured, skipping email notification')
@@ -130,7 +130,7 @@ async function sendEmailNotification(userId: string, subject: string, message: s
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: #10b981; font-size: 24px; margin: 0;">Burofree</h1>
+              <h1 style="color: #10b981; font-size: 24px; margin: 0;">Maellis</h1>
             </div>
             <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
               <p style="margin: 0; color: #374151; font-size: 16px;">Bonjour ${user.name || ''},</p>
@@ -140,7 +140,7 @@ async function sendEmailNotification(userId: string, subject: string, message: s
             </div>
             <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 24px;">
               <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-                Notification automatique de Burofree — 
+                Notification automatique de Maellis — 
                 <a href="#" style="color: #10b981;">Gérer mes préférences</a>
               </p>
             </div>

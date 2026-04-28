@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +15,7 @@ model User {
   passwordHash  String?  // null for OAuth-only users
   profession    String?
   timezone      String   @default("Europe/Paris")
-  assistantName String   @default("Burofree AI")
+  assistantName String   @default("Maellis AI")
   assistantTone String   @default("friendly")
   theme         String   @default("dark")
   focusMode     Boolean  @default(false)

@@ -1,5 +1,5 @@
 /**
- * JSON-LD Structured Data — Burofree Landing Page
+ * JSON-LD Structured Data — Maellis Landing Page
  *
  * Generates Schema.org structured data for SEO-rich results.
  * These objects are meant to be embedded in <script type="application/ld+json">
@@ -14,14 +14,14 @@ import { PRICING_PLANS } from './pricing-data'
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://burofree.com'
-const SITE_NAME = 'Burofree'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_NAME = 'Maellis'
 const LOGO_URL = `${SITE_URL}/logo.svg`
 
 // ─── SoftwareApplication Schema ─────────────────────────────────────────────────────
 
 /**
- * Returns a SoftwareApplication JSON-LD schema for Burofree.
+ * Returns a SoftwareApplication JSON-LD schema for Maellis.
  * Includes pricing offers and an aggregate rating.
  */
 export function getSoftwareApplicationLD() {
@@ -113,7 +113,7 @@ export function getFAQPageLD(faqs: FAQItem[]) {
 // ─── Organization Schema ────────────────────────────────────────────────────────────
 
 /**
- * Returns an Organization JSON-LD schema for Burofree.
+ * Returns an Organization JSON-LD schema for Maellis.
  * Includes social media links for Google Knowledge Panel.
  */
 export function getOrganizationLD() {
@@ -129,19 +129,19 @@ export function getOrganizationLD() {
       height: 512,
     },
     description:
-      'Burofree est l\'assistant intelligent pour freelances. Gérez vos tâches, calendrier, emails, facturation et plus — propulsé par l\'IA.',
+      'Maellis est l\'assistant intelligent pour freelances. Gérez vos tâches, calendrier, emails, facturation et plus — propulsé par l\'IA.',
     foundingDate: '2024',
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'support@burofree.com',
+      email: 'support@maellis.com',
       availableLanguage: ['French', 'English'],
     },
     sameAs: [
-      'https://twitter.com/burofree',
-      'https://linkedin.com/company/burofree',
-      'https://github.com/burofree',
-      'https://www.instagram.com/burofree',
+      'https://twitter.com/maellis',
+      'https://linkedin.com/company/maellis',
+      'https://github.com/maellis',
+      'https://www.instagram.com/maellis',
     ],
   }
 }

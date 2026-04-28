@@ -1,5 +1,5 @@
 /**
- * RBAC Permission Checker — Burofree
+ * RBAC Permission Checker — Maellis
  *
  * Provides runtime permission checking using:
  * - User's global role (superadmin → all permissions)
@@ -129,6 +129,13 @@ export function invalidatePermissionCache(userId: string) {
       permissionCache.delete(key)
     }
   }
+}
+
+/**
+ * Invalidate the entire permission cache (call when default roles or global permissions change).
+ */
+export function invalidateAllPermissionCaches() {
+  permissionCache.clear()
 }
 
 /**

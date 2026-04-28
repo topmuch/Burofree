@@ -10,7 +10,7 @@
 
 import type { MetadataRoute } from 'next'
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://burofree.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()

@@ -1,5 +1,5 @@
 /**
- * RBAC Permission Definitions — Burofree
+ * RBAC Permission Definitions — Maellis
  *
  * Central registry of all granular permissions.
  * Each permission has a resource, action, and description.

@@ -292,7 +292,7 @@ export async function requestAccountDeletion(
     throw new Error('User not found')
   }
 
-  const anonymizedEmail = `${ANONYMIZED_EMAIL_PREFIX}${userId}@burofree.anonymized`
+  const anonymizedEmail = `${ANONYMIZED_EMAIL_PREFIX}${userId}@maellis.anonymized`
   const gracePeriodEnd = new Date(Date.now() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000)
 
   // Store original email in the schedule metadata for potential restoration

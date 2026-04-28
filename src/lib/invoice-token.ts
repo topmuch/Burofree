@@ -1,5 +1,5 @@
 /**
- * Invoice Token Utility for Burofree
+ * Invoice Token Utility for Maellis
  *
  * Generates and verifies HMAC-based tokens for authenticating
  * invoice PDF access without requiring a session cookie.
@@ -9,7 +9,18 @@
  * in both Edge Runtime (middleware) and Node.js (API routes).
  */
 
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'burofree-dev-secret-key-change-in-production'
+const getSecret = () => {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('NEXTAUTH_SECRET environment variable is required in production.')
+    }
+    console.warn('[SECURITY] Using development-only invoice token secret. Set NEXTAUTH_SECRET in production!')
+    return 'maellis-dev-secret-key-do-not-use-in-prod'
+  }
+  return secret
+}
+const NEXTAUTH_SECRET = getSecret()
 
 /**
  * Get the HMAC key as a CryptoKey for use with SubtleCrypto.

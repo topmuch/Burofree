@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth-guard'
 import { acceptInvitation, declineInvitation } from '@/features/production/teams/invitation-manager'
+import { invalidatePermissionCache } from '@/features/security/rbac/checker'
 import { z } from 'zod'
 
 const acceptQuerySchema = z.object({
@@ -65,12 +66,16 @@ export async function POST(req: NextRequest) {
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
+    // Invalidate permission cache — user's team membership is now active
+    invalidatePermissionCache(auth.user.id)
     return NextResponse.json({ success: true, teamId: result.teamId })
   } else {
     const result = await declineInvitation(auth.user.id, token)
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
+    // Invalidate permission cache defensively for decline as well
+    invalidatePermissionCache(auth.user.id)
     return NextResponse.json({ success: true })
   }
 }

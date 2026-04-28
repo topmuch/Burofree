@@ -293,7 +293,20 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = account.refresh_token
         token.provider = account.provider
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000
+        token.role = 'user' // Default role, will be updated on next JWT refresh
         return token
+      }
+
+      // Fetch user role if not in token (first call after sign-in)
+      if (!token.role && token.userId) {
+        const dbUser = await db.user.findUnique({
+          where: { id: token.userId as string },
+          select: { role: true, suspendedAt: true },
+        })
+        if (dbUser) {
+          token.role = dbUser.role
+          token.suspended = !!dbUser.suspendedAt
+        }
       }
 
       // Return previous token if still valid (with 5 min buffer)
@@ -404,7 +417,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  secret: process.env.NEXTAUTH_SECRET || 'burofree-dev-secret-key-change-in-production',
+  secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'maellis-dev-secret-key-do-not-use-in-prod'),
   debug: process.env.NODE_ENV === 'development',
 }
 

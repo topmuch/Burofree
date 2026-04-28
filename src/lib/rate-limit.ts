@@ -1,5 +1,5 @@
 /**
- * Simple in-memory rate limiter for Burofree
+ * Simple in-memory rate limiter for Maellis
  * Prevents brute-force attacks on authentication endpoints
  */
 
