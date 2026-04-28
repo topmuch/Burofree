@@ -31,6 +31,7 @@ import { ProductionPanel } from '@/features/production/production-panel'
 import { NetworkStatus } from '@/features/production/pwa/network-status'
 import { InstallPrompt } from '@/features/production/pwa/install-prompt'
 import { SecurityPanel } from '@/features/security/components/security-panel'
+import { CrmPanel } from '@/features/crm/crm-panel'
 import { ConsentBanner } from '@/features/security/components/consent-banner'
 import { UnifiedInboxPanel } from '@/features/unified-inbox/unified-inbox-panel'
 
@@ -57,6 +58,7 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   notifications: NotificationsPanel,
   analytics: AnalyticsPanel,
   templates: TemplatesPanel,
+  crm: CrmPanel,
   marketplace: DifferentiationPanel,
   production: ProductionPanel,
   security: SecurityPanel,
@@ -77,6 +79,7 @@ const tabTitles: Record<TabType, string> = {
   notifications: 'Notifications',
   analytics: 'Rapports & Analytics',
   templates: 'Modèles',
+  crm: 'CRM & Automatisation',
   marketplace: 'Extensions',
   production: 'Production',
   security: 'Sécurité & Conformité',

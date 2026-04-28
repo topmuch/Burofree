@@ -71,6 +71,15 @@ model User {
   contacts           Contact[]
   conversations      Conversation[]
   channelAccounts    ChannelAccount[]
+  crmContacts        CrmContact[]
+  pipelines          Pipeline[]
+  deals              Deal[]      @relation("DealOwner")
+  assignedDeals      Deal[]      @relation("DealAssignee")
+  campaigns          Campaign[]
+  workflows          Workflow[]
+  emailTemplates     EmailTemplate[]
+  workspaceMemberships WorkspaceMember[]
+  metricSnapshots    MetricSnapshot[]
 }
 
 model Project {
@@ -681,8 +690,13 @@ model Team {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  members    TeamMember[]
-  auditLogs  AuditLog[]
+  members         TeamMember[]
+  auditLogs       AuditLog[]
+  pipelines       Pipeline[]
+  crmContacts     CrmContact[]
+  campaigns       Campaign[]
+  workflows       Workflow[]
+  emailTemplates  EmailTemplate[]
 
   @@index([slug])
   @@index([stripeCustomerId])
@@ -1285,4 +1299,417 @@ model ConversationEvent {
 
   @@index([conversationId, createdAt])
   @@index([type])
+}
+
+// ─── CRM & AUTOMATION ──────────────────────────────────────────────────────────
+
+/// Workspace — multi-tenant isolation unit (extends Team concept for CRM)
+model Workspace {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  avatar        String?
+  plan          String   @default("free") // free, pro, enterprise
+  settings      String   @default("{}") // JSON: workspace-level settings
+  ownerUserId   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  members       WorkspaceMember[]
+
+  @@index([slug])
+  @@index([ownerUserId])
+}
+
+/// Workspace Member — multi-tenant membership
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String   @default("agent") // owner, admin, agent, viewer
+  status      String   @default("active") // active, invited, suspended, removed
+  joinedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId, role])
+  @@index([userId, status])
+}
+
+/// CRM Contact — rich contact profile with custom fields
+model CrmContact {
+  id            String    @id @default(cuid())
+  workspaceId   String?   // Multi-tenant isolation
+  teamId        String?   // Team isolation
+  firstName     String?
+  lastName      String
+  email         String?
+  phone         String?
+  company       String?
+  jobTitle      String?
+  avatar        String?
+  addresses     String    @default("[]") // JSON: [{type, street, city, zip, country}]
+  customFields  String    @default("{}") // JSON: dynamic key-value pairs
+  tags          String    @default("[]") // JSON: array of tag strings
+  source        String    @default("manual") // manual, import, form, api, referral
+  status        String    @default("active") // active, inactive, bounced, unsubscribed
+  lifecycle     String    @default("lead") // lead, qualified, opportunity, customer, churned
+  score         Int       @default(0) // Lead score 0-100
+  lastActivityAt DateTime?
+  userId        String    // Owner/assigned user
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  groups    ContactGroupMember[]
+  segments  ContactSegmentMember[]
+  activities ActivityTimeline[]
+  notes     ContactNote[]
+  deals     Deal[]
+
+  @@index([userId, status])
+  @@index([teamId, status])
+  @@index([email])
+  @@index([lifecycle])
+  @@index([score])
+  @@index([lastActivityAt])
+  @@index([source])
+}
+
+/// Contact Group — static lists for segmentation
+model ContactGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#10b981")
+  icon        String?
+  isDynamic   Boolean  @default(false) // true = auto-populated via rules
+  rules       String   @default("[]") // JSON: [{field, operator, value}] for dynamic groups
+  userId      String
+  teamId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ContactGroupMember[]
+
+  @@index([userId])
+  @@index([teamId])
+}
+
+/// Junction: Contact ↔ Group
+model ContactGroupMember {
+  id        String @id @default(cuid())
+  contactId String
+  groupId   String
+  contact   CrmContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  group     ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, groupId])
+}
+
+/// Contact Segment Member — for dynamic segmentation
+model ContactSegmentMember {
+  id        String @id @default(cuid())
+  contactId String
+  segmentId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, segmentId])
+}
+
+/// Activity Timeline — unified activity log per contact
+model ActivityTimeline {
+  id          String   @id @default(cuid())
+  contactId   String
+  type        String   // email_sent, email_opened, call_made, note_added, deal_created, campaign_sent, form_submitted, tag_added
+  title       String
+  description String?
+  metadata    String   @default("{}") // JSON: type-specific data (email subject, call duration, etc.)
+  relatedId   String?  // ID of the related entity (deal, campaign, email, etc.)
+  relatedType String?  // deal, campaign, email, call, note
+  userId      String?  // Who performed the action
+  createdAt   DateTime @default(now())
+
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt])
+  @@index([type])
+  @@index([userId])
+}
+
+/// Contact Note — internal notes linked to a contact
+model ContactNote {
+  id        String   @id @default(cuid())
+  contactId String
+  content   String   // Markdown content
+  isPinned  Boolean  @default(false)
+  userId    String   // Author
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt])
+  @@index([isPinned])
+}
+
+/// Pipeline — sales pipeline with configurable stages
+model Pipeline {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  stages      String   @default("[]") // JSON: [{id, name, order, color, probability}] e.g. [{id:"s1",name:"Qualified",order:1,color:"#3b82f6",probability:20}]
+  isDefault   Boolean  @default(false)
+  teamId      String?  // Team-scoped pipeline
+  userId      String   // Owner
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  deals Deal[]
+
+  @@index([userId])
+  @@index([teamId])
+}
+
+/// Deal — opportunity in a pipeline stage
+model Deal {
+  id               String    @id @default(cuid())
+  pipelineId       String
+  stageId          String    // References a stage id within pipeline.stages JSON
+  title            String
+  description      String?
+  value            Float     @default(0)
+  currency         String    @default("EUR")
+  probability      Int       @default(0) // 0-100, can be auto-set by stage
+  expectedCloseDate DateTime?
+  actualCloseDate  DateTime?
+  status           String    @default("open") // open, won, lost, abandoned
+  lossReason       String?
+  contactId        String?
+  assignedToId     String?   // User responsible for the deal
+  userId           String    // Deal owner
+  teamId           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  pipeline    Pipeline   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  contact     CrmContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo  User?      @relation("DealAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  user        User       @relation("DealOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activities  DealActivity[]
+
+  @@index([pipelineId, stageId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([contactId])
+  @@index([expectedCloseDate])
+  @@index([userId])
+}
+
+/// Deal Activity — audit trail for deal changes
+model DealActivity {
+  id        String   @id @default(cuid())
+  dealId    String
+  type      String   // created, stage_changed, value_updated, assigned, note_added, status_changed
+  note      String?
+  metadata  String   @default("{}") // JSON: {oldStage, newStage, oldValue, newValue, etc.}
+  userId    String?
+  createdAt DateTime @default(now())
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, createdAt])
+  @@index([type])
+}
+
+/// Email Campaign
+model Campaign {
+  id              String    @id @default(cuid())
+  name            String
+  subject         String
+  fromName        String?
+  fromEmail       String?
+  replyTo         String?
+  previewText     String?
+  contentHtml     String?   // HTML body (MJML compiled or raw)
+  contentMjml     String?   // MJML source (optional)
+  status          String    @default("draft") // draft, scheduled, sending, sent, paused, cancelled
+  scheduleAt      DateTime?
+  throttlePerHour Int       @default(0) // 0 = unlimited, otherwise max emails/hour
+  segmentIds      String    @default("[]") // JSON: array of group/segment IDs
+  templateId      String?   // Optional linked template
+  senderAddress   String?   // CAN-SPAM: physical address
+  listUnsubscribe Boolean   @default(true) // CAN-SPAM: List-Unsubscribe header
+  doubleOptIn     Boolean   @default(false) // Require confirmation
+  stats           String    @default("{}") // JSON: {sent, delivered, opened, clicked, bounced, unsubscribed, complained}
+  userId          String
+  teamId          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  recipients CampaignRecipient[]
+  links      CampaignLink[]
+
+  @@index([userId, status])
+  @@index([teamId, status])
+  @@index([status, scheduleAt])
+}
+
+/// Campaign Recipient — per-contact delivery tracking
+model CampaignRecipient {
+  id             String    @id @default(cuid())
+  campaignId     String
+  contactId      String
+  email          String    // Snapshot of email at send time
+  status         String    @default("pending") // pending, sent, delivered, bounced, failed
+  sentAt         DateTime?
+  openedAt       DateTime?
+  openCount      Int       @default(0)
+  clickedAt      DateTime?
+  clickCount     Int       @default(0)
+  unsubscribedAt DateTime?
+  complainedAt   DateTime?
+  bouncedAt      DateTime?
+  bounceReason   String?
+  trackingPixel  String?   // Unique pixel ID for open tracking
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@index([contactId])
+  @@index([status])
+}
+
+/// Campaign Link — click tracking
+model CampaignLink {
+  id            String @id @default(cuid())
+  campaignId    String
+  originalUrl   String
+  trackingUrl   String // Signed redirect URL
+  trackingId    String @unique // Unique ID in the redirect URL
+  clicks        Int    @default(0)
+  uniqueClicks  Int    @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([trackingId])
+}
+
+/// Workflow Automation — event-driven rules
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  trigger     String   @default("{}") // JSON: {type: "contact.created"|"deal.stage_changed"|"email.received"|"tag.added"|"campaign.opened"|"date.reached", config: {...}}
+  actions     String   @default("[]") // JSON: [{type: "email.send"|"tag.add"|"assign.to"|"create.task"|"delay.hours"|"webhook.call"|"ai.generate_reply", config: {...}}]
+  isActive    Boolean  @default(true)
+  isTest      Boolean  @default(false) // Test mode = log only, no execution
+  stats       String   @default("{}") // JSON: {totalExecutions, successCount, failureCount, lastExecutedAt}
+  userId      String
+  teamId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team        Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  executions  WorkflowExecution[]
+
+  @@index([userId, isActive])
+  @@index([teamId, isActive])
+  @@index([isActive])
+}
+
+/// Workflow Execution — tracks each run
+model WorkflowExecution {
+  id            String    @id @default(cuid())
+  workflowId    String
+  contactId     String?
+  conversationId String?
+  dealId        String?
+  status        String    @default("running") // running, completed, failed, cancelled, delayed
+  currentStep   Int       @default(0) // Index in actions array
+  logs          String    @default("[]") // JSON: [{step, action, status, output, timestamp, error}]
+  idempotencyKey String?  // For dedup
+  scheduledAt   DateTime? // For delayed actions
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  error         String?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status])
+  @@index([contactId])
+  @@index([status, scheduledAt])
+  @@index([idempotencyKey])
+}
+
+/// Email Template — for campaigns and canned responses
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String?
+  contentHtml String    // HTML with {{variable}} placeholders
+  contentMjml String?   // MJML source (optional)
+  variables   String   @default("[]") // JSON: [{key, label, defaultValue, required}]
+  category    String   @default("general") // general, onboarding, follow_up, newsletter, transactional
+  shortcut    String?  // Quick insert via "/" in editor (e.g. "/welcome")
+  isShared    Boolean  @default(true) // Visible to team or private
+  isDefault   Boolean  @default(false)
+  thumbnail   String?  // Preview image URL
+  userId      String
+  teamId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([userId, category])
+  @@index([teamId, isShared])
+  @@index([shortcut])
+}
+
+/// Metric Snapshot — pre-computed analytics data
+model MetricSnapshot {
+  id          String   @id @default(cuid())
+  teamId      String?
+  userId      String
+  type        String   // crm_contacts, pipeline_value, campaign_stats, response_time, agent_performance
+  period      String   // hourly, daily, weekly, monthly
+  date        DateTime // The date this snapshot covers
+  data        String   @default("{}") // JSON: metric-specific data
+  computedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, period, date])
+  @@index([teamId, type, date])
+  @@index([userId, type])
+  @@index([date])
+}
+
+/// Report Cache — cached report data
+model ReportCache {
+  id        String   @id @default(cuid())
+  key       String   @unique // Composite key: {type}:{userId}:{period}:{dateRange}
+  data      String   // JSON: report data
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([key])
+  @@index([expiresAt])
 }
