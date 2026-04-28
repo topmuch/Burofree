@@ -258,3 +258,239 @@ Stage Summary:
 - All Priority 1 blockers resolved (BigInt, Zod schemas, auth security)
 - App is functional: pages render, API responds, auth flow works
 - Database connected with 70+ models in sync
+
+---
+Task ID: 2
+Agent: module-files-creator
+Task: Create missing module files (validations/campaigns, validations/automation, workspaces/rbac)
+
+Work Log:
+- Created /home/z/my-project/src/lib/validations/campaigns.ts
+- Created /home/z/my-project/src/lib/validations/automation.ts
+- Created /home/z/my-project/src/features/workspaces/rbac.ts
+
+Stage Summary:
+- All 3 missing module files created
+- Zod schemas for campaigns and automation
+- RBAC permission matrix for workspaces
+
+---
+Task ID: 3+5
+Agent: typo-and-component-fixer
+Task: Fix folder structure typo and component type errors
+
+Work Log:
+- Renamed directory `src/app/api/workspaces/[id]/members/emberId]/` to `src/app/api/workspaces/[id]/members/[memberId]/` in the Burofree project (used Python os.rename with src_dir_fd/dst_dir_fd due to special characters in directory name)
+- Verified the route files inside already use `memberId` as the parameter name and import `@/features/workspaces/rbac` correctly
+- Fixed GmailIcon import error in `src/components/connected-accounts.tsx` (both main and Burofree projects): removed unused `GmailIcon` import from lucide-react (GmailIcon doesn't exist; the component uses custom SVG icons instead)
+- Fixed invalid `ringColor` CSS property in `src/components/event-form.tsx` (both main and Burofree projects): replaced `ringColor: option.value` with `'--tw-ring-color': option.value` as a CSS custom property (Tailwind's ring utility uses `--tw-ring-color` internally), with proper `as React.CSSProperties` typing
+- Fixed Framer Motion ease type errors in `Burofree/src/features/integrations/integrations-panel.tsx`: added `as const` to the number array ease `[0.25, 0.46, 0.45, 0.94] as const` and string ease `'easeOut' as const` to satisfy TypeScript's Easing type
+- Fixed IntegrationCard props mismatch in `Burofree/src/features/integrations/integrations-panel.tsx`: removed the `connection={provider.connection}` prop from IntegrationCard usage (connection is already part of the `provider` prop type which is `ProviderDef & { isConnected: boolean; connection?: IntegrationConnection }`, and IntegrationCard already destructures it from provider internally)
+- All modified files pass ESLint with zero errors
+- Dev server running stable on port 3000
+
+Stage Summary:
+- 5 files modified across 2 projects (main + Burofree)
+- Directory rename: emberId] → [memberId] (workspace members API route)
+- 3 type errors fixed: GmailIcon import, ringColor CSS property, Framer Motion ease typing
+- 1 props mismatch fixed: IntegrationCard connection prop removed
+- Zero lint errors in all modified files
+
+---
+Task ID: 4
+Agent: api-route-fixer
+Task: Fix API route type errors
+
+Work Log:
+- **1. AI suggestions route** (`src/app/api/ai/suggestions/route.ts`): Fixed `never[]` type error by adding explicit type annotation to the `suggestions` array: `Array<{ icon: string; title: string; message: string; priority: string; actionUrl: string }>`
+- **2. Auth route** (`src/app/api/auth/[...nextauth]/route.ts`): Fixed `error` property access on signIn callback by destructuring with proper types. Fixed `Session` to `Record<string, unknown>` cast by using double assertion `as unknown as Record<string, unknown>`. Removed unused eslint-disable directive.
+- **3. Campaign create route** (`src/app/api/crm/campaigns/route.ts`): Added `?? undefined` null coalescing for all nullable Zod schema fields (fromName, fromEmail, replyTo, previewText, contentHtml, contentMjml, templateId, senderAddress, teamId) when passing to CampaignCreateData interface.
+- **4. Campaign update route** (`src/app/api/crm/campaigns/[id]/route.ts`): Same null coalescing fix for nullable fields in CampaignUpdateData.
+- **5. Campaign tracking pixel** (`src/app/api/crm/campaigns/track/open/[pixelId]/route.ts`): Fixed `string | null` not assignable to `string` by adding `?? ''` for contactId. Fixed Buffer not assignable to BodyInit by wrapping with `new Uint8Array()`.
+- **6. Contacts import route** (`src/app/api/crm/contacts/import/route.ts`): Added `?? undefined` for nullable teamId parameter.
+- **7. Workflow create route** (`src/app/api/crm/workflows/route.ts`): Added `?? undefined` for nullable description and teamId fields.
+- **8. Workflow execute route** (`src/app/api/crm/workflows/[id]/execute/route.ts`): Added `?? undefined` for nullable contactId, conversationId, dealId from Zod schema.
+- **9. Workflow update route** (`src/app/api/crm/workflows/[id]/route.ts`): Fixed nullable description by using `?? null` in updateData (Prisma update accepts null to clear fields).
+- **10. Encryption rotate route** (`src/app/api/security/encryption/rotate/route.ts`): Removed invalid `req` field from AuditLogEntry call, replaced with explicit `ip` and `userAgent` extraction from request headers.
+- **11. Encryption status route** (`src/app/api/security/encryption/status/route.ts`): Same fix - removed `req` field, added explicit ip/userAgent extraction.
+- **12. Invoice PDF route** (`src/app/api/invoices/[id]/pdf/route.ts`): Added missing `stripePaymentIntentId`, `stripeCheckoutUrl`, `paymentMethod` fields to InvoicePDFData. Fixed Buffer to BodyInit conversion by using `new Uint8Array()` with conditional check.
+- **13. Invoice send route** (`src/app/api/invoices/[id]/send/route.ts`): Added missing `stripePaymentIntentId`, `stripeCheckoutUrl`, `paymentMethod` fields to InvoicePDFData.
+- **14. Template create route** (`src/app/api/crm/templates/route.ts`): Added `?? undefined` for nullable fields (subject, contentMjml, shortcut, thumbnail, teamId).
+- Verified all Prisma models exist after regeneration: role, permission, rolePermission, emailTemplate, dpoContact, conversation, inboxMessage, internalNote, securityAlert (97 total models confirmed).
+- Ran `bun run db:push` to ensure Prisma Client is regenerated and database is in sync.
+- Verified all API endpoints return correct responses (health, tracking pixel, DPO contact, etc.).
+- Lint check confirms zero errors in API route files.
+
+Stage Summary:
+- 13 files modified across 12 error categories
+- All type errors fixed: never[] arrays, nullable field mismatches, invalid AuditLogEntry fields, missing Invoice properties, Buffer to BodyInit conversion, Prisma model accessor verification
+- Zero lint errors in modified API route files
+- All endpoints verified working
+
+---
+Task ID: 7
+Agent: config-and-lib-fixer
+Task: Fix next.config.ts, stripe.ts, and pdf-generator.ts type issues
+
+Work Log:
+- Fixed next.config.ts: Removed `typescript: { ignoreBuildErrors: true }` option, kept `reactStrictMode: false`
+- Fixed src/lib/stripe.ts: Updated `apiVersion` from `'2024-12-18.acacia'` to `'2026-04-22.dahlia'` to match the installed stripe package's LatestApiVersion type
+- Fixed src/lib/pdf-generator.ts: Added `import type { Browser } from 'puppeteer-core'` and changed `let browser = null` to `let browser: Browser | null = null` to resolve three type errors (Type 'Browser' not assignable to 'null', 'browser' is possibly 'null', Property 'close' does not exist on type 'never')
+- Ran `bun run lint`: 0 errors, 2 pre-existing warnings only
+- Verified dev server running stable with no compilation errors
+
+Stage Summary:
+- 3 files fixed: next.config.ts, stripe.ts, pdf-generator.ts
+- All TypeScript type errors resolved
+- Zero new lint errors introduced
+- Dev server stable on port 3000
+
+---
+Task ID: 5b
+Agent: feature-module-fixer
+Task: Fix feature module type errors
+
+Work Log:
+- **1. trigger-service.ts**: Made `triggerType` optional in `EventData` interface since `emitEvent()` already adds it via spread (`{ ...eventData, triggerType: eventType }`). Fixes 6 errors on lines 104, 108, 112, 116, 120, 124.
+- **2. template-gallery.tsx**: Fixed `Type 'unknown' is not assignable to type 'ReactNode'` by changing `{template.shortcut && (` to `{!!template.shortcut && (` — double negation converts `unknown` to `boolean` for JSX conditional rendering.
+- **3. workflow-builder.tsx**: Same fix — changed `{workflow.isTest && (` to `{!!workflow.isTest && (` to avoid `unknown` in ReactNode position.
+- **4. campaign-editor.tsx**: Fixed `never[]` type for `canSpamIssues` array by adding explicit type annotation `const canSpamIssues: string[] = []` instead of relying on inference from empty array.
+- **5. campaign-dashboard.tsx**: Fixed `Type 'unknown' is not assignable to type 'ReactNode'` by changing `{campaign.scheduleAt && (` to `{!!campaign.scheduleAt && (`.
+- **6. campaign-sender.ts**: Fixed `Type 'string | null' is not assignable to type 'string'` for email field by changing `contacts` type declaration from `email: string` to `email: string | null` — Prisma's CRM contact email field is nullable.
+- **7. analytics-service.ts**: Fixed `Type 'X' is not assignable to type 'Record<string, unknown>'` by changing `let data: Record<string, unknown> = {}` to `let data: unknown = {}` — since the data is only JSON.stringify'd, `unknown` is sufficient and avoids type mismatches with ContactStats, PipelineStats, CampaignStats, ResponseTimeStats, AgentPerformance[].
+- **8. totp.ts**: Removed `type: 'totp'` property from `generateURI()` options object — the otplib v13 API's URI options type doesn't include a `type` field.
+- **9. inbox-service.ts**: Fixed variable initialized as `null` then assigned Contact object (leading to `never` type) by explicitly typing `let existingContact: Awaited<ReturnType<typeof db.contact.findFirst>> | null = null`.
+- **10. gmail-adapter.ts**: Fixed `Type 'string | null | undefined' is not assignable to type 'string | undefined'` by adding `?? undefined` to the `getHeader` function's return: `headers.find(...).?.value ?? undefined`.
+- **11. task-board.tsx**: Fixed `Argument of type 'string' is not assignable to parameter of type '"in_progress" | "todo" | "waiting_client" | "done"'` by explicitly typing `knownStatuses` as `string[]` — resolves TypeScript's strict `Array.includes()` type checking with literal union types from `as const` COLUMNS array.
+- Ran `bun run lint`: 0 errors, 2 pre-existing warnings only
+- Dev server running stable on port 3000
+
+Stage Summary:
+- 11 files modified with targeted type error fixes
+- All 11 type error categories resolved
+- Zero new lint errors introduced
+- Key patterns used: `!!` for unknown-to-boolean JSX conditionals, explicit type annotations for empty arrays and null-initialized variables, `?? undefined` for null coalescing, `unknown` type for polymorphic data, removing invalid API options
+
+---
+Task ID: 1
+Agent: main-orchestrator
+Task: Regenerate Prisma Client and sync DB
+
+Work Log:
+- Ran `bun run db:generate` to regenerate Prisma Client
+- Ran `bun run db:push` to sync DB schema
+- Fixed 30+ "Property does not exist on PrismaClient" errors
+
+Stage Summary:
+- Prisma Client regenerated with all 97 models
+- Database schema in sync
+
+---
+Task ID: 2
+Agent: subagent-module-files
+Task: Create missing module files
+
+Work Log:
+- Created /home/z/my-project/src/lib/validations/campaigns.ts with Zod schemas
+- Created /home/z/my-project/src/lib/validations/automation.ts with Zod schemas
+- Created /home/z/my-project/src/features/workspaces/rbac.ts with RBAC permission matrix
+
+Stage Summary:
+- All 3 missing module files created
+- Campaign validation schemas (create, update, query, send, stats)
+- Automation validation schemas (workflow create, update, query, execute)
+- Workspace RBAC with 28 permissions, 4 roles, hasPermission/getWorkspacePermissions functions
+
+---
+Task ID: 3+5
+Agent: subagent-typo-and-components
+Task: Fix folder structure typo and component errors
+
+Work Log:
+- Fixed folder typo: emberId] → [memberId] in workspace routes (Burofree/)
+- Fixed GmailIcon import error → removed unused import
+- Fixed ringColor CSS property → changed to --tw-ring-color
+- Fixed Framer Motion ease type → added `as const`
+- Fixed IntegrationCard props mismatch → removed duplicate `connection` prop
+
+Stage Summary:
+- All component type errors fixed
+
+---
+Task ID: 4
+Agent: subagent-api-routes
+Task: Fix API route type errors
+
+Work Log:
+- Fixed 13+ API route files with type errors
+- Fixed ai/suggestions never[] type
+- Fixed auth route error property and Session cast
+- Fixed null/undefined mismatches with ?? undefined
+- Fixed invoice PDF missing fields
+- Fixed Buffer → Uint8Array conversion
+- Fixed AuditLogEntry req field
+- Fixed campaign tracking queries
+
+Stage Summary:
+- All API route type errors resolved
+
+---
+Task ID: 5b
+Agent: subagent-feature-modules
+Task: Fix feature module type errors
+
+Work Log:
+- Fixed trigger-service EventData type
+- Fixed ReactNode unknown type errors
+- Fixed campaign-editor canSpamIssues type
+- Fixed campaign-sender email null type
+- Fixed analytics-service Record<string, unknown> types
+- Fixed totp.ts invalid type property
+- Fixed inbox-service Contact typing
+- Fixed gmail-adapter null/undefined
+- Fixed task-board status type
+
+Stage Summary:
+- All 11 feature module type errors fixed
+
+---
+Task ID: 6
+Agent: main-orchestrator
+Task: Remove Burofree/ duplicate subfolder
+
+Work Log:
+- Removed /home/z/my-project/Burofree/ directory entirely
+
+Stage Summary:
+- Duplicate subfolder eliminated, eliminating ~50+ duplicate errors
+
+---
+Task ID: 7
+Agent: subagent-config-and-lib
+Task: Fix config and lib type errors
+
+Work Log:
+- Removed ignoreBuildErrors from next.config.ts
+- Updated Stripe apiVersion to '2026-04-22.dahlia'
+- Fixed pdf-generator.ts Browser type and async findChromium
+
+Stage Summary:
+- next.config.ts cleaned (no more error masking)
+- Stripe API version aligned with package
+- pdf-generator.ts properly typed
+
+---
+Task ID: final
+Agent: main-orchestrator
+Task: Fix remaining zod record and pdf-generator errors
+
+Work Log:
+- Fixed z.record(z.unknown()) → z.record(z.string(), z.unknown()) in automation.ts and crm.ts
+- Fixed z.record(z.string()) → z.record(z.string(), z.string()) in crm.ts
+- Fixed pdf-generator.ts findChromium async/await
+- Fixed ui/index.ts duplicate Toaster export
+
+Stage Summary:
+- TypeScript compilation: 0 ERRORS
+- Dev server: RUNNING (HTTP 200)
+- App: ACCESSIBLE on port 3000

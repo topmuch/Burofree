@@ -332,7 +332,7 @@ export class GmailAdapter implements ChannelAdapter {
 
     const headers = msg.payload?.headers ?? []
     const getHeader = (name: string): string | undefined =>
-      headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value
+      headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? undefined
 
     const fromHeader = getHeader('from') ?? ''
     const toHeader = getHeader('to') ?? ''

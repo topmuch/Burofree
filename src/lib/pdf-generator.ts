@@ -7,6 +7,7 @@
  */
 
 import type { Invoice } from './store'
+import type { Browser } from 'puppeteer-core'
 import { existsSync } from 'fs'
 
 // ─── Currency Helpers ────────────────────────────────────────────────────────────
@@ -454,7 +455,7 @@ async function tryPuppeteer(): Promise<typeof import('puppeteer-core') | null> {
     const puppeteer = await import('puppeteer-core')
 
     // Try to find Chromium
-    const executablePath = findChromium()
+    const executablePath = await findChromium()
     if (!executablePath) {
       console.warn('[PDF Generator] Chromium not found, falling back to HTML')
       puppeteerAvailable = false
@@ -470,7 +471,7 @@ async function tryPuppeteer(): Promise<typeof import('puppeteer-core') | null> {
   }
 }
 
-function findChromium(): string | null {
+async function findChromium(): Promise<string | null> {
   // Common Chromium paths on Linux
   const paths = [
     '/usr/bin/chromium-browser',
@@ -546,9 +547,9 @@ export async function generateInvoicePDF(
     return { content: html, contentType: 'text/html; charset=utf-8', isPDF: false }
   }
 
-  let browser = null
+  let browser: Browser | null = null
   try {
-    const executablePath = findChromium()!
+    const executablePath = (await findChromium())!
     browser = await puppeteer.launch({
       headless: true,
       executablePath,

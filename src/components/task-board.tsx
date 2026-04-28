@@ -357,7 +357,7 @@ export function TaskBoard() {
       grouped[col.id] = filteredTasks.filter(t => t.status === col.id)
     }
     // Tasks with unknown status go to "todo"
-    const knownStatuses = COLUMNS.map(c => c.id)
+    const knownStatuses: string[] = COLUMNS.map(c => c.id)
     const orphans = filteredTasks.filter(t => !knownStatuses.includes(t.status))
     if (orphans.length > 0) {
       grouped['todo'] = [...(grouped['todo'] || []), ...orphans]

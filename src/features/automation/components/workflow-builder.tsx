@@ -293,7 +293,7 @@ export function WorkflowBuilder() {
                           <h3 className="text-sm font-medium text-zinc-100 truncate">
                             {workflow.name as string}
                           </h3>
-                          {workflow.isTest && (
+                          {!!workflow.isTest && (
                             <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30" variant="outline">
                               <TestTube className="h-3 w-3 mr-1" /> Test
                             </Badge>

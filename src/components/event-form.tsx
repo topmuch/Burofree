@@ -155,7 +155,7 @@ export function EventForm({ open, onOpenChange, defaultDate }: EventFormProps) {
                   className={`w-7 h-7 rounded-full transition-transform ${
                     color === option.value ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : ''
                   }`}
-                  style={{ backgroundColor: option.value, ringColor: option.value }}
+                  style={{ backgroundColor: option.value, '--tw-ring-color': option.value } as React.CSSProperties}
                   title={option.label}
                 />
               ))}

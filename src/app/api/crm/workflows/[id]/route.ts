@@ -58,7 +58,7 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {}
     if (data.name !== undefined) updateData.name = data.name
-    if (data.description !== undefined) updateData.description = data.description
+    if (data.description !== undefined) updateData.description = data.description ?? null
     if (data.trigger !== undefined) updateData.trigger = JSON.stringify(data.trigger)
     if (data.actions !== undefined) updateData.actions = JSON.stringify(data.actions)
     if (data.isActive !== undefined) updateData.isActive = data.isActive

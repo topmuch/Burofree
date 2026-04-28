@@ -43,6 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         dueDate: invoice.dueDate?.toISOString() || null,
         paidAt: invoice.paidAt?.toISOString() || null,
         notes: invoice.notes,
+        stripePaymentIntentId: invoice.stripePaymentIntentId,
+        stripeCheckoutUrl: invoice.stripeCheckoutUrl,
+        paymentMethod: invoice.paymentMethod,
         projectId: invoice.projectId,
         project: invoice.project ? {
           id: invoice.project.id,

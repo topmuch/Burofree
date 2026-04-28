@@ -98,7 +98,7 @@ export const contactNoteSchema = z.object({
 export const csvImportSchema = z.object({
   data: z.string().min(1),
   teamId: z.string().optional().nullable(),
-  mapping: z.record(z.string()).optional(),
+  mapping: z.record(z.string(), z.string()).optional(),
 })
 
 // ─── Pipeline Schemas ─────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ const workflowTriggerSchema = z.object({
     'campaign.opened',
     'date.reached',
   ]),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
 })
 
 const workflowActionSchema = z.object({
@@ -264,7 +264,7 @@ const workflowActionSchema = z.object({
     'ai.generate_reply',
     'update.field',
   ]),
-  config: z.record(z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}),
 })
 
 export const workflowCreateSchema = z.object({
@@ -299,7 +299,7 @@ export const workflowExecuteSchema = z.object({
   contactId: z.string().optional().nullable(),
   conversationId: z.string().optional().nullable(),
   dealId: z.string().optional().nullable(),
-  testData: z.record(z.unknown()).optional().nullable(),
+  testData: z.record(z.string(), z.unknown()).optional().nullable(),
 })
 
 // ─── Email Template Schemas ───────────────────────────────────────────────

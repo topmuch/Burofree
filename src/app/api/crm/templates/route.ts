@@ -60,17 +60,17 @@ export async function POST(req: NextRequest) {
     const template = await db.emailTemplate.create({
       data: {
         name: data.name,
-        subject: data.subject,
+        subject: data.subject ?? undefined,
         contentHtml: data.contentHtml,
-        contentMjml: data.contentMjml,
+        contentMjml: data.contentMjml ?? undefined,
         variables: JSON.stringify(data.variables ?? []),
         category: data.category,
-        shortcut: data.shortcut,
+        shortcut: data.shortcut ?? undefined,
         isShared: data.isShared,
         isDefault: data.isDefault,
-        thumbnail: data.thumbnail,
+        thumbnail: data.thumbnail ?? undefined,
         userId: auth.user.id,
-        teamId: data.teamId,
+        teamId: data.teamId ?? undefined,
       },
     })
 

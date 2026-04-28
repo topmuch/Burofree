@@ -50,7 +50,7 @@ export function CampaignEditor({ campaign, onClose }: CampaignEditorProps) {
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop')
 
   const isSaving = createMutation.isPending || updateMutation.isPending
-  const canSpamIssues = []
+  const canSpamIssues: string[] = []
   if (!senderAddress) canSpamIssues.push('Physical address required')
   if (!fromEmail) canSpamIssues.push('From email required')
   if (!subject) canSpamIssues.push('Subject line required')

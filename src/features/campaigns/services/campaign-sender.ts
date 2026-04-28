@@ -190,7 +190,7 @@ export async function sendCampaign(id: string, userId: string) {
   try {
     // Resolve recipients from segments
     const segmentIds: string[] = JSON.parse(campaign.segmentIds || '[]')
-    let contacts: { id: string; email: string; firstName: string | null; lastName: string; status: string }[] = []
+    let contacts: { id: string; email: string | null; firstName: string | null; lastName: string; status: string }[] = []
 
     if (segmentIds.length > 0) {
       // Get contacts from specified contact groups

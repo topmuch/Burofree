@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = csvImportSchema.parse(body)
-    const result = await importContactsCSV(auth.user.id, data.data, data.teamId, data.mapping)
+    const result = await importContactsCSV(auth.user.id, data.data, data.teamId ?? undefined, data.mapping)
     return NextResponse.json(result, { status: 201 })
   } catch (err: any) {
     if (err.issues) return NextResponse.json({ error: 'Données invalides', details: err.issues }, { status: 400 })

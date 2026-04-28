@@ -17,7 +17,7 @@ type EventType =
   | 'date.reached'
 
 interface EventData {
-  triggerType: EventType
+  triggerType?: EventType
   [key: string]: unknown
 }
 

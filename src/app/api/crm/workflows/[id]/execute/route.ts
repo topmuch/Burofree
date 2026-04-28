@@ -25,9 +25,9 @@ export async function POST(
     const data = workflowExecuteSchema.parse(body)
 
     const execution = await executeWorkflow(id, {
-      contactId: data.contactId,
-      conversationId: data.conversationId,
-      dealId: data.dealId,
+      contactId: data.contactId ?? undefined,
+      conversationId: data.conversationId ?? undefined,
+      dealId: data.dealId ?? undefined,
       userId: auth.user.id,
       eventData: data.testData ?? {},
     })

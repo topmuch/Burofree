@@ -63,7 +63,7 @@ export async function GET() {
     }
 
     // Fallback: rule-based suggestions (always fast)
-    const suggestions = []
+    const suggestions: Array<{ icon: string; title: string; message: string; priority: string; actionUrl: string }> = []
     if (overdueTasks.length > 0) {
       suggestions.push({ icon: '!', title: 'Tâches en retard', message: `${overdueTasks.length} tâche(s) dépassent leur échéance. Priorisez: ${overdueTasks[0].title}`, priority: 'high', actionUrl: '#tasks' })
     }

@@ -36,7 +36,6 @@ export function generateTOTPSecret(userId: string, email: string): {
     secret,
     label: email,
     issuer: serviceName,
-    type: 'totp',
   })
 
   return { secret, otpauthUrl }

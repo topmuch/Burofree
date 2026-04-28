@@ -20,7 +20,7 @@ export async function GET(
 
     if (recipient) {
       // Fire and forget — don't block the pixel response
-      trackOpen(recipient.campaignId, recipient.contactId, pixelId).catch(() => {})
+      trackOpen(recipient.campaignId, recipient.contactId ?? '', pixelId).catch(() => {})
     }
 
     // Return 1x1 transparent GIF
@@ -29,7 +29,7 @@ export async function GET(
       'base64',
     )
 
-    return new NextResponse(gifBuffer, {
+    return new NextResponse(new Uint8Array(gifBuffer), {
       headers: {
         'Content-Type': 'image/gif',
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -43,7 +43,7 @@ export async function GET(
       'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
       'base64',
     )
-    return new NextResponse(gifBuffer, {
+    return new NextResponse(new Uint8Array(gifBuffer), {
       headers: { 'Content-Type': 'image/gif' },
     })
   }

@@ -165,7 +165,7 @@ export function CampaignDashboard({ onNewCampaign, onEditCampaign }: CampaignDas
                             <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" /> {stats.clicked}</span>
                           )}
                         </div>
-                        {campaign.scheduleAt && (
+                        {!!campaign.scheduleAt && (
                           <span className="flex items-center gap-1 text-amber-400">
                             <Calendar className="h-3 w-3" />
                             {new Date(campaign.scheduleAt as string).toLocaleDateString()}

@@ -370,7 +370,7 @@ export async function computeAndCacheMetrics(userId: string, type: string, perio
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  let data: Record<string, unknown> = {}
+  let data: unknown = {}
 
   switch (type) {
     case 'crm_contacts':

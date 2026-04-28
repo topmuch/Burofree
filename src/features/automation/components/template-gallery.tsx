@@ -267,7 +267,7 @@ export function TemplateGallery() {
                       )}
                     </div>
 
-                    {template.shortcut && (
+                    {!!template.shortcut && (
                       <div className="mt-2 flex items-center gap-1">
                         <kbd className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700">
                           {template.shortcut as string}

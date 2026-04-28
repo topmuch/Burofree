@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
         newVersion: result.newVersion,
         reason: reason || 'Scheduled rotation',
       },
-      req,
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined,
+      userAgent: req.headers.get('user-agent') || undefined,
     })
 
     // Also log to SuperAdmin audit log

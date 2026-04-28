@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mail, Plus, RefreshCw, Trash2, CheckCircle2, AlertCircle,
   Clock, Shield, Eye, EyeOff, ExternalLink, Loader2,
-  GmailIcon, Unplug
+  Unplug
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

@@ -674,7 +674,7 @@ export async function getContacts(userId: string, search?: string) {
  */
 export async function upsertContact(userId: string, data: UpsertContactData) {
   // Try to find existing contact by email
-  let existingContact = null
+  let existingContact: Awaited<ReturnType<typeof db.contact.findFirst>> | null = null
   if (data.emails && data.emails.length > 0) {
     for (const email of data.emails) {
       const found = await db.contact.findFirst({

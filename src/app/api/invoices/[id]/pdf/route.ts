@@ -57,6 +57,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         dueDate: invoice.dueDate?.toISOString() || null,
         paidAt: invoice.paidAt?.toISOString() || null,
         notes: invoice.notes,
+        stripePaymentIntentId: invoice.stripePaymentIntentId,
+        stripeCheckoutUrl: invoice.stripeCheckoutUrl,
+        paymentMethod: invoice.paymentMethod,
         projectId: invoice.projectId,
         project: invoice.project ? {
           id: invoice.project.id,
@@ -96,7 +99,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const filename = `${invoice.number}${result.isPDF ? '.pdf' : '.html'}`
 
-    return new NextResponse(result.content, {
+    const responseBody = result.isPDF && Buffer.isBuffer(result.content)
+      ? new Uint8Array(result.content as Buffer)
+      : result.content
+
+    return new NextResponse(responseBody as BodyInit, {
       headers: {
         'Content-Type': result.contentType,
         'Content-Disposition': `inline; filename="${filename}"`,

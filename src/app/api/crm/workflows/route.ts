@@ -62,13 +62,13 @@ export async function POST(req: NextRequest) {
     const workflow = await db.workflow.create({
       data: {
         name: data.name,
-        description: data.description,
+        description: data.description ?? undefined,
         trigger: JSON.stringify(data.trigger),
         actions: JSON.stringify(data.actions),
         isActive: data.isActive,
         isTest: data.isTest,
         userId: auth.user.id,
-        teamId: data.teamId,
+        teamId: data.teamId ?? undefined,
       },
     })
 

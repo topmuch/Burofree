@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
       userId: admin.id,
       action: 'encryption.status_viewed',
       target: 'encryption',
-      req,
+      ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || undefined,
+      userAgent: req.headers.get('user-agent') || undefined,
     })
 
     return NextResponse.json(status)

@@ -190,10 +190,11 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile, error }) {
+    async signIn({ user, account, profile, error }: { user: any; account: any; profile?: any; error?: any }) {
       // Handle credentials provider errors
       if (error) {
-        throw new Error(error.message || 'Erreur de connexion')
+        const errorMsg = typeof error === 'string' ? error : error?.message || 'Erreur de connexion'
+        throw new Error(errorMsg)
       }
 
       // Only handle OAuth providers (google, azure-ad)
@@ -385,7 +386,7 @@ export const authOptions: NextAuthOptions = {
             if (dbUser) {
               session.user.id = dbUser.id
               session.user.onboardingDone = dbUser.onboardingDone
-              ;(session as Record<string, unknown>).emailAccounts = dbUser.emailAccounts
+              ;(session as unknown as Record<string, unknown>).emailAccounts = dbUser.emailAccounts
             }
           } catch {
             // Non-critical, continue
