@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
         target: 'dpo_contact',
         targetId: dpoContact.id,
         metadata: { subject },
-        req,
+        ip: ipAddress,
+        userAgent: getUserAgent(req),
       })
     }
 

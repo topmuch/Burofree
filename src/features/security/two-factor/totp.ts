@@ -1,21 +1,43 @@
 /**
  * TOTP Utility Functions for Burofree 2FA
- * Uses otplib for TOTP generation/verification and qrcode for QR code generation
+ * Uses otplib v13 for TOTP generation/verification and qrcode for QR code generation
+ *
+ * otplib v13 API: top-level functions with crypto/base32 plugin contexts
  */
 
-import { authenticator } from 'otplib'
+import {
+  generateSecret,
+  generateSync,
+  verifySync,
+  generateURI,
+  NobleCryptoPlugin,
+  ScureBase32Plugin,
+} from 'otplib'
 import QRCode from 'qrcode'
 import crypto from 'crypto'
+
+// ─── Plugin Contexts (singleton) ───────────────────────────────────────────
+
+const cryptoPlugin = new NobleCryptoPlugin()
+const base32Plugin = new ScureBase32Plugin()
+
+const context = { crypto: cryptoPlugin, base32: base32Plugin }
+
+// ─── TOTP Functions ────────────────────────────────────────────────────────
 
 /** Generate a new TOTP secret for a user */
 export function generateTOTPSecret(userId: string, email: string): {
   secret: string
   otpauthUrl: string
 } {
-  const secret = authenticator.generateSecret()
-  const serviceName = encodeURIComponent('Burofree')
-  const userEmail = encodeURIComponent(email)
-  const otpauthUrl = authenticator.keyuri(userEmail, serviceName, secret)
+  const secret = generateSecret(context)
+  const serviceName = 'Burofree'
+  const otpauthUrl = generateURI({
+    secret,
+    label: email,
+    issuer: serviceName,
+    type: 'totp',
+  })
 
   return { secret, otpauthUrl }
 }
@@ -23,10 +45,16 @@ export function generateTOTPSecret(userId: string, email: string): {
 /** Verify a TOTP token against a secret */
 export function verifyTOTP(secret: string, token: string): boolean {
   try {
-    return authenticator.verify(token, secret)
+    const result = verifySync({ token, secret, ...context })
+    return result.valid
   } catch {
     return false
   }
+}
+
+/** Generate a current TOTP token (for testing) */
+export function generateTOTPToken(secret: string): string {
+  return generateSync({ secret, ...context })
 }
 
 /** Generate a QR code as a base64 data URL from an otpauth:// URL */

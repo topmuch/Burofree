@@ -59,11 +59,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 2b. Public API routes (health check, stripe webhook, team accept)
+  // 2b. Public API routes (health check, stripe webhook, team accept, DPO contact, portal, roles/seed)
   if (
     pathname === '/api/health' ||
     pathname === '/api/stripe/webhook' ||
-    pathname.startsWith('/api/teams/accept')
+    pathname.startsWith('/api/teams/accept') ||
+    pathname === '/api/dpo/contact' ||
+    pathname.startsWith('/api/portal/') ||
+    pathname === '/api/roles/seed'
   ) {
     return NextResponse.next()
   }

@@ -735,3 +735,144 @@
 - `features/security/components/consent-banner.tsx` — Banner de consentement cookies GDPR/CCPA
 - `features/security/components/dpo-contact-form.tsx` — Formulaire de contact DPO
 - `features/security/components/gdpr-panel.tsx` — Panel de gestion RGPD (4 sections)
+
+---
+
+# PRIORITÉ 5 — Auto-Audit Complet (Session 2026-03-04)
+
+## Méthodologie
+- Tests exécutés directement via `tsx` sur les services (bypass middleware/auth)
+- Tests API routes via `curl` sur le serveur Next.js
+- Lint ESLint sur tous les fichiers sécurité
+- Vérification compilation dans dev.log
+
+---
+
+## Bugs trouvés et corrigés lors de l'auto-audit
+
+| # | Sévérité | Fichier | Bug | Fix | Testé |
+|---|----------|---------|-----|-----|:-----:|
+| 1 | 🔴 CRITIQUE | `two-factor/totp.ts` | `otplib` v13 API incompatible — `authenticator.generateSecret()` n'existe pas | Réécrit pour utiliser `generateSecret()`, `generateSync()`, `verifySync()`, `generateURI()` avec `NobleCryptoPlugin` + `ScureBase32Plugin` | ✅ TOTP secret généré, token vérifié, QR code créé |
+| 2 | 🟡 MOYEN | `two-factor/totp.ts` | `generateURI({ accountName: email })` affiche `undefined` dans l'URI | Changé pour `label: email` (paramètre correct otplib v13) | ✅ URI correcte `Burofree:test@example.com` |
+| 3 | 🔴 CRITIQUE | `middleware.ts` | Routes publiques `/api/dpo/contact`, `/api/portal/`, `/api/roles/seed` bloquées par le middleware (retourne 401) | Ajouté ces routes à la liste des routes publiques dans le middleware | ✅ DPO contact POST retourne 201 |
+| 4 | 🟡 MOYEN | `dpo/contact/route.ts` | `logSecurityAction({ req })` — `AuditLogEntry` n'accepte pas `req`, nécessite `ip` + `userAgent` | Remplacé `req` par `ip: ipAddress, userAgent: getUserAgent(req)` | ✅ Audit log créé correctement |
+
+---
+
+## Résultats des Tests Fonctionnels
+
+### Feature 1: 2FA TOTP & Backup Codes
+
+| Test | Résultat | Détails |
+|------|:--------:|---------|
+| TOTP Secret Generation | ✅ PASS | Secret Base32 généré, URI otpauth:// valide |
+| TOTP Token Generation | ✅ PASS | `generateSync()` produit code 6 chiffres |
+| TOTP Token Verification | ✅ PASS | `verifySync()` valide le token courant |
+| Invalid Token Rejection | ✅ PASS | `000000` rejeté |
+| QR Code Generation | ✅ PASS | Base64 data:image/png, 256px |
+| Backup Codes Format | ✅ PASS | 10 codes, format XXXX-XXXX, 9 chars |
+| Full 2FA Setup Flow | ✅ PASS | setup → encrypt secret → store in DB |
+| Full 2FA Enable Flow | ✅ PASS | verify token → enable → hash backup codes → invalidate sessions |
+| Full 2FA Disable Flow | ✅ PASS | verify token → disable → clear secret → delete codes |
+| 2FA Verify Token | ✅ PASS | verify2FAToken() returns true for valid token |
+| 2FA Audit Logs | ✅ PASS | 2fa.enable.success, 2fa.disable.success créés |
+
+### Feature 2: Data Encryption & Key Rotation
+
+| Test | Résultat | Détails |
+|------|:--------:|---------|
+| Encrypt Field | ✅ PASS | Format `v{version}:{base64}`, version prefix |
+| Decrypt Field | ✅ PASS | Roundtrip plaintext === decrypted |
+| Key Rotation | ✅ PASS | v1 → v2, old key marked expired |
+| Decrypt Old Version | ✅ PASS | Données chiffrées avec v1 déchiffrées après rotation vers v2 |
+| New Encryption Uses New Key | ✅ PASS | Nouveau champ commence par `v2:` |
+| Encryption Status | ✅ PASS | currentVersion, totalKeys, algorithm |
+
+### Feature 3: GDPR/Compliance & Consent
+
+| Test | Résultat | Détails |
+|------|:--------:|---------|
+| Export User Data | ✅ PASS | 31 sections exportées, passwordHash/twoFactorSecret exclus |
+| Consent Logging | ✅ PASS | granted/revoked loggés, append-only |
+| Get User Consents | ✅ PASS | analytics=true, functional=true, marketing=false, essential=true |
+| Request Account Deletion | ✅ PASS | Schedule créé, email anonymisé immédiatement |
+| Cancel Account Deletion | ✅ PASS | Email restauré, schedule status=cancelled |
+| DPO Contact (Public) | ✅ PASS | POST 201 sans auth, création DpoContact en DB |
+| Consent Logs in DB | ✅ PASS | ConsentLog entries avec type, action, version |
+
+### Feature 4: Audit Logs & Traceability
+
+| Test | Résultat | Détails |
+|------|:--------:|---------|
+| Create Audit Log | ✅ PASS | logAudit() crée entrée AuditLog |
+| Query Audit Logs | ✅ PASS | queryAuditLogs() avec pagination |
+| Filter by Action | ✅ PASS | Filtrage task.create retourne 1 résultat |
+| Anomaly Detection | ✅ PASS | 4 logins depuis IPs différentes → SecurityAlert créée |
+| Security Alerts | ✅ PASS | type=multiple_ip_login, severity=high |
+
+### Feature 5: RBAC Permissions
+
+| Test | Résultat | Détails |
+|------|:--------:|---------|
+| Seed Roles & Permissions | ✅ PASS | 6 rôles, 37 permissions créés |
+| Member Default Permissions | ✅ PASS | 15 permissions (CRUD tâches/projets/docs/emails/temps) |
+| Member Can't Admin | ✅ PASS | invoice:delete=false, team:manage=false |
+| SuperAdmin All Permissions | ✅ PASS | 37 permissions, accès complet |
+| hasPermission Function | ✅ PASS | task:create=true, invoice:delete=false pour Member |
+| Permission Cache | ✅ PASS | invalidatePermissionCache() fonctionne |
+| Roles in DB | ✅ PASS | SuperAdmin(100), Propriétaire(80), Admin(60), Membre(40), Observateur(20), Invité(10) |
+
+---
+
+## Lint & Compilation
+
+| Check | Résultat |
+|-------|:--------:|
+| ESLint security files | ✅ 0 erreurs |
+| ESLint full project | 37 erreurs pré-existantes (aucune dans security) |
+| Dev server compilation | ✅ Pas d'erreurs |
+| API routes compilation | ✅ Toutes compilent (2fa, gdpr, consent, dpo, audit, roles, encryption) |
+| Prisma schema | ✅ DB in sync |
+
+---
+
+## Résumé Final — PRIORITÉ 5 Sécurité & Conformité
+
+| Fonctionnalité | Backend Service | API Routes | Auth/Access | Rate Limit | Zod | UI Components | Sécurité | Testé |
+|----------------|:---------------:|:----------:|:-----------:|:----------:|:---:|:-------------:|:--------:|:-----:|
+| 2FA TOTP & Backup Codes | ✅ 5 fonctions | ✅ 5 routes | ✅ requireAuth | ✅ 5/15min | ✅ | ✅ Setup+Status | ✅ AES-256-GCM+bcrypt | ✅ |
+| Data Encryption & Rotation | ✅ 4 fonctions | ✅ 2 routes | ✅ superAdmin | ✅ 2/hr rotation | ✅ | N/A (admin) | ✅ Versioned keys | ✅ |
+| GDPR/Compliance & Consent | ✅ 7 fonctions | ✅ 7 routes | ✅+public DPO | ✅ 1/day export | ✅ | ✅ Banner+Panel+Form | ✅ Anonymisation 30j | ✅ |
+| Audit Logs & Traceability | ✅ 3 fonctions | ✅ 2 routes | ✅ admin=all | ✅ 100/min | ✅ | ✅ Viewer | ✅ Anomaly detection | ✅ |
+| RBAC Granular Permissions | ✅ 5 fonctions | ✅ 5 routes | ✅ role-based | ✅ 100/min | ✅ | ✅ Manager+Matrix | ✅ Cache+invalidation | ✅ |
+
+### Fichiers créés/modifiés PRIORITÉ 5 (complet) :
+
+**Prisma (1):** schema.prisma — 10 modèles + 2 modifications (User +5, TeamMember +2)
+
+**Services (7):**
+- two-factor/totp.ts (réécrit), two-factor/service.ts
+- encryption/service.ts
+- gdpr/service.ts
+- audit/enhanced-logger.ts, audit/logger.ts
+- rbac/permissions.ts, rbac/checker.ts, rbac/seed.ts
+
+**API Routes (19):**
+- security/2fa/setup, enable, disable, verify, backup-codes
+- security/encryption/status, rotate
+- security/alerts
+- gdpr/export, delete, cancel
+- consent
+- dpo/contact
+- audit-logs
+- roles, roles/[id], roles/seed, roles/check, roles/assign
+
+**Frontend Components (8):**
+- security-panel.tsx, two-factor-setup.tsx, two-factor-status.tsx, two-factor-verify.tsx
+- consent-banner.tsx, gdpr-panel.tsx, dpo-contact-form.tsx
+- audit-log-viewer.tsx, security-alerts-panel.tsx
+- role-manager.tsx, permission-matrix.tsx
+
+**Validation (1):** lib/validations/security.ts — 8 schémas Zod
+
+**Middleware (1):** middleware.ts — ajout routes publiques DPO/portal/roles/seed
