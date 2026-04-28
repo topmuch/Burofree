@@ -75,7 +75,7 @@ export default function SignInPage() {
             className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors w-fit"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour &agrave; l&apos;accueil
+            Retour à l'accueil
           </Link>
 
           {/* Center content */}
@@ -88,16 +88,16 @@ export default function SignInPage() {
                 Bienvenue sur <span className="text-emerald-400">Burozen</span>
               </h1>
               <p className="text-lg text-zinc-400 max-w-md leading-relaxed">
-                Votre copilote freelance intelligent. G&eacute;rez vos t&acirc;ches, emails, factures et calendrier en un seul endroit.
+                Votre copilote freelance intelligent. Gérez vos tâches, emails, factures et calendrier en un seul endroit.
               </p>
             </div>
 
             {/* Feature highlights */}
             <div className="grid grid-cols-2 gap-4 max-w-md">
               {[
-                { label: 'Gestion des t&acirc;ches', desc: 'Organisez et suivez vos projets' },
-                { label: 'Facturation', desc: 'Cr&eacute;ez et relancez automatiquement' },
-                { label: 'Emails int&eacute;gr&eacute;s', desc: 'Gmail & Outlook synchronis&eacute;s' },
+                { label: 'Gestion des tâches', desc: 'Organisez et suivez vos projets' },
+                { label: 'Facturation', desc: 'Créez et relancez automatiquement' },
+                { label: 'Emails intégrés', desc: 'Gmail & Outlook synchronisés' },
                 { label: 'Assistant IA', desc: 'Automatisez votre workflow' },
               ].map((item, i) => (
                 <div
@@ -113,7 +113,7 @@ export default function SignInPage() {
 
           {/* Bottom */}
           <p className="text-xs text-zinc-600">
-            &copy; {new Date().getFullYear()} Burozen &mdash; Tous droits r&eacute;serv&eacute;s
+            © {new Date().getFullYear()} Burozen — Tous droits réservés
           </p>
         </div>
       </div>
@@ -148,12 +148,12 @@ export default function SignInPage() {
           {/* Header */}
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-foreground">
-              {isRegister ? 'Cr&eacute;er un compte' : 'Connexion'}
+              {isRegister ? 'Créer un compte' : 'Connexion'}
             </h2>
             <p className="text-sm text-muted-foreground">
               {isRegister
                 ? 'Commencez gratuitement avec Burozen'
-                : 'Connectez-vous pour acc&eacute;der &agrave; votre espace'}
+                : 'Connectez-vous pour accéder à votre espace'}
             </p>
           </div>
 
@@ -269,7 +269,7 @@ export default function SignInPage() {
               </div>
               {!isRegister && (
                 <p className="text-xs text-muted-foreground">
-                  Laissez vide si vous n&apos;avez pas d&eacute;fini de mot de passe
+                  Laissez vide si vous n'avez pas défini de mot de passe
                 </p>
               )}
             </div>
@@ -313,7 +313,7 @@ export default function SignInPage() {
             </Link>{' '}
             et notre{' '}
             <Link href="/legal/privacy" className="underline hover:text-foreground transition-colors">
-              politique de confidentialit&eacute;
+              politique de confidentialité
             </Link>
             .
           </p>
