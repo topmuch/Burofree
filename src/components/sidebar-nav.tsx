@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, CheckSquare, Calendar, Mail, FolderOpen,
   Receipt, Timer, Bell, Settings, ChevronLeft, ChevronRight,
-  Moon, Sun, Sparkles, Video, FileText, BarChart3, LayoutTemplate, Store, Server
+  Moon, Sun, Sparkles, Video, FileText, BarChart3, LayoutTemplate, Store, Server, Shield
 } from 'lucide-react'
 import { useAppStore, type TabType } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,7 @@ const navItems: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'marketplace', label: 'Extensions', icon: Store },
   { id: 'production', label: 'Production', icon: Server },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'security', label: 'Sécurité', icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'settings', label: 'Paramètres', icon: Settings },
 ]

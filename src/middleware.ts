@@ -9,9 +9,10 @@ import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AU
  * Handles:
  * 1. OAuth token refresh headers for email/calendar routes
  * 2. API route authentication enforcement
- * 3. Public route whitelisting (health, stripe webhook, team accept)
+ * 3. Public route whitelisting (health, stripe webhook, team accept, DPO contact)
  * 4. Invoice PDF token-based auth (alternative to session cookie)
  * 5. Rate limiting
+ * 6. 2FA-protected route enforcement
  */
 
 // Routes that don't require authentication
@@ -21,6 +22,16 @@ const PUBLIC_ROUTES = [
   '/api/health',      // Health check endpoint (monitoring)
   '/api/stripe/webhook', // Stripe webhooks (uses signature verification, not session)
   '/api/teams/accept',   // Team invitation acceptance (GET redirect from email)
+  '/api/dpo/contact',    // DPO contact form (public submission)
+  '/api/roles/seed',     // Role seeding (superadmin, has its own auth)
+]
+
+// Routes that require 2FA if the user has it enabled
+const TWO_FA_REQUIRED_ROUTES = [
+  '/api/security/2fa/disable',
+  '/api/security/encryption/rotate',
+  '/api/gdpr/delete',
+  '/api/export',
 ]
 
 // Routes that need OAuth token refresh headers

@@ -381,3 +381,357 @@
 - `INTEGRATION_GITHUB_CLIENT_ID/SECRET` — OAuth GitHub
 - `INTEGRATION_NOTION_CLIENT_ID/SECRET` — OAuth Notion
 - `INTEGRATION_GOOGLE_DRIVE_CLIENT_ID/SECRET` — OAuth Google Drive
+
+---
+
+# PRIORITÉ 5 — Sécurité & Conformité : Worklog
+
+## Session: 2026-04-28 (suite)
+
+---
+
+## Task ID: 3 — Prisma Schema PRIORITÉ 5 (10 nouveaux modèles + 2 modifications)
+
+**Agent:** Main Agent (Task 3)
+
+**Work Log:**
+- Ajouté 5 relations inverses au modèle `User` existant : `backupCodes BackupCode[]`, `consentLogs ConsentLog[]`, `gdprRequests GdprRequest[]`, `deletionSchedule GdprDeletionSchedule[]`, `dpoContacts DpoContact[]`
+- Modifié `TeamMember` : ajouté `roleId String?` et `roleRef Role? @relation(fields: [roleId], references: [id], onDelete: SetNull)` pour la relation RBAC
+- Ajouté 10 nouveaux modèles Prisma pour la sécurité et conformité :
+  1. **BackupCode** — Codes de secours 2FA (single-use, bcrypt hash, index userId+usedAt)
+  2. **ConsentLog** — Journal des consentements GDPR (consentType, action, version, IP, userAgent)
+  3. **GdprRequest** — Demandes export/suppression GDPR (status pipeline, filePath, fileSize, expiresAt)
+  4. **GdprDeletionSchedule** — Période de grâce suppression (30 jours, double confirmation, @unique userId)
+  5. **EncryptionKey** — Registre des clés de chiffrement (version @unique, rotation, keyHash)
+  6. **SecurityAlert** — Détection comportement anomal (severity, type, résolution, metadata JSON)
+  7. **Permission** — Permissions granulaires RBAC (slug @unique, resource+action @@unique)
+  8. **Role** — Rôles hiérarchiques RBAC (slug @unique, level, isDefault, teamMembers[])
+  9. **RolePermission** — Junction Role↔Permission (@@unique [roleId, permissionId])
+  10. **DpoContact** — Communications DPO (userId optionnel car non-user peut contacter, status pipeline)
+- Fix: DpoContact.userId est `String?` avec `user User? @relation(... onDelete: SetNull)` car un non-utilisateur peut soumettre une demande DPO
+- `bun run db:push` exécuté avec succès ✅
+
+**Auto-Audit:**
+| Model | Created | Indexes | Relations | Unique constraints | Notes |
+|-------|:-------:|:-------:|:---------:|:------------------:|-------|
+| BackupCode | ✅ | userId+usedAt | User (cascade) | — | bcrypt hash |
+| ConsentLog | ✅ | userId+consentType, createdAt | User (cascade) | — | GDPR consent tracking |
+| GdprRequest | ✅ | userId+status, status+requestedAt, expiresAt | User (cascade) | — | Export/delete pipeline |
+| GdprDeletionSchedule | ✅ | gracePeriodEnd, status | User (cascade) | userId @unique | 30-day grace period |
+| EncryptionKey | ✅ | activeFrom, activeUntil | — | version @unique | Key rotation registry |
+| SecurityAlert | ✅ | userId+status, type+severity, status+createdAt, teamId | — | — | Anomaly detection |
+| Permission | ✅ | resource, action | RolePermission[] | slug @unique, resource+action @@unique | Granular RBAC |
+| Role | ✅ | slug, level | RolePermission[], TeamMember[] | slug @unique | Hierarchical roles |
+| RolePermission | ✅ | — | Role, Permission | roleId+permissionId @@unique | Junction table |
+| DpoContact | ✅ | status, createdAt | User? (SetNull) | — | Non-user compatible |
+
+**Modifications to existing models:**
+| Model | Change | Type |
+|-------|--------|------|
+| User | +5 relations (backupCodes, consentLogs, gdprRequests, deletionSchedule, dpoContacts) | New fields |
+| TeamMember | +roleId (String?), +roleRef (Role?, SetNull) | New fields + relation |
+
+---
+
+## Task ID: 4-a — 2FA TOTP & Backup Codes Backend
+
+**Agent:** Task 4-a Agent
+
+**Work Log:**
+- Créé `features/security/two-factor/totp.ts` — 4 fonctions TOTP (generateSecret, verify, generateQRCode, generateBackupCodes)
+  - Codes de secours : 8 caractères alphanumériques format XXXX-XXXX, charset sans ambiguïté (pas 0/O/1/I/l)
+  - QR code : base64 data URL 256px
+- Créé `features/security/audit/logger.ts` — createAuditLog() pour AuditLog table
+- Créé `features/security/two-factor/service.ts` — 5 fonctions service 2FA :
+  - `setup2FA` — Génère secret, chiffre (AES-256-GCM), stocke dans user.twoFactorSecret, retourne QR + backup codes (n'active PAS)
+  - `enable2FA` — Vérifie premier token TOTP, active 2FA, hash backup codes (bcrypt), invalide sessions, audit log
+  - `disable2FA` — Vérifie TOTP OU backup code, désactive, efface secret, supprime codes, audit log
+  - `verify2FAToken` — Vérifie TOTP ou backup code (single-use), retourne boolean
+  - `regenerateBackupCodes` — TOTP uniquement (pas backup code), génère nouveaux codes, supprime anciens, audit log
+- Créé 5 routes API (toutes avec requireAuth + rate limit 5/15min) :
+  - POST `/api/security/2fa/setup` — Setup 2FA
+  - POST `/api/security/2fa/enable` — Activer 2FA avec token
+  - POST `/api/security/2fa/disable` — Désactiver 2FA avec token
+  - POST `/api/security/2fa/verify` — Vérifier token → { valid }
+  - POST `/api/security/2fa/backup-codes` — Régénérer codes de secours avec token TOTP
+
+**Auto-Audit:**
+| File | Auth | Rate Limit | Input Validation | Audit Log | Encryption | Status |
+|------|:----:|:----------:|:----------------:|:---------:|:----------:|:------:|
+| totp.ts | N/A | N/A | N/A | N/A | N/A | ✅ PASS |
+| audit/logger.ts | N/A | N/A | N/A | N/A | N/A | ✅ PASS |
+| service.ts | N/A | N/A | ✅ | ✅ | ✅ AES-256-GCM + bcrypt | ✅ PASS |
+| 2fa/setup/route.ts | ✅ | ✅ 5/15min | ✅ | ✅ | N/A | ✅ PASS |
+| 2fa/enable/route.ts | ✅ | ✅ 5/15min | ✅ token | ✅ | N/A | ✅ PASS |
+| 2fa/disable/route.ts | ✅ | ✅ 5/15min | ✅ token | ✅ | N/A | ✅ PASS |
+| 2fa/verify/route.ts | ✅ | ✅ 5/15min | ✅ token | N/A | ✅ PASS | ✅ PASS |
+| 2fa/backup-codes/route.ts | ✅ | ✅ 5/15min | ✅ token | ✅ | N/A | ✅ PASS |
+
+**Lint:** 0 erreurs dans les nouveaux fichiers ✅
+
+---
+
+## Task ID: 5-a — Data Encryption Service & API
+
+**Agent:** Task 5-a-5-b Agent
+
+**Work Log:**
+- Créé `features/security/encryption/service.ts` — Service de chiffrement avec rotation de clés
+  - `encryptField(plaintext)` — Chiffrement AES-256-GCM avec préfixe version (`v{version}:{base64}`)
+  - `decryptField(encrypted)` — Déchiffrement sensible à la version (support rotation de clés)
+  - `rotateEncryptionKey(adminUserId)` — Crée nouvelle version, marque l'ancienne expirée
+  - `getEncryptionStatus()` — Retourne version courante, total clés, dernière rotation
+  - Cache mémoire des clés dérivées (Map<version, Buffer>) pour performance
+  - Dérivation de clés via scryptSync avec salts spécifiques à chaque version
+  - Seuls les hashes SHA-256 des clés sont stockés en DB (jamais les clés elles-mêmes)
+  - Format versionné permet la rotation progressive (anciens champs déchiffrables avec ancienne version)
+- Créé `app/api/security/encryption/status/route.ts` — GET: statut des clés de chiffrement (superadmin only)
+- Créé `app/api/security/encryption/rotate/route.ts` — POST: rotation de clé (superadmin only, 2/heure)
+  - Double log : AuditLog + SuperAdminAuditLog
+  - Validation Zod (reason optionnel)
+- Créé `lib/validations/security.ts` — Schémas Zod pour toutes les routes sécurité/conformité (8 schemas)
+  - gdprExportQuerySchema, gdprDeleteRequestSchema, gdprDeleteConfirmSchema
+  - gdprCancelSchema, consentUpdateSchema, dpoContactSchema, dpoContactQuerySchema, encryptionRotateSchema
+
+**Auto-Audit:**
+| Route | Method | Auth | Rate Limit | Zod | Audit Log | Status |
+|-------|--------|:----:|:----------:|:---:|:---------:|:------:|
+| encryption/status | GET | ✅ superAdmin | ✅ 100/min | N/A | ✅ | PASS |
+| encryption/rotate | POST | ✅ superAdmin | ✅ 2/hr | ✅ | ✅ double-log | PASS |
+
+---
+
+## Task ID: 5-b — RGPD/Compliance & Consent Service & API
+
+**Agent:** Task 5-a-5-b Agent
+
+**Work Log:**
+- Créé `features/security/gdpr/service.ts` — Service GDPR complet (7 fonctions exportées)
+  - `exportUserData(userId)` — Collecte données de 21 tables, JSON structuré (Art. 15 & 20)
+    - Exclusion des données sensibles : passwordHash, twoFactorSecret, accessToken, refreshToken, fileUrl, body
+    - Création d'un GdprRequest + audit log
+  - `requestAccountDeletion(userId, ipAddress)` — Crée planning 30 jours, anonymise email immédiatement (Art. 17)
+    - Email original stocké dans GdprRequest.metadata pour restauration potentielle
+    - Email anonymisé = `anonymized_{userId}@burofree.anonymized` (empêche connexion)
+  - `confirmAccountDeletion(userId)` — Double confirmation, passe status='confirmed'
+  - `cancelAccountDeletion(userId)` — Annulation dans période de grâce, restaure email
+  - `executePendingDeletions()` — Appelé par cron, anonymise tout pour les plannings passés+confirmés
+    - `anonymizeUserData()` interne : remplace PII par valeurs anonymisées, supprime tokens/sessions/codes
+  - `logConsent(userId, consentType, action, ipAddress, userAgent)` — Journal append-only (Art. 7)
+    - Types valides : analytics, functional, marketing, essential
+    - Actions valides : granted, revoked, updated
+  - `getUserConsents(userId)` — Retourne état actuel par type (dernière action)
+  - `getDeletionSchedule(userId)` — Helper pour le planning courant
+- Mis à jour `features/security/audit/logger.ts` — Ajouté `getClientIp()` et `getUserAgent()` helpers
+- Créé 5 routes API :
+  - GET `/api/gdpr/export` — Export JSON téléchargeable (auth + 1/jour rate limit)
+  - POST `/api/gdpr/delete` — Demande suppression (auth)
+  - DELETE `/api/gdpr/delete` — Confirmation suppression avec `{ confirmed: true }` (auth + Zod)
+  - POST `/api/gdpr/cancel` — Annulation suppression (auth)
+  - GET `/api/consent` — Préférences consentement (auth)
+  - POST `/api/consent` — Mise à jour consentements (auth + Zod)
+  - POST `/api/dpo/contact` — Contact DPO (public, 5/hr rate limit + Zod)
+  - GET `/api/dpo/contact` — Liste demandes DPO (superadmin only + Zod query)
+
+**Auto-Audit:**
+| Route | Method | Auth | Rate Limit | Zod | Audit Log | Status |
+|-------|--------|:----:|:----------:|:---:|:---------:|:------:|
+| gdpr/export | GET | ✅ requireAuth | ✅ 1/day | N/A | ✅ (service) | PASS |
+| gdpr/delete | POST | ✅ requireAuth | ✅ 100/min | N/A | ✅ (service) | PASS |
+| gdpr/delete | DELETE | ✅ requireAuth | ✅ 100/min | ✅ confirmed | ✅ (service) | PASS |
+| gdpr/cancel | POST | ✅ requireAuth | ✅ 100/min | N/A | ✅ (service) | PASS |
+| consent | GET | ✅ requireAuth | ✅ 100/min | N/A | N/A | PASS |
+| consent | POST | ✅ requireAuth | ✅ 100/min | ✅ | ✅ (service) | PASS |
+| dpo/contact | POST | ❌ public | ✅ 5/hr | ✅ | ✅ (if user) | PASS |
+| dpo/contact | GET | ✅ superAdmin | ✅ 100/min | ✅ query | ✅ | PASS |
+
+**Lint:** 0 erreurs dans les nouveaux fichiers ✅
+
+---
+
+### Fichiers créés PRIORITÉ 5 (Feature 2 + Feature 3) :
+
+**Services (3):**
+- features/security/encryption/service.ts
+- features/security/gdpr/service.ts
+- features/security/audit/logger.ts (mis à jour)
+
+**API Routes (7):**
+- api/security/encryption/status/route.ts
+- api/security/encryption/rotate/route.ts
+- api/gdpr/export/route.ts
+- api/gdpr/delete/route.ts
+- api/gdpr/cancel/route.ts
+- api/consent/route.ts
+- api/dpo/contact/route.ts
+
+**Validation (1):** lib/validations/security.ts — 8 schémas Zod
+
+---
+
+## Task ID: 6-a-7-a — Audit Logs & RBAC Permissions Backend
+
+**Agent:** Task 6-a-7-a Agent
+
+**Work Log:**
+
+### Feature 4: Audit Logs & Traceability
+
+- Créé `features/security/audit/enhanced-logger.ts` — Système d'audit logging avancé
+  - `logAudit(entry)` — Crée une entrée AuditLog dans la DB
+  - `queryAuditLogs(params)` — Requête avec filtres (userId, teamId, action, target, dates) + pagination
+  - `detectAnomalies(userId, action, ip)` — Détection comportement anomal :
+    - Login depuis ≥ 3 IPs en 1h → alerte haute sévérité
+    - ≥ 5 exports en 1h → alerte moyenne sévérité
+    - ≥ 10 suppressions en 1h → alerte haute sévérité
+  - Types : `AuditAction` (35+ actions), `AuditLogEntry`, `QueryAuditLogsParams`, `QueryAuditLogsResult`
+- Créé `features/security/audit/logger.ts` — Module de compatibilité
+  - Re-exporte `logAudit` comme `createAuditLog` (backward compat avec two-factor/service.ts)
+  - Ajoute `logSecurityAction()` (alias pour logAudit, utilisé par GDPR/encryption)
+  - Ajoute `getClientIp(req)` et `getUserAgent(req)` helpers (utilisés par consent/DPO/GDPR routes)
+  - Résout les erreurs TypeScript pré-existantes : 8 imports de `createAuditLog`, `logSecurityAction`, `getClientIp`, `getUserAgent`
+- Créé `app/api/audit-logs/route.ts` — GET: requête logs audit
+  - Filtrage : userId, teamId, action, target, startDate, endDate, page, limit
+  - Validation Zod complète
+  - Contrôle d'accès : admins voient tous les logs, utilisateurs réguliers voient uniquement les leurs
+- Créé `app/api/security/alerts/route.ts` — GET + POST
+  - GET: Liste alertes de sécurité (admin only) avec filtres (status, severity, type) + pagination
+  - POST: Acquitter/résoudre/faux positif (body: { alertId, action: 'acknowledge'|'resolve'|'false_positive' })
+
+### Feature 5: RBAC Granular Permissions
+
+- Créé `features/security/rbac/permissions.ts` — Définition centralisée des permissions
+  - 36 permissions sur 10 ressources : task, project, invoice, email, document, time, team, billing, settings, data
+  - Chaque permission : `{ resource, action, description }` en français
+  - Type `PermissionSlug` pour validation TypeScript
+- Créé `features/security/rbac/checker.ts` — Système de vérification des permissions
+  - `hasPermission(userId, permissionSlug, teamId?)` — Vérification avec cache mémoire
+  - `loadUserPermissions(userId, teamId?)` — Charge permissions depuis :
+    1. Superadmin → toutes les permissions
+    2. Role via team membership (roleRef)
+    3. Role par défaut (isDefault)
+    4. Owner (rôle dénormalisé) → toutes les permissions
+  - `invalidatePermissionCache(userId)` — Invalidation quand rôles changent
+  - `requirePermission(userId, permissionSlug, teamId?)` — Alias qui retourne boolean
+  - `getUserPermissions(userId, teamId?)` — Retourne Set complet pour UI
+- Créé `features/security/rbac/seed.ts` — Fonction de seeding idempotente
+  - 6 rôles par défaut : SuperAdmin (100), Owner (80), Admin (60), Member (40, défaut), Viewer (20), Guest (10)
+  - Upsert permissions + rôles + assignations (supprime aussi les permissions retirées)
+  - Retourne résumé : counts + détails par rôle
+- Créé `app/api/roles/route.ts` — GET + POST
+  - GET: Liste tous les rôles avec permissions et nombre de membres
+  - POST: Crée rôle personnalisé (admin only, validation Zod : slug regex, nom, niveau max 99, permission slugs)
+- Créé `app/api/roles/[id]/route.ts` — GET + PUT + DELETE
+  - GET: Détails rôle avec permissions et compte membres
+  - PUT: Mise à jour rôle (nom, description, niveau, addPermissions, removePermissions) + invalidation cache
+  - DELETE: Suppression rôle personnalisé (impossible pour rôles par défaut, vérifie assignations avant suppression)
+- Créé `app/api/roles/seed/route.ts` — POST
+  - Seeding des rôles/permissions par défaut (superadmin only, idempotent)
+- Créé `app/api/roles/check/route.ts` — POST
+  - Vérification permission pour utilisateur courant (body: { permission, teamId? })
+- Créé `app/api/roles/assign/route.ts` — POST
+  - Assigne rôle à membre d'équipe (admin only, body: { userId, roleId, teamId })
+  - Invalidation cache + audit log (action: role.assign)
+
+**Auto-Audit:**
+
+| Route | Method | Auth | Rate Limit | Zod | Audit Log | Access Control |
+|-------|--------|:----:|:----------:|:---:|:---------:|:--------------:|
+| audit-logs | GET | ✅ | ✅ 100/min | ✅ | N/A | ✅ admin=all, user=own |
+| security/alerts | GET | ✅ admin | ✅ 100/min | ✅ | N/A | ✅ |
+| security/alerts | POST | ✅ admin | ✅ 100/min | ✅ | N/A | ✅ |
+| roles | GET | ✅ | ✅ 100/min | N/A | N/A | ✅ |
+| roles | POST | ✅ admin | ✅ 100/min | ✅ | N/A | ✅ |
+| roles/[id] | GET | ✅ | ✅ 100/min | N/A | N/A | ✅ |
+| roles/[id] | PUT | ✅ admin | ✅ 100/min | ✅ | N/A | ✅ + cache invalidation |
+| roles/[id] | DELETE | ✅ admin | ✅ 100/min | N/A | N/A | ✅ no default + no members |
+| roles/seed | POST | ✅ superadmin | ✅ 100/min | N/A | N/A | ✅ |
+| roles/check | POST | ✅ | ✅ 100/min | ✅ | N/A | ✅ |
+| roles/assign | POST | ✅ admin | ✅ 100/min | ✅ | ✅ role.assign | ✅ + cache invalidation |
+
+**Lint:** 0 erreurs dans les nouveaux fichiers ✅
+**TypeScript:** 0 erreurs dans les nouveaux fichiers ✅ (résout aussi 8 erreurs pré-existantes dans two-factor, gdpr, consent, dpo, encryption routes)
+
+### Fichiers créés (11):
+
+**Feature Modules (5):**
+- features/security/audit/enhanced-logger.ts — Audit logging avancé + détection anomalies
+- features/security/audit/logger.ts — Compatibilité (createAuditLog, logSecurityAction, getClientIp, getUserAgent)
+- features/security/rbac/permissions.ts — 36 permissions sur 10 ressources
+- features/security/rbac/checker.ts — Vérification permissions avec cache mémoire
+- features/security/rbac/seed.ts — Seeding idempotent 6 rôles + 36 permissions
+
+**API Routes (6):**
+- app/api/audit-logs/route.ts — GET
+- app/api/security/alerts/route.ts — GET + POST
+- app/api/roles/route.ts — GET + POST
+- app/api/roles/[id]/route.ts — GET + PUT + DELETE
+- app/api/roles/seed/route.ts — POST
+- app/api/roles/check/route.ts — POST
+- app/api/roles/assign/route.ts — POST
+
+---
+
+## Task ID: 5-c — GDPR/Consent Frontend Components
+
+**Agent:** Task 5-c Agent
+
+**Work Log:**
+
+### 1. consent-banner.tsx — GDPR/CCPA Cookie Consent Banner
+
+- Créé `features/security/components/consent-banner.tsx` — Banner de consentement cookies conforme CNIL
+  - Apparaît au premier visit (vérifie localStorage `burofree-consent`)
+  - Options granulaires : Accepter tout, Refuser non-essentiels, Personnaliser
+  - Panneau de personnalisation : switches pour analytics, functional, marketing
+  - Stocke consentement dans localStorage + synchronise avec POST /api/consent
+  - Custom hook `useInitialConsent()` pour éviter `setState` dans un effect (React Compiler compliant)
+  - Animation slide-up avec framer-motion + `useReducedMotion`
+  - Compact sur mobile, plus large sur desktop
+  - Accessible : `role="dialog"`, `aria-label`, `aria-modal="false"`
+
+### 2. dpo-contact-form.tsx — DPO Contact Form
+
+- Créé `features/security/components/dpo-contact-form.tsx` — Formulaire de contact DPO
+  - Champs : name, email, subject, message
+  - Validation côté client (matching Zod schema : min/max lengths, email format)
+  - Submit to POST /api/dpo/contact (endpoint public)
+  - Feedback succès : card verte avec confirmation + bouton "Envoyer une autre demande"
+  - Feedback erreur : toast sonner avec messages spécifiques (429, 400, 500)
+  - Loading state avec spinner
+  - Character counter pour le message (max 5000)
+  - Props optionnels `defaultName` / `defaultEmail` pour pré-remplir si utilisateur connecté
+
+### 3. gdpr-panel.tsx — GDPR Data Management Panel
+
+- Créé `features/security/components/gdpr-panel.tsx` — Panel de gestion RGPD pour settings
+  - **Section 1: Gestion des consentements** — Toggle switches pour chaque type (essential/analytics/functional/marketing) avec état courant chargé depuis GET /api/consent, mise à jour optimistic + rollback via POST /api/consent, loading skeletons, badges "Requis"/"Actif"
+  - **Section 2: Export de données** — Bouton export JSON téléchargeable via GET /api/gdpr/export, date du dernier export, avertissement limite 1/jour
+  - **Section 3: Suppression du compte** — Zone danger (Card border-red), flow complet :
+    - Demande → POST /api/gdpr/delete (AlertDialog de confirmation)
+    - Confirmation → DELETE /api/gdpr/delete avec `{ confirmed: true }` (AlertDialog double)
+    - Annulation → POST /api/gdpr/cancel (AlertDialog de confirmation)
+    - Badges de statut (pending/confirmed/cancelled/executed) avec couleurs
+    - Affichage période de grâce (30 jours)
+  - **Section 4: Contact DPO** — Intègre le composant DpoContactForm
+  - Animations staggered avec framer-motion `sectionVariants`
+
+**Auto-Audit:**
+
+| Composant | API Endpoints Wired | Loading States | Error Handling | Optimistic Updates | Accessible | Status |
+|-----------|:-------------------:|:--------------:|:--------------:|:------------------:|:----------:|:------:|
+| consent-banner | POST /api/consent | ✅ saving spinner | ✅ console.error | N/A | ✅ role=dialog | PASS |
+| dpo-contact-form | POST /api/dpo/contact | ✅ spinner | ✅ toast 429/400/500 | N/A | ✅ labels | PASS |
+| gdpr-panel (consent) | GET+POST /api/consent | ✅ skeleton | ✅ toast + rollback | ✅ | ✅ aria-label | PASS |
+| gdpr-panel (export) | GET /api/gdpr/export | ✅ spinner | ✅ toast | N/A | ✅ | PASS |
+| gdpr-panel (delete) | POST+DELETE /api/gdpr/delete | ✅ per-action | ✅ toast | N/A | ✅ AlertDialog | PASS |
+| gdpr-panel (cancel) | POST /api/gdpr/cancel | ✅ spinner | ✅ toast | N/A | ✅ AlertDialog | PASS |
+| gdpr-panel (dpo) | Via DpoContactForm | ✅ | ✅ | N/A | ✅ | PASS |
+
+**Lint:** 0 erreurs dans les 3 nouveaux fichiers ✅ (fix: useInitialConsent hook pour éviter react-hooks/set-state-in-effect)
+
+### Fichiers créés (3):
+
+- `features/security/components/consent-banner.tsx` — Banner de consentement cookies GDPR/CCPA
+- `features/security/components/dpo-contact-form.tsx` — Formulaire de contact DPO
+- `features/security/components/gdpr-panel.tsx` — Panel de gestion RGPD (4 sections)

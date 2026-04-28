@@ -23,6 +23,8 @@ import {
 import { ConnectedAccounts } from '@/components/connected-accounts'
 import { TagsSection } from '@/components/tags-panel'
 import { AutomationsSection } from '@/components/automations-panel'
+import { TwoFactorStatusCard } from '@/features/security/components/two-factor-status'
+import { GdprPanel } from '@/features/security/components/gdpr-panel'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -73,8 +75,27 @@ export function SettingsPanel() {
     toast.success('Paramètres de l\'assistant sauvegardés')
   }
 
-  const handleExportData = () => {
-    toast.info('Fonctionnalité à venir')
+  const handleExportData = async () => {
+    try {
+      const res = await fetch('/api/gdpr/export')
+      if (res.ok) {
+        const data = await res.json()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `burofree-export-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.success('Données exportées avec succès')
+      } else {
+        toast.error('Erreur lors de l\'export')
+      }
+    } catch {
+      toast.error('Erreur lors de l\'export')
+    }
   }
 
   const handleResetData = () => {
@@ -303,70 +324,14 @@ export function SettingsPanel() {
         </Card>
       </motion.div>
 
-      {/* 7. Données */}
+      {/* 7. Sécurité 2FA */}
       <motion.div custom={6} variants={sectionVariants} initial="hidden" animate="visible">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Shield className="w-4 h-4 text-emerald-400" />
-              Données
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm">Exporter mes données</p>
-                <p className="text-xs text-muted-foreground">Télécharger une copie de toutes vos données</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportData}
-                className="text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-              >
-                <Download className="w-3.5 h-3.5 mr-1" /> Exporter
-              </Button>
-            </div>
+        <TwoFactorStatusCard />
+      </motion.div>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-red-400">Réinitialiser les données</p>
-                <p className="text-xs text-muted-foreground">Supprimer toutes vos données de l&apos;application</p>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Réinitialiser
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irréversible. Toutes vos données seront supprimées, y compris les tâches,
-                      projets, factures, documents et paramètres.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleResetData}
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      Réinitialiser
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
+      {/* 8. Données & RGPD */}
+      <motion.div custom={7} variants={sectionVariants} initial="hidden" animate="visible">
+        <GdprPanel />
       </motion.div>
     </div>
   )

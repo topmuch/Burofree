@@ -30,6 +30,8 @@ import { DifferentiationPanel } from '@/features/differentiation/differentiation
 import { ProductionPanel } from '@/features/production/production-panel'
 import { NetworkStatus } from '@/features/production/pwa/network-status'
 import { InstallPrompt } from '@/features/production/pwa/install-prompt'
+import { SecurityPanel } from '@/features/security/components/security-panel'
+import { ConsentBanner } from '@/features/security/components/consent-banner'
 
 // Placeholder for tabs without dedicated components yet
 function PlaceholderPanel({ title }: { title: string }) {
@@ -55,6 +57,7 @@ const tabComponents: Record<TabType, React.ComponentType> = {
   templates: TemplatesPanel,
   marketplace: DifferentiationPanel,
   production: ProductionPanel,
+  security: SecurityPanel,
   settings: SettingsPanel,
 }
 
@@ -73,6 +76,7 @@ const tabTitles: Record<TabType, string> = {
   templates: 'Modèles',
   marketplace: 'Extensions',
   production: 'Production',
+  security: 'Sécurité & Conformité',
   settings: 'Paramètres',
 }
 
@@ -244,6 +248,9 @@ function AppContent() {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* GDPR Consent Banner */}
+      <ConsentBanner />
     </div>
   )
 }

@@ -63,6 +63,11 @@ model User {
   exportJobs        ExportJob[]
   subscriptions     Subscription[]
   offlineActions    OfflineAction[]
+  backupCodes       BackupCode[]
+  consentLogs       ConsentLog[]
+  gdprRequests      GdprRequest[]
+  deletionSchedule  GdprDeletionSchedule[]
+  dpoContacts       DpoContact[]
 }
 
 model Project {
@@ -685,15 +690,17 @@ model TeamMember {
   id        String   @id @default(cuid())
   userId    String
   teamId    String
-  role      String   @default("member") // owner, admin, member, viewer
+  role      String   @default("member") // owner, admin, member, viewer (denormalized for quick reads)
+  roleId    String?  // FK to RBAC Role
   status    String   @default("active") // active, invited, suspended, removed
   invitedAt DateTime @default(now())
   joinedAt  DateTime? // Set when user accepts invitation
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team    Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  roleRef Role? @relation(fields: [roleId], references: [id], onDelete: SetNull)
 
   @@unique([userId, teamId])
   @@index([teamId, role])
@@ -946,4 +953,174 @@ model LandingLead {
   @@index([status])
   @@index([createdAt])
   @@index([utmCampaign])
+}
+
+// ─── PRIORITÉ 5 — Sécurité & Conformité ─────────────────────────────────────
+
+/// 2FA Backup Codes - single-use recovery codes
+model BackupCode {
+  id        String   @id @default(cuid())
+  codeHash  String   // bcrypt hash of the backup code
+  usedAt    DateTime? // When the code was used (null = unused)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, usedAt])
+}
+
+/// GDPR Consent Log - tracks all consent actions
+model ConsentLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentType String   // analytics, functional, marketing, essential
+  action      String   // granted, revoked, updated
+  version     String   // Policy version (e.g. "1.0")
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, consentType])
+  @@index([createdAt])
+}
+
+/// GDPR Data Request - tracks export/deletion requests
+model GdprRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String    // export, delete
+  status      String    @default("pending") // pending, processing, completed, expired
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime? // For export downloads (30 days)
+  filePath    String?   // Path to generated archive
+  fileSize    Int?      // Archive size in bytes
+  ipAddress   String?
+  userAgent   String?
+  metadata    String    @default("{}") // JSON: additional context
+
+  @@index([userId, status])
+  @@index([status, requestedAt])
+  @@index([expiresAt])
+}
+
+/// GDPR Grace Period Deletion - tracks accounts pending deletion
+model GdprDeletionSchedule {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledAt     DateTime  @default(now())
+  gracePeriodEnd  DateTime  // 30 days from request
+  confirmedAt     DateTime? // Double confirmation timestamp
+  executedAt      DateTime? // When the actual deletion happened
+  status          String    @default("pending") // pending, confirmed, executed, cancelled
+  ipAddress       String?
+
+  @@index([gracePeriodEnd])
+  @@index([status])
+}
+
+/// Encryption Key Registry - tracks key versions for rotation
+model EncryptionKey {
+  id          String   @id @default(cuid())
+  version     Int      @unique // Key version number (1, 2, 3...)
+  algorithm   String   @default("aes-256-gcm")
+  activeFrom  DateTime @default(now())
+  activeUntil DateTime? // Null = currently active
+  keyHash     String   // SHA-256 hash of the key for verification (not the key itself!)
+  rotatedBy   String?  // Admin userId who rotated
+  createdAt   DateTime @default(now())
+
+  @@index([activeFrom])
+  @@index([activeUntil])
+}
+
+/// Security Alert - anomalous behavior detection
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  userId      String?
+  teamId      String?
+  type        String   // multiple_ip_login, bulk_export, bulk_delete, brute_force, role_change
+  severity    String   @default("medium") // low, medium, high, critical
+  status      String   @default("active") // active, acknowledged, resolved, false_positive
+  description String
+  metadata    String   @default("{}") // JSON: IPs, counts, timestamps, etc.
+  ipAddress   String?
+  resolvedBy  String?  // Admin userId who resolved
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, status])
+  @@index([type, severity])
+  @@index([status, createdAt])
+  @@index([teamId])
+}
+
+/// RBAC Permission - defines granular permissions
+model Permission {
+  id          String   @id @default(cuid())
+  slug        String   @unique // e.g. "task:create", "invoice:delete", "team:manage"
+  resource    String   // e.g. "task", "invoice", "team", "billing", "settings"
+  action      String   // create, read, update, delete, manage, export
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@index([resource])
+  @@index([action])
+  @@unique([resource, action])
+}
+
+/// RBAC Role - defines hierarchical roles
+model Role {
+  id          String   @id @default(cuid())
+  slug        String   @unique // superadmin, owner, admin, member, viewer, guest
+  name        String   // Display name
+  description String?
+  level       Int      @default(0) // Hierarchy level: 0=guest, 100=superadmin
+  isDefault   Boolean  @default(false) // Default role for new users
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+  teamMembers     TeamMember[]
+
+  @@index([slug])
+  @@index([level])
+}
+
+/// RBAC Role-Permission Junction
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+/// DPO Contact Request - Data Protection Officer communications
+model DpoContact {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  email       String
+  subject     String
+  message     String
+  status      String   @default("open") // open, in_progress, resolved, closed
+  response    String?  // DPO response
+  resolvedBy  String?  // Admin userId
+  resolvedAt  DateTime?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }
