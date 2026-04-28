@@ -1,5 +1,5 @@
 /**
- * 404 Not Found Page — Maellis
+ * 404 Not Found Page — Burozen
  *
  * Professional not-found page with:
  *  - Friendly French messaging
@@ -67,7 +67,7 @@ export default function NotFound() {
         <p className="mt-8 text-xs text-muted-foreground">
           Besoin d&apos;aide ?{' '}
           <a
-            href="mailto:support@maellis.com"
+            href="mailto:support@burozen.com"
             className="text-emerald-500 hover:text-emerald-600 underline transition-colors"
           >
             Contactez notre support

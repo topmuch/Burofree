@@ -48,7 +48,7 @@ export async function POST(
     }
 
     const webhookSecret = process.env[`${provider.toUpperCase().replace(/-/g, '_')}_WEBHOOK_SECRET`]
-      || 'maellis-webhook-dev-secret'
+      || 'burozen-webhook-dev-secret'
 
     const expectedSig = createHmac('sha256', webhookSecret)
       .update(rawBody)

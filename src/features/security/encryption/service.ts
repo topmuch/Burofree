@@ -28,8 +28,8 @@ function deriveKey(version: number): Buffer {
     }
     console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
   }
-  const keySource = secret || 'maellis-dev-encryption-key-do-not-use-in-prod'
-  const salt = `maellis-encryption-salt-v${version}`
+  const keySource = secret || 'burozen-dev-encryption-key-do-not-use-in-prod'
+  const salt = `burozen-encryption-salt-v${version}`
   return scryptSync(keySource, salt, KEY_LENGTH)
 }
 

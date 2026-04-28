@@ -24,17 +24,17 @@ import './landing-globals.css'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────────
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
 // ─── SEO Metadata ──────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
   title: {
-    default: 'Maellis — Le Copilote Intelligent pour Freelances',
-    template: '%s | Maellis',
+    default: 'Burozen — Le Copilote Intelligent pour Freelances',
+    template: '%s | Burozen',
   },
   description:
-    'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA. Essai gratuit, sans carte bancaire.',
+    'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burozen automatise le reste avec l\'IA. Essai gratuit, sans carte bancaire.',
   keywords: [
     'freelance',
     'productivité',
@@ -46,14 +46,14 @@ export const metadata: Metadata = {
     'suivi du temps',
     'Pomodoro',
     'portail client',
-    'Maellis',
+    'Burozen',
     'outil freelance',
     'gestion projet',
     'automatisation',
   ],
-  authors: [{ name: 'Maellis', url: SITE_URL }],
-  creator: 'Maellis',
-  publisher: 'Maellis',
+  authors: [{ name: 'Burozen', url: SITE_URL }],
+  creator: 'Burozen',
+  publisher: 'Burozen',
   metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: '/',
@@ -62,26 +62,26 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'fr_FR',
     url: SITE_URL,
-    siteName: 'Maellis',
-    title: 'Maellis — Le Copilote Intelligent pour Freelances',
+    siteName: 'Burozen',
+    title: 'Burozen — Le Copilote Intelligent pour Freelances',
     description:
-      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA.',
+      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burozen automatise le reste avec l\'IA.',
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Maellis — Assistant Intelligent Freelance',
+        alt: 'Burozen — Assistant Intelligent Freelance',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Maellis — Le Copilote Intelligent pour Freelances',
+    title: 'Burozen — Le Copilote Intelligent pour Freelances',
     description:
-      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Maellis automatise le reste avec l\'IA.',
+      'Gérez vos tâches, emails, factures et calendrier en un seul endroit. Burozen automatise le reste avec l\'IA.',
     images: [`${SITE_URL}/og-image.png`],
-    creator: '@maellis',
+    creator: '@burozen',
   },
   robots: {
     index: true,

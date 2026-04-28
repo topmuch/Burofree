@@ -1,5 +1,5 @@
 /**
- * Simple in-memory rate limiter for Maellis
+ * Simple in-memory rate limiter for Burozen
  * Prevents brute-force attacks on authentication endpoints
  */
 

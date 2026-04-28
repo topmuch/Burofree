@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         projectColor: invoice.project?.color || null,
       },
       emitter: {
-        name: user?.name || 'Maellis',
+        name: user?.name || 'Burozen',
         email: user?.email || '',
         profession: user?.profession || undefined,
       },

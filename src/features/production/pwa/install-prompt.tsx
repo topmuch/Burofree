@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePWA } from './use-pwa'
 
-const STORAGE_KEY = 'maellis-install-prompt'
-const INTERACTION_KEY = 'maellis-interactions'
+const STORAGE_KEY = 'burozen-install-prompt'
+const INTERACTION_KEY = 'burozen-interactions'
 const COOLDOWN_DAYS = 7
 
 function getInstallState(): { dismissed: boolean; dismissedAt: number | null } {
@@ -162,11 +162,11 @@ export function InstallPrompt() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold text-zinc-100">
-                    Installer Maellis
+                    Installer Burozen
                   </h3>
                   <p className="mt-1 text-xs text-zinc-400">
                     {platform === 'ios' ? (
-                      'Accédez à Maellis depuis votre écran d\'accueil pour une expérience optimale.'
+                      'Accédez à Burozen depuis votre écran d\'accueil pour une expérience optimale.'
                     ) : (
                       'Installez l\'application pour un accès rapide et le mode hors-ligne.'
                     )}

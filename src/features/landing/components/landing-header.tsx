@@ -92,13 +92,13 @@ export function LandingHeader() {
           <Link
             href="/"
             className="flex items-center gap-2.5 group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 rounded-sm"
-            aria-label="Maellis — Page d'accueil"
+            aria-label="Burozen — Page d'accueil"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-shadow">
               <span className="text-white font-bold text-sm">B</span>
             </div>
             <span className="text-lg font-bold tracking-tight text-foreground">
-              Buro<span className="text-emerald-500">free</span>
+              Buro<span className="text-emerald-500">zen</span>
             </span>
           </Link>
 

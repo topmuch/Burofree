@@ -1,7 +1,7 @@
 /**
  * Pricing Plans Data — Shared between server and client
  *
- * Central source of truth for Maellis pricing tiers.
+ * Central source of truth for Burozen pricing tiers.
  * Used by the pricing API route and landing page components.
  * Annual prices apply a 20% discount (monthly × 12 × 0.8).
  */
@@ -20,10 +20,10 @@ export interface PricingPlan {
   badge?: string
 }
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
 /**
- * Complete pricing plans for Maellis.
+ * Complete pricing plans for Burozen.
  * Stripe Price IDs are read from environment variables so they can
  * differ between staging and production without a code change.
  */
@@ -31,7 +31,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
     name: 'Free',
-    description: 'Pour découvrir Maellis et gérer vos premières missions.',
+    description: 'Pour découvrir Burozen et gérer vos premières missions.',
     monthlyPrice: 0,
     annualPrice: 0,
     stripePriceIdMonthly: process.env.STRIPE_PRICE_FREE_MONTHLY || 'price_free_monthly',

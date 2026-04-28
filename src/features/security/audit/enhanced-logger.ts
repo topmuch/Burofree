@@ -1,5 +1,5 @@
 /**
- * Enhanced Audit Logging System — Maellis
+ * Enhanced Audit Logging System — Burozen
  *
  * Wraps the basic AuditLog model with:
  * - Structured action types

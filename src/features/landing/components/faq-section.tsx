@@ -11,14 +11,14 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
   {
-    question: 'Maellis est-il gratuit ?',
+    question: 'Burozen est-il gratuit ?',
     answer:
-      'Oui, Maellis propose un plan gratuit sans carte bancaire avec 5 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
+      'Oui, Burozen propose un plan gratuit sans carte bancaire avec 5 projets et 50 tâches. Passez au plan Pro pour débloquer les fonctionnalités avancées.',
   },
   {
     question: 'Puis-je connecter ma messagerie ?',
     answer:
-      'Absolument. Maellis supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
+      'Absolument. Burozen supporte Gmail et Outlook avec synchronisation bidirectionnelle, tri automatique et réponse par IA.',
   },
   {
     question: 'Comment fonctionne la facturation ?',
@@ -36,7 +36,7 @@ const faqItems: FaqItem[] = [
       'Oui, sans engagement. Vous pouvez annuler votre abonnement en un clic depuis vos paramètres.',
   },
   {
-    question: 'Maellis convient-il aux équipes ?',
+    question: 'Burozen convient-il aux équipes ?',
     answer:
       'Le plan Entreprise permet jusqu\'à 10 membres avec des rôles (admin, membre, viewer) et un portail client partagé.',
   },
@@ -66,7 +66,7 @@ export function FaqSection() {
             Questions fréquentes
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Tout ce que vous devez savoir sur Maellis.
+            Tout ce que vous devez savoir sur Burozen.
           </p>
         </motion.div>
 

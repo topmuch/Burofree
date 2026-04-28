@@ -39,7 +39,7 @@ const LINK_GROUPS = [
       { label: 'Blog', href: '/blog' },
       { label: 'Carrières', href: '/careers' },
       { label: 'Presse', href: '/press' },
-      { label: 'Contact', href: 'mailto:hello@maellis.com' },
+      { label: 'Contact', href: 'mailto:hello@burozen.com' },
     ],
   },
   {
@@ -57,7 +57,7 @@ const LINK_GROUPS = [
     links: [
       { label: 'Centre d\'aide', href: '/help' },
       { label: 'Documentation', href: '/docs' },
-      { label: 'Statut', href: 'https://status.maellis.com' },
+      { label: 'Statut', href: 'https://status.burozen.com' },
       { label: 'API', href: '/docs/api' },
       { label: 'Communauté', href: '/community' },
     ],
@@ -65,10 +65,10 @@ const LINK_GROUPS = [
 ] as const
 
 const SOCIAL_LINKS = [
-  { label: 'Twitter', href: 'https://twitter.com/maellis', icon: Twitter },
-  { label: 'LinkedIn', href: 'https://linkedin.com/company/maellis', icon: Linkedin },
-  { label: 'GitHub', href: 'https://github.com/maellis', icon: Github },
-  { label: 'Instagram', href: 'https://www.instagram.com/maellis', icon: Instagram },
+  { label: 'Twitter', href: 'https://twitter.com/burozen', icon: Twitter },
+  { label: 'LinkedIn', href: 'https://linkedin.com/company/burozen', icon: Linkedin },
+  { label: 'GitHub', href: 'https://github.com/burozen', icon: Github },
+  { label: 'Instagram', href: 'https://www.instagram.com/burozen', icon: Instagram },
 ] as const
 
 // ─── Component ────────────────────────────────────────────────────────────────────
@@ -140,12 +140,12 @@ export function FooterSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 mb-12 lg:mb-16">
           {/* Brand column */}
           <div>
-            <Link href="/" className="inline-flex items-center gap-2.5 group" aria-label="Maellis">
+            <Link href="/" className="inline-flex items-center gap-2.5 group" aria-label="Burozen">
               <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                 <span className="text-white font-bold text-sm">B</span>
               </div>
               <span className="text-lg font-bold tracking-tight text-foreground">
-                Buro<span className="text-emerald-500">free</span>
+                Buro<span className="text-emerald-500">zen</span>
               </span>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-sm">
@@ -191,7 +191,7 @@ export function FooterSection() {
               Restez informé
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Recevez nos conseils productivité et les nouveautés Maellis. Pas de spam, promis.
+              Recevez nos conseils productivité et les nouveautés Burozen. Pas de spam, promis.
             </p>
 
             {status === 'success' ? (
@@ -281,7 +281,7 @@ export function FooterSection() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Maellis. Tous droits réservés.
+            &copy; {new Date().getFullYear()} Burozen. Tous droits réservés.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <Link href="/legal/privacy" className="hover:text-foreground transition-colors">

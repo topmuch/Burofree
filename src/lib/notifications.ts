@@ -27,7 +27,7 @@ export function showBrowserNotification(title: string, body: string, actionUrl?:
     body,
     icon: '/logo.svg',
     badge: '/logo.svg',
-    tag: `maellis-${Date.now()}`,
+    tag: `burozen-${Date.now()}`,
   })
 
   notification.onclick = () => {
@@ -93,7 +93,7 @@ export function startReminderCheck(
       if (focusMode && reminder.type !== 'urgent') return
       onReminderDue(reminder)
       showBrowserNotification(
-        '⏰ Rappel - Maellis',
+        '⏰ Rappel - Burozen',
         reminder.message || reminder.title,
         reminder.relatedType === 'task' ? '#tasks' : reminder.relatedType === 'invoice' ? '#invoices' : undefined
       )

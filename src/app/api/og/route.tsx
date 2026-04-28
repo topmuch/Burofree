@@ -6,7 +6,7 @@
  * for dynamic page-level OG images.
  *
  * Usage:
- *   /api/og                  → Default Maellis branding
+ *   /api/og                  → Default Burozen branding
  *   /api/og?title=Custom     → Custom title
  *   /api/og?title=X&desc=Y   → Custom title + description
  *
@@ -16,12 +16,12 @@
 import { ImageResponse } from 'next/og'
 export const runtime = 'edge'
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
 
-  const title = searchParams.get('title') || 'Maellis'
+  const title = searchParams.get('title') || 'Burozen'
   const description =
     searchParams.get('desc') ||
     searchParams.get('description') ||

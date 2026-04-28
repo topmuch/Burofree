@@ -397,7 +397,7 @@ export default function HomePage() {
           >
             <span className="text-2xl font-bold text-emerald-400">B</span>
           </motion.div>
-          <p className="text-sm text-zinc-400">Chargement de Maellis...</p>
+          <p className="text-sm text-zinc-400">Chargement de Burozen...</p>
         </div>
       </div>
     )

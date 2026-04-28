@@ -1,5 +1,5 @@
 /**
- * TOTP Utility Functions for Maellis 2FA
+ * TOTP Utility Functions for Burozen 2FA
  * Uses otplib v13 for TOTP generation/verification and qrcode for QR code generation
  *
  * otplib v13 API: top-level functions with crypto/base32 plugin contexts
@@ -31,7 +31,7 @@ export function generateTOTPSecret(userId: string, email: string): {
   otpauthUrl: string
 } {
   const secret = generateSecret(context)
-  const serviceName = 'Maellis'
+  const serviceName = 'Burozen'
   const otpauthUrl = generateURI({
     secret,
     label: email,

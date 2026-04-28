@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       secure: Boolean(secure),
       user,
       pass,
-      fromName: fromName || 'Maellis',
+      fromName: fromName || 'Burozen',
       fromEmail,
       replyTo: replyTo || undefined,
     }

@@ -1,5 +1,5 @@
 /**
- * Error Boundary Page — Maellis
+ * Error Boundary Page — Burozen
  *
  * Catches runtime errors and displays a friendly error page.
  * This is a client component as required by Next.js for error boundaries.
@@ -8,7 +8,7 @@
  *  - "Erreur serveur" message
  *  - Retry button (calls reset())
  *  - Link back to home
- *  - Maellis branding (emerald theme)
+ *  - Burozen branding (emerald theme)
  */
 
 'use client'
@@ -26,7 +26,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Maellis application error:', error)
+    console.error('Burozen application error:', error)
   }, [error])
 
   return (
@@ -90,7 +90,7 @@ export default function Error({
         <p className="mt-8 text-xs text-muted-foreground">
           Le problème persiste ?{' '}
           <a
-            href="mailto:support@maellis.com"
+            href="mailto:support@burozen.com"
             className="text-emerald-500 hover:text-emerald-600 underline transition-colors"
           >
             Contactez notre support

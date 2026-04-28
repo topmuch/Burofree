@@ -398,7 +398,7 @@ function ExportImportTab() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = res.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || `maellis_export.${exportFormat}`
+        a.download = res.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || `burozen_export.${exportFormat}`
         a.click()
         URL.revokeObjectURL(url)
       }

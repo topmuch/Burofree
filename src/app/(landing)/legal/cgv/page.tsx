@@ -1,7 +1,7 @@
 /**
  * CGV — Conditions Générales de Vente
  *
- * Legal page for Maellis terms and conditions.
+ * Legal page for Burozen terms and conditions.
  * Includes proper SEO metadata and BreadcrumbList structured data.
  */
 
@@ -9,19 +9,19 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getBreadcrumbLD } from '@/features/landing/utils/json-ld'
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
 export const metadata: Metadata = {
   title: 'Conditions Générales de Vente',
   description:
-    'Conditions Générales de Vente de Maellis — découvrez les termes et conditions d\'utilisation de nos services d\'assistant intelligent pour freelances.',
+    'Conditions Générales de Vente de Burozen — découvrez les termes et conditions d\'utilisation de nos services d\'assistant intelligent pour freelances.',
   alternates: {
     canonical: '/legal/cgv',
   },
   openGraph: {
-    title: 'Conditions Générales de Vente | Maellis',
+    title: 'Conditions Générales de Vente | Burozen',
     description:
-      'Conditions Générales de Vente de Maellis — termes et conditions d\'utilisation de nos services.',
+      'Conditions Générales de Vente de Burozen — termes et conditions d\'utilisation de nos services.',
     url: `${SITE_URL}/legal/cgv`,
     type: 'website',
   },
@@ -79,8 +79,8 @@ export default function CGVPage() {
               <h2 className="text-xl font-semibold text-foreground mb-3">1. Objet</h2>
               <p className="text-muted-foreground leading-relaxed">
                 Les présentes Conditions Générales de Vente (ci-après &quot;CGV&quot;) régissent les
-                relations contractuelles entre Maellis (ci-après &quot;l&apos;Éditeur&quot;) et toute
-                personne physique ou morale utilisant les services de la plateforme Maellis
+                relations contractuelles entre Burozen (ci-après &quot;l&apos;Éditeur&quot;) et toute
+                personne physique ou morale utilisant les services de la plateforme Burozen
                 (ci-après &quot;l&apos;Utilisateur&quot; ou &quot;le Client&quot;). L&apos;utilisation de la
                 plateforme implique l&apos;acceptation pleine et entière des présentes CGV.
               </p>
@@ -89,7 +89,7 @@ export default function CGVPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">2. Description des services</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Maellis est une plateforme SaaS d&apos;assistance intelligente destinée aux travailleurs
+                Burozen est une plateforme SaaS d&apos;assistance intelligente destinée aux travailleurs
                 indépendants et freelances. Les services incluent notamment :
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-1 mt-2">
@@ -106,7 +106,7 @@ export default function CGVPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">3. Offres et tarification</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Maellis propose différentes offres d&apos;abonnement, dont les caractéristiques et
+                Burozen propose différentes offres d&apos;abonnement, dont les caractéristiques et
                 tarifs sont détaillés sur la page{' '}
                 <Link href="/#pricing" className="text-emerald-500 hover:text-emerald-600 underline">
                   Tarifs
@@ -119,7 +119,7 @@ export default function CGVPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">4. Inscription et compte</h2>
               <p className="text-muted-foreground leading-relaxed">
-                L&apos;inscription à Maellis est ouverte à toute personne majeure disposant d&apos;une
+                L&apos;inscription à Burozen est ouverte à toute personne majeure disposant d&apos;une
                 adresse email valide. L&apos;Utilisateur s&apos;engage à fournir des informations
                 exactes et à les maintenir à jour. Le compte est personnel et non transmissible.
                 L&apos;Utilisateur est responsable de la confidentialité de ses identifiants.
@@ -143,7 +143,7 @@ export default function CGVPage() {
                 dispose d&apos;un délai de 14 jours à compter de la souscription pour exercer son
                 droit de rétractation, sans avoir à justifier de motif. Au-delà de ce délai, les
                 remboursements sont effectués au prorata de la période restante sur demande écrite
-                adressée à support@maellis.com.
+                adressée à support@burozen.com.
               </p>
             </section>
 
@@ -151,7 +151,7 @@ export default function CGVPage() {
               <h2 className="text-xl font-semibold text-foreground mb-3">7. Résiliation</h2>
               <p className="text-muted-foreground leading-relaxed">
                 L&apos;Utilisateur peut résilier son abonnement à tout moment depuis ses paramètres
-                de compte ou par email à support@maellis.com. La résiliation prend effet en fin de
+                de compte ou par email à support@burozen.com. La résiliation prend effet en fin de
                 période de facturation en cours. Aucun frais de résiliation n&apos;est appliqué.
                 L&apos;Éditeur se réserve le droit de résilier l&apos;accès en cas de non-respect
                 des présentes CGV.
@@ -206,10 +206,10 @@ export default function CGVPage() {
                 Pour toute question relative aux présentes CGV, vous pouvez nous contacter à
                 l&apos;adresse suivante :{' '}
                 <a
-                  href="mailto:support@maellis.com"
+                  href="mailto:support@burozen.com"
                   className="text-emerald-500 hover:text-emerald-600 underline transition-colors"
                 >
-                  support@maellis.com
+                  support@burozen.com
                 </a>
               </p>
             </section>

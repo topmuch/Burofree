@@ -525,7 +525,7 @@ export async function generateAIReply(
     formal: 'Rédige une réponse formelle et polie. Utilise le vouvoiement et un langage soutenu.',
   }
 
-  const systemPrompt = `Tu es l'assistant Maellis AI. Tu aides à rédiger des réponses pour la messagerie unifiée.
+  const systemPrompt = `Tu es l'assistant Burozen AI. Tu aides à rédiger des réponses pour la messagerie unifiée.
 ${toneInstructions[tone] ?? toneInstructions.pro}
 Répond uniquement avec le texte du brouillon, sans explications supplémentaires.
 Limite la réponse à 400 mots maximum.`

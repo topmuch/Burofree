@@ -1,5 +1,5 @@
 /**
- * Audit Logger — Maellis
+ * Audit Logger — Burozen
  *
  * Central audit logging module. Re-exports the enhanced audit logger
  * and provides convenience helpers used by other security modules.

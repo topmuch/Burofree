@@ -1,5 +1,5 @@
 /**
- * AI Engine Abstraction Layer for Maellis
+ * AI Engine Abstraction Layer for Burozen
  * Unified interface supporting multiple AI providers (Groq, z-ai-web-dev-sdk)
  */
 

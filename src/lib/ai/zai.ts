@@ -1,5 +1,5 @@
 /**
- * Z-AI (z-ai-web-dev-sdk) Fallback Provider for Maellis
+ * Z-AI (z-ai-web-dev-sdk) Fallback Provider for Burozen
  * Wraps the existing z-ai-web-dev-sdk into the unified AIEngine interface
  */
 

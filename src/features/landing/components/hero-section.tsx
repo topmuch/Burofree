@@ -86,7 +86,7 @@ export function HeroSection() {
             className="mt-6 max-w-2xl text-lg sm:text-xl text-muted-foreground leading-relaxed lg:max-w-xl"
           >
             Gérez vos tâches, emails, factures et calendrier en un seul endroit.
-            Maellis automatise le reste.
+            Burozen automatise le reste.
           </motion.p>
 
           {/* CTA buttons */}

@@ -4,7 +4,7 @@
  * Consent Banner — GDPR/CCPA-compliant cookie consent banner
  *
  * Features:
- *  - Appears on first visit (checks localStorage for 'maellis-consent')
+ *  - Appears on first visit (checks localStorage for 'burozen-consent')
  *  - Granular options: Accept All, Reject Non-Essential, Customize
  *  - Customize panel: toggle switches for analytics, functional, marketing cookies
  *  - Stores consent in localStorage and calls POST /api/consent
@@ -34,7 +34,7 @@ type ConsentBannerView = 'simple' | 'customize'
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
-const CONSENT_STORAGE_KEY = 'maellis-consent'
+const CONSENT_STORAGE_KEY = 'burozen-consent'
 
 const DEFAULT_CONSENT: ConsentPreferences = {
   essential: true,

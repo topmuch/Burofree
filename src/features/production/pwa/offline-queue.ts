@@ -16,7 +16,7 @@ export interface QueuedAction {
   retryCount: number
 }
 
-const DB_NAME = 'maellis-offline'
+const DB_NAME = 'burozen-offline'
 const STORE_NAME = 'actions'
 const DB_VERSION = 1
 const MAX_QUEUE_SIZE = 100

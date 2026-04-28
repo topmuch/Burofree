@@ -1,5 +1,5 @@
 /**
- * Invoice Token Utility for Maellis
+ * Invoice Token Utility for Burozen
  *
  * Generates and verifies HMAC-based tokens for authenticating
  * invoice PDF access without requiring a session cookie.
@@ -16,7 +16,7 @@ const getSecret = () => {
       throw new Error('NEXTAUTH_SECRET environment variable is required in production.')
     }
     console.warn('[SECURITY] Using development-only invoice token secret. Set NEXTAUTH_SECRET in production!')
-    return 'maellis-dev-secret-key-do-not-use-in-prod'
+    return 'burozen-dev-secret-key-do-not-use-in-prod'
   }
   return secret
 }

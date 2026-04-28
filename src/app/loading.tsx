@@ -1,9 +1,9 @@
 /**
- * Loading Page — Maellis
+ * Loading Page — Burozen
  *
  * Global loading state displayed during route transitions.
  * Features:
- *  - Maellis logo animation (pulsing emerald)
+ *  - Burozen logo animation (pulsing emerald)
  *  - "Chargement..." text
  *  - Skeleton bars for visual feedback
  *  - Responsive design
@@ -34,7 +34,7 @@ export default function Loading() {
             Chargement...
           </p>
           <p className="text-xs text-muted-foreground">
-            Préparation de votre espace Maellis
+            Préparation de votre espace Burozen
           </p>
         </div>
 

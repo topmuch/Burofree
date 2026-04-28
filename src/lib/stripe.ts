@@ -1,5 +1,5 @@
 /**
- * Stripe Client Wrapper for Maellis
+ * Stripe Client Wrapper for Burozen
  *
  * Provides utility functions for Stripe payment integration.
  * Works gracefully when Stripe is not configured (uses mock key).

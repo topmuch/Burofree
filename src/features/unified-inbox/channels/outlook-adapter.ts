@@ -169,7 +169,7 @@ export class OutlookAdapter implements ChannelAdapter {
         notificationUrl,
         resource: '/me/messages',
         expirationDateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Max 3 days
-        clientState: `maellis-${this.userId}-${this.channelAccountId}`,
+        clientState: `burozen-${this.userId}-${this.channelAccountId}`,
       }),
     })
 

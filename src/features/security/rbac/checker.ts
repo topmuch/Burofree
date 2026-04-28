@@ -1,5 +1,5 @@
 /**
- * RBAC Permission Checker — Maellis
+ * RBAC Permission Checker — Burozen
  *
  * Provides runtime permission checking using:
  * - User's global role (superadmin → all permissions)

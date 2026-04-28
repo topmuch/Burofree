@@ -54,7 +54,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
             <Shield className="w-4 h-4 text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-zinc-100 leading-none">Maellis</p>
+            <p className="text-sm font-bold text-zinc-100 leading-none">Burozen</p>
             <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider">Superadmin</p>
           </div>
         </div>

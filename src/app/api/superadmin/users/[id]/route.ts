@@ -265,7 +265,7 @@ export async function DELETE(
     }
 
     // RGPD anonymization: replace all PII
-    const anonymizedEmail = `anonymized-${user.id}@rgpd-deleted.maellis`
+    const anonymizedEmail = `anonymized-${user.id}@rgpd-deleted.burozen`
 
     await db.user.update({
       where: { id },

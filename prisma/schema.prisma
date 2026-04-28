@@ -15,7 +15,7 @@ model User {
   passwordHash  String?  // null for OAuth-only users
   profession    String?
   timezone      String   @default("Europe/Paris")
-  assistantName String   @default("Maellis AI")
+  assistantName String   @default("Burozen AI")
   assistantTone String   @default("friendly")
   theme         String   @default("dark")
   focusMode     Boolean  @default(false)

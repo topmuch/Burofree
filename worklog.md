@@ -972,3 +972,65 @@ Stage Summary:
 - All API endpoints verified (email/config, email/test, email/send, /api/og returns PNG)
 - Legal pages return HTTP 200 with proper SEO metadata
 - sitemap.xml and robots.txt working correctly
+
+---
+Task ID: 3
+Agent: rename-agent
+Task: Rename ALL occurrences of "Maellis" / "maellis" to "Burozen" / "burozen" across the entire project
+
+Work Log:
+- Searched entire project (excluding node_modules, .next, .git) for case-insensitive occurrences of "Maellis", "maellis" — found 200+ references across 70+ source files
+- Performed two-pass sed replacement across all source files:
+  - Pass 1: `Maellis` → `Burozen` (case-sensitive)
+  - Pass 2: `maellis` → `burozen` (case-sensitive)
+- No `MAELLIS` (all-uppercase) occurrences found
+- Updated files span all categories:
+  - Layout & page components (layouts, legal pages, loading/error/not-found, superadmin)
+  - API routes (auth, landing lead, OG, portal invite, invoices, analytics, marketplace, stripe, webhooks, GDPR export, superadmin users, email config)
+  - UI components (settings-panel, onboarding-wizard, auth-modal, ai-assistant, dashboard, global-search, invoicing-panel)
+  - Landing feature (hero, FAQ, footer, testimonials, header, pricing, theme-toggle, json-ld, pricing-data, tracking, use-utm)
+  - Security feature (TOTP, 2FA service, encryption service, RBAC, audit logging, consent-banner, two-factor-setup/status, gdpr-panel, gdpr service)
+  - Production feature (export-import engine, teams/invitation-manager, PWA install/offline-queue, backup-manager, production-panel)
+  - Differentiation feature (integrations, portal-token, voice-button)
+  - Campaigns feature (campaign-worker)
+  - Unified inbox feature (use-inbox-socket, inbox-service, outlook-adapter)
+  - Library files (crypto, jwt-simple, invoice-token, auth, stripe, notifications, pdf-generator, automation-cron, email/templates, email/smtp, email/index, ai-engine, ai/*, rate-limit, search-utils, auth-guard, cron-starter)
+  - Middleware (dev secret key, comment)
+  - Hooks (use-realtime notification titles)
+  - Public assets (manifest.json, sw.js)
+  - Prisma (schema.prisma default value, seed.ts)
+  - Docker/infra (Dockerfile, docker-compose.yml, docker-compose.prod.yml, nginx.conf, scripts/migrate-to-pg.sh)
+
+Key specific replacements:
+- `Maellis AI` → `Burozen AI` (Prisma default, seed data)
+- `maellis-dev-encryption-key-do-not-use-in-prod` → `burozen-dev-encryption-key-do-not-use-in-prod` (crypto.ts, encryption/service.ts)
+- `maellis-dev-secret-key-do-not-use-in-prod` → `burozen-dev-secret-key-do-not-use-in-prod` (auth route, middleware, jwt-simple.ts, invoice-token.ts)
+- `maellis-encryption-salt-v1` → `burozen-encryption-salt-v1` (crypto.ts, encryption/service.ts)
+- `maellis-webhook-dev-secret` → `burozen-webhook-dev-secret` (webhooks route)
+- `maellis-portal-dev` → `burozen-portal-dev` (portal-token.ts)
+- `maellis.com` → `burozen.com` (all URLs)
+- `@maellis` → `@burozen` (social handles)
+- `hello@maellis.com` → `hello@burozen.com` (contact email)
+- `support@maellis.com` → `support@burozen.com` (support email)
+- `noreply@maellis.app` → `noreply@burozen.app` (transactional emails)
+- `maellis_utm` → `burozen_utm` (UTM storage key)
+- `maellis_consent` → `burozen_consent` (consent storage key)
+- `maellis-theme` → `burozen-theme` (theme toggle key)
+- `maellis-offline` → `burozen-offline` (IndexedDB name)
+- `maellis-v3` / `maellis-static-v3` / `maellis-api-v3` / `maellis-runtime-v3` → `burozen-*` (SW cache names)
+
+NOT changed (per instructions):
+- package.json "name" field: `"nextjs_tailwind_shadcn_ts"` (did not contain "maellis")
+- prisma/schema.prisma field name `assistantName` (database column name preserved; only default value changed from "Maellis AI" to "Burozen AI")
+
+Verification:
+- `bun run lint`: ✅ 0 errors
+- `dev.log`: ✅ No compilation errors (Next.js Ready in 1031ms)
+- Zero remaining `Maellis`/`maellis` occurrences in src/, prisma/, public/, scripts/, docker configs
+- Homepage returns "burozen" references correctly
+
+Stage Summary:
+- 70+ source files modified with comprehensive Maellis → Burozen rebrand
+- All user-facing text, URLs, emails, localStorage keys, encryption key fallbacks, service worker caches, TOTP names updated
+- Zero lint errors, zero remaining Maellis/maellis references in application code
+- Package.json name and Prisma field names preserved as instructed

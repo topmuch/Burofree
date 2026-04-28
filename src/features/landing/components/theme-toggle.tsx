@@ -3,7 +3,7 @@
 import { useSyncExternalStore, useEffect, useCallback } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
-const STORAGE_KEY = 'maellis-theme'
+const STORAGE_KEY = 'burozen-theme'
 
 type Theme = 'light' | 'dark'
 
@@ -11,12 +11,12 @@ type Theme = 'light' | 'dark'
 
 function subscribeToTheme(callback: () => void): () => void {
   window.addEventListener('storage', callback)
-  window.addEventListener('maellis-theme-change', callback)
+  window.addEventListener('burozen-theme-change', callback)
   const mql = window.matchMedia('(prefers-color-scheme: dark)')
   mql.addEventListener('change', callback)
   return () => {
     window.removeEventListener('storage', callback)
-    window.removeEventListener('maellis-theme-change', callback)
+    window.removeEventListener('burozen-theme-change', callback)
     mql.removeEventListener('change', callback)
   }
 }
@@ -64,7 +64,7 @@ export function ThemeToggle() {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
     localStorage.setItem(STORAGE_KEY, newTheme)
     // Dispatch custom event so useSyncExternalStore re-reads the snapshot
-    window.dispatchEvent(new CustomEvent('maellis-theme-change'))
+    window.dispatchEvent(new CustomEvent('burozen-theme-change'))
   }, [theme])
 
   if (!mounted) {

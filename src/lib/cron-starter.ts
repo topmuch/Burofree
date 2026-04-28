@@ -1,5 +1,5 @@
 /**
- * Maellis Cron Starter
+ * Burozen Cron Starter
  * Call this from instrumentation.ts or root layout to start automated checks
  */
 import { startAutomationCron } from './automation-cron'

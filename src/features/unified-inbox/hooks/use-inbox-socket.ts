@@ -138,7 +138,7 @@ export interface UseInboxSocketReturn {
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 /**
- * Hook for connecting to the Maellis Inbox WebSocket service.
+ * Hook for connecting to the Burozen Inbox WebSocket service.
  *
  * Connects via: io('/?XTransformPort=3002')
  * Supports auto-reconnect with exponential backoff.

@@ -54,9 +54,9 @@ const providerIcons: Record<string, React.ElementType> = {
 
 const providerDescriptions: Record<string, string> = {
   slack: 'Recevez vos notifications et communiquez avec votre équipe directement depuis Slack.',
-  zoom: 'Créez et gérez vos réunions Zoom sans quitter Maellis.',
+  zoom: 'Créez et gérez vos réunions Zoom sans quitter Burozen.',
   google_drive: 'Accédez à vos fichiers Google Drive et partagez-les avec vos clients.',
-  github: 'Synchronisez vos dépôts GitHub avec vos projets Maellis.',
+  github: 'Synchronisez vos dépôts GitHub avec vos projets Burozen.',
   notion: 'Connectez vos espaces Notion pour une documentation unifiée.',
 }
 
@@ -209,7 +209,7 @@ export function IntegrationManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-zinc-100">Intégrations</h2>
-          <p className="text-sm text-zinc-400 mt-1">Connectez vos outils préférés à Maellis</p>
+          <p className="text-sm text-zinc-400 mt-1">Connectez vos outils préférés à Burozen</p>
         </div>
 
         <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>

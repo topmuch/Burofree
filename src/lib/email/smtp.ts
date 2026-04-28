@@ -1,5 +1,5 @@
 /**
- * SMTP Client Configuration — Maellis Email Notification System
+ * SMTP Client Configuration — Burozen Email Notification System
  *
  * Handles SMTP connection pooling, configuration management,
  * and email sending via nodemailer.
@@ -134,7 +134,7 @@ export async function loadSmtpConfig(): Promise<SmtpConfig | null> {
       secure: secure === 'true',
       user,
       pass,
-      fromName: fromName || 'Maellis',
+      fromName: fromName || 'Burozen',
       fromEmail,
       replyTo: replyTo || undefined,
     }
@@ -297,13 +297,13 @@ export async function testSmtpConnection(testEmail: string): Promise<{
     const result = await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to: testEmail,
-      subject: '✅ Maellis — Test de connexion SMTP réussi',
+      subject: '✅ Burozen — Test de connexion SMTP réussi',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #fafafa;">
           <div style="background: white; border-radius: 12px; padding: 32px; border: 1px solid #e5e7eb;">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
               <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">M</div>
-              <span style="font-size: 20px; font-weight: 600; color: #18181b;">Maellis</span>
+              <span style="font-size: 20px; font-weight: 600; color: #18181b;">Burozen</span>
             </div>
             <h2 style="color: #10b981; margin-bottom: 12px;">Connexion SMTP réussie ! ✅</h2>
             <p style="color: #6b7280; line-height: 1.6;">
@@ -317,7 +317,7 @@ export async function testSmtpConnection(testEmail: string): Promise<{
               </p>
             </div>
             <p style="color: #9ca3af; font-size: 13px; margin-top: 24px; text-align: center;">
-              Cet email a été envoyé automatiquement par Maellis. Ne pas répondre.
+              Cet email a été envoyé automatiquement par Burozen. Ne pas répondre.
             </p>
           </div>
         </div>

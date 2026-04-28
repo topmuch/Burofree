@@ -18,8 +18,8 @@ function getEncryptionKey(): Buffer {
     }
     console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
   }
-  const keySource = secret || 'maellis-dev-encryption-key-do-not-use-in-prod'
-  const salt = 'maellis-encryption-salt-v1'
+  const keySource = secret || 'burozen-dev-encryption-key-do-not-use-in-prod'
+  const salt = 'burozen-encryption-salt-v1'
   return scryptSync(keySource, salt, KEY_LENGTH)
 }
 

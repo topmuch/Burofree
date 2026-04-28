@@ -1,7 +1,7 @@
 /**
- * Politique de Confidentialité — Maellis
+ * Politique de Confidentialité — Burozen
  *
- * Legal page for Maellis privacy policy.
+ * Legal page for Burozen privacy policy.
  * Includes proper SEO metadata and BreadcrumbList structured data.
  */
 
@@ -9,19 +9,19 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getBreadcrumbLD } from '@/features/landing/utils/json-ld'
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
 export const metadata: Metadata = {
   title: 'Politique de Confidentialité',
   description:
-    'Politique de confidentialité de Maellis — découvrez comment nous collectons, utilisons et protégeons vos données personnelles conformément au RGPD.',
+    'Politique de confidentialité de Burozen — découvrez comment nous collectons, utilisons et protégeons vos données personnelles conformément au RGPD.',
   alternates: {
     canonical: '/legal/privacy',
   },
   openGraph: {
-    title: 'Politique de Confidentialité | Maellis',
+    title: 'Politique de Confidentialité | Burozen',
     description:
-      'Politique de confidentialité de Maellis — collecte, utilisation et protection de vos données personnelles.',
+      'Politique de confidentialité de Burozen — collecte, utilisation et protection de vos données personnelles.',
     url: `${SITE_URL}/legal/privacy`,
     type: 'website',
   },
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">1. Introduction</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Maellis s&apos;engage à protéger la vie privée de ses Utilisateurs. La présente
+                Burozen s&apos;engage à protéger la vie privée de ses Utilisateurs. La présente
                 Politique de Confidentialité décrit les types de données personnelles que nous
                 collectons, les finalités de cette collecte, les modalités de traitement et les
                 droits dont vous disposez. Ce document est conforme au Règlement Général sur la
@@ -89,15 +89,15 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">2. Responsable du traitement</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Le responsable du traitement des données personnelles est Maellis, dont le siège
+                Le responsable du traitement des données personnelles est Burozen, dont le siège
                 social est situé en France. Pour toute question relative au traitement de vos
                 données, vous pouvez contacter notre Délégué à la Protection des Données (DPO) à
                 l&apos;adresse :{' '}
                 <a
-                  href="mailto:dpo@maellis.com"
+                  href="mailto:dpo@burozen.com"
                   className="text-emerald-500 hover:text-emerald-600 underline transition-colors"
                 >
-                  dpo@maellis.com
+                  dpo@burozen.com
                 </a>
               </p>
             </section>
@@ -144,7 +144,7 @@ export default function PrivacyPage() {
                 Vos données personnelles sont traitées pour les finalités suivantes :
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                <li>Fourniture et amélioration des services Maellis</li>
+                <li>Fourniture et amélioration des services Burozen</li>
                 <li>Personnalisation de l&apos;expérience utilisateur</li>
                 <li>Fonctionnement de l&apos;assistant IA (suggestions, automatisation)</li>
                 <li>Facturation et gestion des abonnements</li>
@@ -198,7 +198,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">7. Sécurité des données</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Maellis met en œuvre des mesures techniques et organisationnelles appropriées pour
+                Burozen met en œuvre des mesures techniques et organisationnelles appropriées pour
                 protéger vos données : chiffrement AES-256 au repos, TLS 1.3 en transit, accès
                 restreint sur le principe du moindre privilège, audits de sécurité réguliers,
                 hébergement en Europe (data centers certifiés ISO 27001). En cas de violation de
@@ -253,10 +253,10 @@ export default function PrivacyPage() {
               <p className="text-muted-foreground leading-relaxed mt-3">
                 Pour exercer vos droits, contactez-nous à{' '}
                 <a
-                  href="mailto:dpo@maellis.com"
+                  href="mailto:dpo@burozen.com"
                   className="text-emerald-500 hover:text-emerald-600 underline transition-colors"
                 >
-                  dpo@maellis.com
+                  dpo@burozen.com
                 </a>
                 . Vous pouvez également introduire une réclamation auprès de la CNIL{' '}
                 <a
@@ -274,7 +274,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">10. Cookies</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Maellis utilise des cookies pour assurer le fonctionnement du service, mesurer
+                Burozen utilise des cookies pour assurer le fonctionnement du service, mesurer
                 l&apos;audience et, avec votre consentement, proposer des contenus publicitaires
                 personnalisés. Vous pouvez gérer vos préférences de cookies à tout moment via la
                 bannière de consentement ou vos paramètres de navigateur.

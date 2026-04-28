@@ -59,9 +59,9 @@ async function sendWelcomeEmail(email: string, name?: string): Promise<void> {
     const firstName = name?.split(' ')[0] || 'cher freelance'
 
     await resend.emails.send({
-      from: 'Maellis <bienvenue@maellis.com>',
+      from: 'Burozen <bienvenue@burozen.com>',
       to: email,
-      subject: 'Bienvenue sur Maellis ! 🎉',
+      subject: 'Bienvenue sur Burozen ! 🎉',
       html: `
         <!DOCTYPE html>
         <html lang="fr">
@@ -77,7 +77,7 @@ async function sendWelcomeEmail(email: string, name?: string): Promise<void> {
             </div>
             <div style="padding: 32px;">
               <p style="font-size: 16px; line-height: 1.6; color: #d4d4d4;">
-                Merci de votre inscription ! Maellis est votre assistant intelligent conçu pour les freelances.
+                Merci de votre inscription ! Burozen est votre assistant intelligent conçu pour les freelances.
               </p>
               <p style="font-size: 16px; line-height: 1.6; color: #d4d4d4;">
                 Voici ce que vous pouvez faire dès maintenant :
@@ -89,13 +89,13 @@ async function sendWelcomeEmail(email: string, name?: string): Promise<void> {
                 <li>Synchroniser votre calendrier et vos emails</li>
               </ul>
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${process.env.NEXTAUTH_URL || 'https://maellis.com'}/app"
+                <a href="${process.env.NEXTAUTH_URL || 'https://burozen.com'}/app"
                    style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 16px;">
                   Commencer maintenant →
                 </a>
               </div>
               <p style="font-size: 13px; color: #737373; text-align: center; margin-top: 24px;">
-                Vous recevez cet email car vous vous êtes inscrit sur maellis.com.
+                Vous recevez cet email car vous vous êtes inscrit sur burozen.com.
               </p>
             </div>
           </div>

@@ -17,7 +17,7 @@ import { pipeline } from 'stream/promises'
 
 const execAsync = promisify(exec)
 
-const BACKUP_DIR = process.env.BACKUP_DIR || '/tmp/maellis-backups'
+const BACKUP_DIR = process.env.BACKUP_DIR || '/tmp/burozen-backups'
 const RETENTION_HOURLY_DAYS = 7
 const RETENTION_DAILY_DAYS = 30
 const RETENTION_WEEKLY_DAYS = 90
@@ -40,7 +40,7 @@ export interface BackupResult {
  */
 export async function executeBackup(type: BackupType): Promise<BackupResult> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const baseName = `maellis_${type}_${timestamp}`
+  const baseName = `burozen_${type}_${timestamp}`
 
   // Ensure backup directory exists
   if (!existsSync(BACKUP_DIR)) {

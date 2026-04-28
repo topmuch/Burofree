@@ -4,7 +4,7 @@ import { verifyInvoiceToken } from '@/lib/invoice-token'
 import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
 
 /**
- * Maellis Middleware
+ * Burozen Middleware
  *
  * Handles:
  * 1. OAuth token refresh headers for email/calendar routes
@@ -127,7 +127,7 @@ export async function middleware(request: NextRequest) {
       const { decode } = await import('next-auth/jwt')
       const decoded = await decode({
         token: sessionToken,
-        secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV !== 'production' ? 'maellis-dev-secret-key-do-not-use-in-prod' : ''),
+        secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV !== 'production' ? 'burozen-dev-secret-key-do-not-use-in-prod' : ''),
       })
       if (decoded?.role !== 'superadmin') {
         return NextResponse.json(

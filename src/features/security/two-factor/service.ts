@@ -1,5 +1,5 @@
 /**
- * 2FA Service Layer for Maellis
+ * 2FA Service Layer for Burozen
  * Orchestrates TOTP setup, enable, disable, verification, and backup code management
  */
 

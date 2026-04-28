@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'Maellis <noreply@maellis.app>',
+            from: 'Burozen <noreply@burozen.app>',
             to: [clientEmail],
             subject: `${user.name || 'Votre freelance'} vous invite à suivre le projet "${project.name}"`,
             html: `

@@ -1,5 +1,5 @@
 /**
- * Email Service — Unified Email Sending for Maellis
+ * Email Service — Unified Email Sending for Burozen
  *
  * Central service that:
  *  - Checks if SMTP is enabled before sending

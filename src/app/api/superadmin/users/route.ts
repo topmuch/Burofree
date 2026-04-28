@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
             await db.user.update({
               where: { id: userId },
               data: {
-                email: `anonymized-${userId}@deleted.maellis`,
+                email: `anonymized-${userId}@deleted.burozen`,
                 name: 'Utilisateur supprimé',
                 avatar: null,
                 profession: null,

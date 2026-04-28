@@ -3,7 +3,7 @@ services:
   app:
     build: .
     environment:
-      - DATABASE_URL=postgresql://maellis:${DB_PASSWORD}@db:5432/maellis
+      - DATABASE_URL=postgresql://burozen:${DB_PASSWORD}@db:5432/burozen
       - NEXTAUTH_URL=https://${DOMAIN}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
@@ -22,24 +22,24 @@ services:
         condition: service_healthy
     restart: always
     networks:
-      - maellis-network
+      - burozen-network
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: maellis
+      POSTGRES_USER: burozen
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: maellis
+      POSTGRES_DB: burozen
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U maellis"]
+      test: ["CMD-SHELL", "pg_isready -U burozen"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: always
     networks:
-      - maellis-network
+      - burozen-network
 
   nginx:
     image: nginx:alpine
@@ -54,7 +54,7 @@ services:
       - app
     restart: always
     networks:
-      - maellis-network
+      - burozen-network
 
   certbot:
     image: certbot/certbot
@@ -63,10 +63,10 @@ services:
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - maellis-network
+      - burozen-network
 
 networks:
-  maellis-network:
+  burozen-network:
     driver: bridge
 
 volumes:

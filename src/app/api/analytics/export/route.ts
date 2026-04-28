@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
       const lines: string[] = []
 
       // Header section
-      lines.push(`Rapport Maellis - ${rangeLabel}`)
+      lines.push(`Rapport Burozen - ${rangeLabel}`)
       lines.push(`Période,${rangeStart.toLocaleDateString('fr-FR')} - ${rangeEnd.toLocaleDateString('fr-FR')}`)
       lines.push(`Généré le,${now.toLocaleDateString('fr-FR')}`)
       lines.push('')
@@ -215,7 +215,7 @@ export async function GET(req: NextRequest) {
     // ─── PDF export (real Puppeteer PDF generation) ────────────────────────────
     if (format === 'pdf') {
       const html = generateAnalyticsHTML({
-        user: { name: user.name || 'Maellis', email: user.email, profession: '' },
+        user: { name: user.name || 'Burozen', email: user.email, profession: '' },
         range: rangeLabel,
         rangeStart,
         rangeEnd,
@@ -669,7 +669,7 @@ function generateAnalyticsHTML(data: AnalyticsReportData): string {
 
   <!-- Footer -->
   <div class="footer">
-    <div>Généré par Maellis &middot; ${data.generatedAt.toLocaleDateString('fr-FR')} ${data.generatedAt.toLocaleTimeString('fr-FR')}</div>
+    <div>Généré par Burozen &middot; ${data.generatedAt.toLocaleDateString('fr-FR')} ${data.generatedAt.toLocaleTimeString('fr-FR')}</div>
     <div>Rapport ${data.range}</div>
   </div>
 </body>

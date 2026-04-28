@@ -1,10 +1,10 @@
 /**
- * Email Templates — Maellis Notification System
+ * Email Templates — Burozen Notification System
  *
  * Production-ready HTML email templates with:
  *  - Responsive design (mobile-first)
  *  - Dark/light mode support
- *  - Branded design (emerald/green Maellis theme)
+ *  - Branded design (emerald/green Burozen theme)
  *  - Accessibility (semantic HTML, alt text)
  *  - Inlining-friendly CSS (no external stylesheets)
  *
@@ -24,7 +24,7 @@ interface BaseTemplateParams {
 
 function baseTemplate(params: BaseTemplateParams): string {
   const { recipientName, previewText, content, ctaUrl, ctaLabel, footerNote } = params
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://maellis.com'
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
   return `
 <!DOCTYPE html>
@@ -90,7 +90,7 @@ function baseTemplate(params: BaseTemplateParams): string {
                       <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #10b981, #059669); display: inline-block; text-align: center; line-height: 36px; color: white; font-weight: bold; font-size: 16px;">M</div>
                     </td>
                     <td style="vertical-align: middle;">
-                      <span class="email-heading" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 600; color: #18181b;">Maellis</span>
+                      <span class="email-heading" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 600; color: #18181b;">Burozen</span>
                     </td>
                   </tr>
                 </table>
@@ -137,10 +137,10 @@ function baseTemplate(params: BaseTemplateParams): string {
             <tr>
               <td style="padding-top: 20px; text-align: center;">
                 <p class="email-subtext" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #9ca3af; margin: 0;">
-                  ${footerNote || 'Cet email a été envoyé par Maellis — Votre copilote intelligent freelance.'}
+                  ${footerNote || 'Cet email a été envoyé par Burozen — Votre copilote intelligent freelance.'}
                 </p>
                 <p class="email-subtext" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #9ca3af; margin: 8px 0 0;">
-                  <a href="${siteUrl}/settings" style="color: #10b981; text-decoration: none;">Gérer vos préférences de notification</a> · <a href="${siteUrl}" style="color: #9ca3af; text-decoration: none;">maellis.com</a>
+                  <a href="${siteUrl}/settings" style="color: #10b981; text-decoration: none;">Gérer vos préférences de notification</a> · <a href="${siteUrl}" style="color: #9ca3af; text-decoration: none;">burozen.com</a>
                 </p>
               </td>
             </tr>
@@ -163,14 +163,14 @@ export function welcomeEmail(params: {
   name: string
   email: string
 }): { subject: string; html: string; text: string } {
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://maellis.com'
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
-  const subject = '🚀 Bienvenue sur Maellis — Votre copilote freelance est prêt !'
+  const subject = '🚀 Bienvenue sur Burozen — Votre copilote freelance est prêt !'
   const html = baseTemplate({
     recipientName: params.name || 'Freelance',
-    previewText: 'Bienvenue sur Maellis ! Commencez à gérer vos projets, factures et tâches.',
+    previewText: 'Bienvenue sur Burozen ! Commencez à gérer vos projets, factures et tâches.',
     content: `
-      <h2 class="email-heading" style="color: #18181b; font-size: 22px; margin: 0 0 16px;">Bienvenue sur Maellis ! 🎉</h2>
+      <h2 class="email-heading" style="color: #18181b; font-size: 22px; margin: 0 0 16px;">Bienvenue sur Burozen ! 🎉</h2>
       <p>Votre copilote intelligent est maintenant prêt à vous accompagner au quotidien.</p>
       <p>Voici ce que vous pouvez faire dès maintenant :</p>
       <ul style="padding-left: 20px; margin: 12px 0;">
@@ -181,14 +181,14 @@ export function welcomeEmail(params: {
         <li style="margin-bottom: 8px;">🤖 <strong>Assistant IA</strong> — Votre assistant qui comprend le contexte</li>
         <li style="margin-bottom: 8px;">🧘 <strong>Mode Focus</strong> — Deep work avec sons ambiants</li>
       </ul>
-      <p>Connectez votre premier compte email pour débloquer toute la puissance de Maellis.</p>
+      <p>Connectez votre premier compte email pour débloquer toute la puissance de Burozen.</p>
     `,
     ctaUrl: `${siteUrl}/?action=setup`,
     ctaLabel: 'Configurer mon espace →',
-    footerNote: 'Vous recevez cet email car vous avez créé un compte Maellis.',
+    footerNote: 'Vous recevez cet email car vous avez créé un compte Burozen.',
   })
 
-  const text = `Bienvenue sur Maellis !
+  const text = `Bienvenue sur Burozen !
 
 Votre copilote intelligent est maintenant prêt à vous accompagner au quotidien.
 
@@ -203,7 +203,7 @@ Fonctionnalités principales :
 - Mode Focus pour le deep work
 
 Cordialement,
-L'équipe Maellis`
+L'équipe Burozen`
 
   return { subject, html, text }
 }
@@ -240,7 +240,7 @@ export function invoiceEmail(params: {
     `,
     ctaUrl: paymentUrl,
     ctaLabel: paymentUrl ? (isQuote ? 'Voir le devis' : 'Payer en ligne') : undefined,
-    footerNote: `Cet email a été envoyé via Maellis par ${freelancerName}.`,
+    footerNote: `Cet email a été envoyé via Burozen par ${freelancerName}.`,
   })
 
   const text = `${docLabelCap} ${invoiceNumber}
@@ -279,7 +279,7 @@ export function reminderEmail(params: {
   }
 
   const subject = `${icons[reminderType] || '🔔'} Rappel — ${reminderTitle}`
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://maellis.com'
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
   const html = baseTemplate({
     recipientName: userName,
@@ -293,8 +293,8 @@ export function reminderEmail(params: {
       </div>` : ''}
     `,
     ctaUrl: actionUrl || `${siteUrl}`,
-    ctaLabel: 'Voir dans Maellis →',
-    footerNote: 'Vous recevez ce rappel car vous avez activé les notifications par email sur Maellis.',
+    ctaLabel: 'Voir dans Burozen →',
+    footerNote: 'Vous recevez ce rappel car vous avez activé les notifications par email sur Burozen.',
   })
 
   const text = `Rappel : ${reminderTitle}
@@ -302,7 +302,7 @@ export function reminderEmail(params: {
 ${reminderMessage}
 ${dueInfo ? dueInfo : ''}
 
-Voir dans Maellis : ${actionUrl || siteUrl}`
+Voir dans Burozen : ${actionUrl || siteUrl}`
 
   return { subject, html, text }
 }
@@ -328,7 +328,7 @@ export function notificationEmail(params: {
   }
 
   const style = colors[type] || colors.info
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://maellis.com'
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
   const subject = `${style.icon} ${title}`
 
@@ -342,8 +342,8 @@ export function notificationEmail(params: {
       <p>${message}</p>
     `,
     ctaUrl: actionUrl,
-    ctaLabel: actionLabel || 'Voir dans Maellis →',
-    footerNote: 'Vous recevez cette notification car vous avez activé les emails sur Maellis.',
+    ctaLabel: actionLabel || 'Voir dans Burozen →',
+    footerNote: 'Vous recevez cette notification car vous avez activé les emails sur Burozen.',
   })
 
   const text = `${style.icon} ${title}
@@ -351,7 +351,7 @@ export function notificationEmail(params: {
 ${message}
 
 ${actionUrl ? `Voir : ${actionUrl}` : ''}
-${!actionUrl ? `Maellis : ${siteUrl}` : ''}`
+${!actionUrl ? `Burozen : ${siteUrl}` : ''}`
 
   return { subject, html, text }
 }
@@ -366,11 +366,11 @@ export function passwordResetEmail(params: {
 }): { subject: string; html: string; text: string } {
   const { userName, resetUrl, expiryMinutes } = params
 
-  const subject = '🔐 Réinitialisation de votre mot de passe Maellis'
+  const subject = '🔐 Réinitialisation de votre mot de passe Burozen'
 
   const html = baseTemplate({
     recipientName: userName,
-    previewText: 'Réinitialisez votre mot de passe Maellis',
+    previewText: 'Réinitialisez votre mot de passe Burozen',
     content: `
       <h2 class="email-heading" style="color: #18181b; font-size: 18px; margin: 0 0 16px;">🔐 Réinitialisation du mot de passe</h2>
       <p>Une demande de réinitialisation de votre mot de passe a été effectuée. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
@@ -381,10 +381,10 @@ export function passwordResetEmail(params: {
     `,
     ctaUrl: resetUrl,
     ctaLabel: 'Réinitialiser le mot de passe →',
-    footerNote: 'Cet email de sécurité a été envoyé par Maellis.',
+    footerNote: 'Cet email de sécurité a été envoyé par Burozen.',
   })
 
-  const text = `Réinitialisation de votre mot de passe Maellis
+  const text = `Réinitialisation de votre mot de passe Burozen
 
 Cliquez sur le lien suivant pour réinitialiser votre mot de passe :
 ${resetUrl}
@@ -415,14 +415,14 @@ export function teamInviteEmail(params: {
     viewer: 'Observateur',
   }
 
-  const subject = `🤝 ${inviterName} vous invite à rejoindre "${teamName}" sur Maellis`
+  const subject = `🤝 ${inviterName} vous invite à rejoindre "${teamName}" sur Burozen`
 
   const html = baseTemplate({
     recipientName: inviteeName,
     previewText: `${inviterName} vous invite à rejoindre l'équipe "${teamName}"`,
     content: `
       <h2 class="email-heading" style="color: #18181b; font-size: 18px; margin: 0 0 16px;">🤝 Invitation à rejoindre une équipe</h2>
-      <p><strong>${inviterName}</strong> vous invite à rejoindre l'équipe <strong>"${teamName}"</strong> sur Maellis.</p>
+      <p><strong>${inviterName}</strong> vous invite à rejoindre l'équipe <strong>"${teamName}"</strong> sur Burozen.</p>
       <div style="margin: 16px 0; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 3px solid #10b981;">
         <p style="margin: 0; color: #065f46; font-size: 14px;">
           <strong>Rôle :</strong> ${roleLabels[role] || role}<br>
@@ -433,12 +433,12 @@ export function teamInviteEmail(params: {
     `,
     ctaUrl: acceptUrl,
     ctaLabel: 'Rejoindre l\'équipe →',
-    footerNote: 'Vous recevez cette invitation car quelqu\'un vous a ajouté à une équipe Maellis.',
+    footerNote: 'Vous recevez cette invitation car quelqu\'un vous a ajouté à une équipe Burozen.',
   })
 
   const text = `Invitation à rejoindre "${teamName}"
 
-${inviterName} vous invite à rejoindre l'équipe "${teamName}" sur Maellis.
+${inviterName} vous invite à rejoindre l'équipe "${teamName}" sur Burozen.
 Rôle : ${roleLabels[role] || role}
 
 Accepter l'invitation : ${acceptUrl}`
@@ -464,7 +464,7 @@ export function weeklySummaryEmail(params: {
   upcomingDeadlines: Array<{ title: string; date: string }>
 }): { subject: string; html: string; text: string } {
   const { userName, weekRange, stats, topProjects, upcomingDeadlines } = params
-  const siteUrl = process.env.NEXTAUTH_URL || 'https://maellis.com'
+  const siteUrl = process.env.NEXTAUTH_URL || 'https://burozen.com'
 
   const subject = `📊 Résumé de votre semaine — ${weekRange}`
 
@@ -521,7 +521,7 @@ export function weeklySummaryEmail(params: {
     `,
     ctaUrl: `${siteUrl}`,
     ctaLabel: 'Voir mon tableau de bord →',
-    footerNote: 'Résumé hebdomadaire automatique de Maellis.',
+    footerNote: 'Résumé hebdomadaire automatique de Burozen.',
   })
 
   const text = `Résumé de la semaine du ${weekRange}

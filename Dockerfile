@@ -1,4 +1,4 @@
-# Multi-stage build for Maellis
+# Multi-stage build for Burozen
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed

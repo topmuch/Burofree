@@ -41,7 +41,7 @@ async function main() {
       name: 'Alex Martin',
       profession: 'Développeur Web Freelance',
       timezone: 'Europe/Paris',
-      assistantName: 'Maellis AI',
+      assistantName: 'Burozen AI',
       assistantTone: 'friendly',
       theme: 'dark',
       focusMode: false,
@@ -1082,7 +1082,7 @@ async function main() {
   const chatMessages = [
     {
       role: 'user',
-      content: 'Bonjour Maellis AI, que dois-je faire aujourd\'hui ?',
+      content: 'Bonjour Burozen AI, que dois-je faire aujourd\'hui ?',
       userId: user.id,
     },
     {

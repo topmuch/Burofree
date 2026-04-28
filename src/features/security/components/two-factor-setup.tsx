@@ -182,7 +182,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const handleDownloadCodes = useCallback(() => {
     if (!setupData?.backupCodes) return
     const content = [
-      'Maellis — Codes de secours 2FA',
+      'Burozen — Codes de secours 2FA',
       '================================',
       'Conservez ces codes en lieu sûr.',
       'Chaque code ne peut être utilisé qu\'une seule fois.',
@@ -196,7 +196,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'maellis-2fa-backup-codes.txt'
+    a.download = 'burozen-2fa-backup-codes.txt'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

@@ -13,8 +13,8 @@ import type { Metadata } from 'next'
 import './superadmin-globals.css'
 
 export const metadata: Metadata = {
-  title: 'Maellis — Superadmin',
-  description: 'Panneau d\'administration plateforme Maellis',
+  title: 'Burozen — Superadmin',
+  description: 'Panneau d\'administration plateforme Burozen',
   robots: 'noindex, nofollow', // Never index admin pages
 }
 

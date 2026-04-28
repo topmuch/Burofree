@@ -1,5 +1,5 @@
 /**
- * JSON-LD Structured Data — Maellis Landing Page
+ * JSON-LD Structured Data — Burozen Landing Page
  *
  * Generates Schema.org structured data for SEO-rich results.
  * These objects are meant to be embedded in <script type="application/ld+json">
@@ -14,14 +14,14 @@ import { PRICING_PLANS } from './pricing-data'
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
 
-const SITE_URL = process.env.NEXTAUTH_URL || 'https://maellis.com'
-const SITE_NAME = 'Maellis'
+const SITE_URL = process.env.NEXTAUTH_URL || 'https://burozen.com'
+const SITE_NAME = 'Burozen'
 const LOGO_URL = `${SITE_URL}/logo.svg`
 
 // ─── SoftwareApplication Schema ─────────────────────────────────────────────────────
 
 /**
- * Returns a SoftwareApplication JSON-LD schema for Maellis.
+ * Returns a SoftwareApplication JSON-LD schema for Burozen.
  * Includes pricing offers and an aggregate rating.
  */
 export function getSoftwareApplicationLD() {
@@ -113,7 +113,7 @@ export function getFAQPageLD(faqs: FAQItem[]) {
 // ─── Organization Schema ────────────────────────────────────────────────────────────
 
 /**
- * Returns an Organization JSON-LD schema for Maellis.
+ * Returns an Organization JSON-LD schema for Burozen.
  * Includes social media links for Google Knowledge Panel.
  */
 export function getOrganizationLD() {
@@ -129,19 +129,19 @@ export function getOrganizationLD() {
       height: 512,
     },
     description:
-      'Maellis est l\'assistant intelligent pour freelances. Gérez vos tâches, calendrier, emails, facturation et plus — propulsé par l\'IA.',
+      'Burozen est l\'assistant intelligent pour freelances. Gérez vos tâches, calendrier, emails, facturation et plus — propulsé par l\'IA.',
     foundingDate: '2024',
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'support@maellis.com',
+      email: 'support@burozen.com',
       availableLanguage: ['French', 'English'],
     },
     sameAs: [
-      'https://twitter.com/maellis',
-      'https://linkedin.com/company/maellis',
-      'https://github.com/maellis',
-      'https://www.instagram.com/maellis',
+      'https://twitter.com/burozen',
+      'https://linkedin.com/company/burozen',
+      'https://github.com/burozen',
+      'https://www.instagram.com/burozen',
     ],
   }
 }
@@ -155,9 +155,9 @@ export function getOrganizationLD() {
  * @example
  * ```tsx
  * getBreadcrumbLD([
- *   { name: 'Accueil', url: 'https://maellis.com' },
- *   { name: 'Légal', url: 'https://maellis.com/legal' },
- *   { name: 'CGV', url: 'https://maellis.com/legal/cgv' },
+ *   { name: 'Accueil', url: 'https://burozen.com' },
+ *   { name: 'Légal', url: 'https://burozen.com/legal' },
+ *   { name: 'CGV', url: 'https://burozen.com/legal/cgv' },
  * ])
  * ```
  */

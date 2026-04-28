@@ -1,5 +1,5 @@
 /**
- * RBAC Permission Definitions — Maellis
+ * RBAC Permission Definitions — Burozen
  *
  * Central registry of all granular permissions.
  * Each permission has a resource, action, and description.
