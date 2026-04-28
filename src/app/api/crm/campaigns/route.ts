@@ -23,10 +23,8 @@ export async function GET(req: NextRequest) {
       teamId: params.teamId,
     }, { page: params.page, limit: params.limit })
     return NextResponse.json(result)
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
-    }
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Invalid query parameters', details: err.issues }, { status: 400 })
     return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 })
   }
 }
@@ -60,10 +58,8 @@ export async function POST(req: NextRequest) {
       teamId: data.teamId,
     })
     return NextResponse.json(campaign, { status: 201 })
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed', details: (error as { errors: unknown[] }).errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create campaign' }, { status: 500 })
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
+    return NextResponse.json({ error: err.message || 'Failed to create campaign' }, { status: 500 })
   }
 }

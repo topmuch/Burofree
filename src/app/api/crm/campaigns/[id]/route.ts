@@ -66,11 +66,9 @@ export async function PUT(
       status: data.status,
     })
     return NextResponse.json(campaign)
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed' }, { status: 400 })
-    }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update campaign' }, { status: 500 })
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
+    return NextResponse.json({ error: err.message || 'Failed to update campaign' }, { status: 500 })
   }
 }
 

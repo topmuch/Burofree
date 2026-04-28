@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (!auth.user) return auth.response!
+
   try {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type')
     const status = searchParams.get('status')
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    const where: Record<string, unknown> = { userId: user.id }
+    const where: Record<string, unknown> = { userId: auth.user.id }
     if (type) where.type = type
     if (status) where.status = status
 
@@ -28,10 +29,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (!auth.user) return auth.response!
+
   try {
     const body = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+
+    if (!body.number || !body.clientName) {
+      return NextResponse.json({ error: 'Number and clientName are required' }, { status: 400 })
+    }
 
     // Accept items as either a JSON string or an array
     let itemsStr = body.items
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
         notes: body.notes,
         projectId: body.projectId || null,
         paymentMethod: body.paymentMethod || 'manual',
-        userId: user.id,
+        userId: auth.user.id,
       },
       include: { project: true },
     })

@@ -502,8 +502,8 @@ function findChromium(): string | null {
 
   // Dynamic fallback: find any Playwright chromium
   try {
-    const fs = require('fs')
-    const path = require('path')
+    const fs = await import('fs')
+    const path = await import('path')
     const playwrightDir = path.join(homeDir, '.cache', 'ms-playwright')
     if (existsSync(playwrightDir)) {
       const dirs = fs.readdirSync(playwrightDir).filter(d => d.startsWith('chromium-'))

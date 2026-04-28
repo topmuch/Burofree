@@ -243,7 +243,10 @@ export function useRealtimeNotifications() {
   // Reconnect when window regains focus
   // Use a ref for status to avoid re-registering the listener on every status change
   const statusRef = useRef(status)
-  statusRef.current = status
+
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
 
   useEffect(() => {
     const handleVisibilityChange = () => {

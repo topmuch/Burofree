@@ -7,8 +7,8 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { getOfflineQueue, type QueuedAction } from './offline-queue'
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
+import { getOfflineQueue } from './offline-queue'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -26,18 +26,60 @@ interface PWAState {
   queueCount: number
   /** Current sync status */
   syncStatus: 'idle' | 'syncing' | 'error' | 'success'
-  /** The offline queue instance */
-  offlineQueue: ReturnType<typeof getOfflineQueue> | null
   /** Trigger the install prompt */
   promptInstall: () => Promise<boolean>
   /** Manually trigger sync */
   triggerSync: () => Promise<{ synced: number; failed: number }>
 }
 
+// ─── useSyncExternalStore adapters for isInstalled ──────────────────────
+
+function subscribeToInstalledState(callback: () => void): () => void {
+  const mql = window.matchMedia('(display-mode: standalone)')
+  mql.addEventListener('change', callback)
+  window.addEventListener('appinstalled', callback)
+  return () => {
+    mql.removeEventListener('change', callback)
+    window.removeEventListener('appinstalled', callback)
+  }
+}
+
+function getInstalledSnapshot(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  )
+}
+
+function getInstalledServerSnapshot(): boolean {
+  return false
+}
+
+// ─── useSyncExternalStore adapters for isOnline ─────────────────────────
+
+function subscribeToOnlineState(callback: () => void): () => void {
+  window.addEventListener('online', callback)
+  window.addEventListener('offline', callback)
+  return () => {
+    window.removeEventListener('online', callback)
+    window.removeEventListener('offline', callback)
+  }
+}
+
+function getOnlineSnapshot(): boolean {
+  return navigator.onLine
+}
+
+function getOnlineServerSnapshot(): boolean {
+  return true
+}
+
+// ─── Hook ───────────────────────────────────────────────────────────────
+
 export function usePWA(): PWAState {
   const [canInstall, setCanInstall] = useState(false)
-  const [isInstalled, setIsInstalled] = useState(false)
-  const [isOnline, setIsOnline] = useState(true)
+  const isInstalled = useSyncExternalStore(subscribeToInstalledState, getInstalledSnapshot, getInstalledServerSnapshot)
+  const isOnline = useSyncExternalStore(subscribeToOnlineState, getOnlineSnapshot, getOnlineServerSnapshot)
   const [queueCount, setQueueCount] = useState(0)
   const [syncStatus, setSyncStatus] = useState<PWAState['syncStatus']>('idle')
   const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null)
@@ -53,26 +95,17 @@ export function usePWA(): PWAState {
     return unsubscribe
   }, [])
 
-  // Detect install state
+  // Listen for install prompt events
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Check if already in standalone mode
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true
-    setIsInstalled(isStandalone)
-
-    // Listen for beforeinstallprompt
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault()
       installPromptRef.current = e as BeforeInstallPromptEvent
       setCanInstall(true)
     }
 
-    // Listen for app installed
     const handleAppInstalled = () => {
-      setIsInstalled(true)
       setCanInstall(false)
       installPromptRef.current = null
     }
@@ -86,15 +119,11 @@ export function usePWA(): PWAState {
     }
   }, [])
 
-  // Network status
+  // Auto-sync when coming back online (via event listener, not reactive effect)
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    setIsOnline(navigator.onLine)
-
     const handleOnline = () => {
-      setIsOnline(true)
-      // Auto-sync when coming back online
       if (offlineQueueRef.current) {
         setSyncStatus('syncing')
         offlineQueueRef.current.syncToServer().then(
@@ -103,14 +132,10 @@ export function usePWA(): PWAState {
         )
       }
     }
-    const handleOffline = () => setIsOnline(false)
 
     window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
     return () => {
       window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
     }
   }, [])
 
@@ -169,7 +194,6 @@ export function usePWA(): PWAState {
     isOnline,
     queueCount,
     syncStatus,
-    offlineQueue: offlineQueueRef.current,
     promptInstall,
     triggerSync,
   }

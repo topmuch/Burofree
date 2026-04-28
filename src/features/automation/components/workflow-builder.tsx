@@ -16,7 +16,7 @@ import {
   Zap, Plus, Trash2, Play, Pause, Mail, Tag, UserPlus, ListTodo, Clock,
   Globe, Bot, ArrowRight, TestTube, Eye, Settings2, ChevronDown,
 } from 'lucide-react'
-import { useWorkflows, useCreateWorkflow, useToggleWorkflow, useWorkflow } from '../hooks/use-campaigns'
+import { useWorkflows, useCreateWorkflow, useToggleWorkflow, useWorkflow } from '../../campaigns/hooks/use-campaigns'
 import { toast } from 'sonner'
 
 const TRIGGER_TYPES = [

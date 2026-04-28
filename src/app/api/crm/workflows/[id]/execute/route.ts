@@ -33,10 +33,8 @@ export async function POST(
     })
 
     return NextResponse.json(execution)
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed' }, { status: 400 })
-    }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Execution failed' }, { status: 500 })
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
+    return NextResponse.json({ error: err.message || 'Execution failed' }, { status: 500 })
   }
 }

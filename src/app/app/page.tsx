@@ -100,6 +100,13 @@ function AppContent() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const realtimeStatus = useRealtimeStatus()
+  const [prevActiveTab, setPrevActiveTab] = useState(activeTab)
+
+  // Close mobile menu when activeTab changes (derived state pattern)
+  if (activeTab !== prevActiveTab) {
+    setPrevActiveTab(activeTab)
+    setMobileMenuOpen(false)
+  }
 
   const unreadNotifications = notifications.filter(n => !n.isRead).length
 
@@ -111,11 +118,6 @@ function AppContent() {
     }, 60000)
     return () => clearInterval(interval)
   }, [fetchReminders])
-
-  // Close mobile menu when changing tabs
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [activeTab])
 
   const handleMobileToggle = useCallback(() => {
     setMobileMenuOpen(prev => !prev)
@@ -363,7 +365,6 @@ export default function HomePage() {
     initData()
 
     return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleOnboardingComplete = useCallback(async () => {

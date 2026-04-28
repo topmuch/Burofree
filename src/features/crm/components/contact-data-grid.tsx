@@ -26,7 +26,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useContacts, useCreateContact, useDeleteContact, useImportContacts } from '../hooks/use-crm'
 
@@ -314,12 +314,17 @@ export function ContactDataGrid({ onSelectContact }: ContactDataGridProps) {
 
         <div className="flex gap-2 flex-wrap">
           <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
-            <option value="">Tous les cycles</option>
-            <option value="lead">Prospect</option>
-            <option value="qualified">Qualifié</option>
-            <option value="opportunity">Opportunité</option>
-            <option value="customer">Client</option>
-            <option value="churned">Perdu</option>
+            <SelectTrigger className="w-[140px] bg-zinc-900/50 border-zinc-800 text-zinc-200 text-xs h-8">
+              <SelectValue placeholder="Tous les cycles" />
+            </SelectTrigger>
+            <SelectContent className="bg-zinc-900 border-zinc-800">
+              <SelectItem value="">Tous les cycles</SelectItem>
+              <SelectItem value="lead">Prospect</SelectItem>
+              <SelectItem value="qualified">Qualifié</SelectItem>
+              <SelectItem value="opportunity">Opportunité</SelectItem>
+              <SelectItem value="customer">Client</SelectItem>
+              <SelectItem value="churned">Perdu</SelectItem>
+            </SelectContent>
           </Select>
 
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

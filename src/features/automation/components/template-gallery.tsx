@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui'
 import { Mail, Plus, Search, FileText, Code, Eye, Pencil } from 'lucide-react'
-import { useEmailTemplates, useCreateEmailTemplate } from '../hooks/use-campaigns'
+import { useEmailTemplates, useCreateEmailTemplate } from '../../campaigns/hooks/use-campaigns'
 import { toast } from 'sonner'
 
 const CATEGORIES = [

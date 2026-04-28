@@ -1,29 +1,50 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useSyncExternalStore, useEffect, useCallback } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
 const STORAGE_KEY = 'burofree-theme'
 
 type Theme = 'light' | 'dark'
 
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark'
+// ─── useSyncExternalStore adapters ──────────────────────────────────────
+
+function subscribeToTheme(callback: () => void): () => void {
+  window.addEventListener('storage', callback)
+  window.addEventListener('burofree-theme-change', callback)
+  const mql = window.matchMedia('(prefers-color-scheme: dark)')
+  mql.addEventListener('change', callback)
+  return () => {
+    window.removeEventListener('storage', callback)
+    window.removeEventListener('burofree-theme-change', callback)
+    mql.removeEventListener('change', callback)
+  }
+}
+
+function getThemeSnapshot(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
   if (stored === 'light' || stored === 'dark') return stored
   if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'
   return 'light'
 }
 
+function getThemeServerSnapshot(): Theme {
+  return 'dark'
+}
+
+// ─── Mounted detection via useSyncExternalStore ─────────────────────────
+
+const emptySubscribe = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
+
+// ─── Component ──────────────────────────────────────────────────────────
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark')
-  const [mounted, setMounted] = useState(false)
+  const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getThemeServerSnapshot)
+  const mounted = useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot)
 
-  useEffect(() => {
-    setTheme(getInitialTheme())
-    setMounted(true)
-  }, [])
-
+  // Apply theme class to <html> and persist to localStorage
   useEffect(() => {
     if (!mounted) return
     const root = document.documentElement
@@ -40,8 +61,11 @@ export function ThemeToggle() {
   }, [theme, mounted])
 
   const toggleTheme = useCallback(() => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
-  }, [])
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    localStorage.setItem(STORAGE_KEY, newTheme)
+    // Dispatch custom event so useSyncExternalStore re-reads the snapshot
+    window.dispatchEvent(new CustomEvent('burofree-theme-change'))
+  }, [theme])
 
   if (!mounted) {
     return (

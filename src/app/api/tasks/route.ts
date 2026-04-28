@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth-guard'
 import { db } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (!auth.user) return auth.response!
+
   try {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
@@ -9,10 +13,7 @@ export async function GET(req: NextRequest) {
     const projectId = searchParams.get('projectId')
     const search = searchParams.get('search')
 
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
-
-    const where: Record<string, unknown> = { userId: user.id }
+    const where: Record<string, unknown> = { userId: auth.user.id }
     if (status) where.status = status
     if (priority) where.priority = priority
     if (projectId) where.projectId = projectId
@@ -35,10 +36,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (!auth.user) return auth.response!
+
   try {
     const body = await req.json()
-    const user = await db.user.findFirst()
-    if (!user) return NextResponse.json({ error: 'No user' }, { status: 404 })
+
+    if (!body.title) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+    }
 
     const task = await db.task.create({
       data: {
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
         actualTime: body.actualTime,
         recurrence: body.recurrence,
         projectId: body.projectId || null,
-        userId: user.id,
+        userId: auth.user.id,
       },
       include: { project: true },
     })

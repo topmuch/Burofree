@@ -40,10 +40,8 @@ export async function GET(req: NextRequest) {
     ])
 
     return NextResponse.json({ templates, total, page: params.page, limit: params.limit })
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
-    }
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Invalid query parameters', details: err.issues }, { status: 400 })
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
   }
 }
@@ -77,10 +75,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json(template, { status: 201 })
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed', details: (error as { errors: unknown[] }).errors }, { status: 400 })
-    }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create template' }, { status: 500 })
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
+    return NextResponse.json({ error: err.message || 'Failed to create template' }, { status: 500 })
   }
 }

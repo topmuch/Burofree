@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { parseUTMParams, type UTMParams } from './tracking'
 
 // ─── Constants ──────────────────────────────────────────────────────────────────────
@@ -108,9 +108,7 @@ export interface UseUTMReturn {
 }
 
 export function useUTM(): UseUTMReturn {
-  const [utm, setUtm] = useState<UTMParams>({})
-
-  useEffect(() => {
+  const [utm, setUtm] = useState<UTMParams>(() => {
     // 1. Read UTM params from the URL
     const urlUTM = parseUTMParams()
 
@@ -124,9 +122,8 @@ export function useUTM(): UseUTMReturn {
     }
 
     // 4. Merge: URL takes precedence over stored
-    const merged = mergeUTM(urlUTM, storedUTM)
-    setUtm(merged)
-  }, [])
+    return mergeUTM(urlUTM, storedUTM)
+  })
 
   const hasUTM = Object.values(utm).some((v) => v != null && v !== '')
 

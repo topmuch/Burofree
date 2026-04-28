@@ -70,10 +70,8 @@ export async function PUT(
     })
 
     return NextResponse.json(workflow)
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed' }, { status: 400 })
-    }
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
     return NextResponse.json({ error: 'Failed to update workflow' }, { status: 500 })
   }
 }

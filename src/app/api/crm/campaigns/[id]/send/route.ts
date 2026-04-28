@@ -32,10 +32,8 @@ export async function POST(
     // Send now
     const result = await campaignSender.sendCampaign(id, auth.user.id)
     return NextResponse.json(result)
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Validation failed' }, { status: 400 })
-    }
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to send campaign' }, { status: 500 })
+  } catch (err: any) {
+    if (err.issues) return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 })
+    return NextResponse.json({ error: err.message || 'Failed to send campaign' }, { status: 500 })
   }
 }
