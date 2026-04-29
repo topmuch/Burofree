@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const { cursor, limit, status, channel, assignedTo, search, tags } = parsed.data
+    const { cursor, limit, status, channel, assignedTo, search, tags, priority, isStarred, focusInbox } = parsed.data
     const result = await getConversations(auth.user.id, {
       cursor,
       limit,
@@ -37,6 +37,9 @@ export async function GET(req: NextRequest) {
       assignedTo,
       search,
       tags: tags ? JSON.parse(tags) : undefined,
+      priority,
+      isStarred,
+      focusInbox,
     })
 
     return NextResponse.json(result)

@@ -47,7 +47,7 @@ export default function Error({
         {/* Logo */}
         <div className="flex items-center justify-center mb-6">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-            <span className="text-lg font-bold text-emerald-500">M</span>
+            <span className="text-lg font-bold text-emerald-500">B</span>
           </div>
         </div>
 

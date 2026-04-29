@@ -20,6 +20,9 @@ export interface ConversationFilters {
   tags?: string[]
   cursor?: string
   limit?: number
+  priority?: string
+  isStarred?: boolean
+  focusInbox?: boolean
 }
 
 export interface PaginatedResult<T> {
@@ -100,15 +103,26 @@ export async function getConversations(
   userId: string,
   filters: ConversationFilters,
 ): Promise<PaginatedResult<{ id: string; [key: string]: unknown }>> {
-  const { status, channel, assignedTo, search, tags, cursor, limit = 25 } = filters
+  const { status, channel, assignedTo, search, tags, cursor, limit = 25, priority, isStarred, focusInbox } = filters
 
   const where: Record<string, unknown> = { userId }
 
   if (status) where.status = status
   if (channel) where.channel = channel
   if (assignedTo) where.assignedToId = assignedTo
+  if (priority) where.priority = priority
+  if (isStarred !== undefined) where.isStarred = isStarred
 
-  if (search) {
+  // Focus Inbox: show only unread + starred + high/urgent priority
+  if (focusInbox) {
+    where.OR = [
+      { unreadCount: { gt: 0 } },
+      { isStarred: true },
+      { priority: { in: ['high', 'urgent'] } },
+    ]
+  }
+
+  if (search && !focusInbox) {
     where.OR = [
       { subject: { contains: search } },
       { messages: { some: { body: { contains: search } } } },

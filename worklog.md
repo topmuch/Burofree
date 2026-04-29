@@ -21,3 +21,25 @@ Stage Summary:
   - Admin: admin@burozen.com / Admin2026!
   - User: alex@freelance.dev / User2026!
 - Dev server running on port 3000, landing page accessible
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix unified inbox ("boîte unifiée") server error when clicking on items
+
+Work Log:
+- Investigated the unified inbox code architecture: 15+ files across hooks, services, components, and API routes
+- Identified Bug #1 (CRITICAL): `useChannelAccounts()` hook expected `ChannelAccount[]` but API returns `{ data: [...] }` — calling `.map()` on `{ data: [] }` caused TypeError crash → triggered error boundary → "Erreur serveur" page
+- Identified Bug #2: Same response shape mismatch in `useInboxContacts()` 
+- Identified Bug #3: Missing filter params (`priority`, `isStarred`, `focusInbox`) in Zod validation schema — frontend sends them but server strips them silently
+- Identified Bug #4: `'use client'` directive placed after JSDoc comments in 4 files (production-panel, network-status, install-prompt, use-pwa) — could cause SSR issues in some Next.js versions
+- Identified Bug #5: Error page branding showed "M" instead of "B" for Burozen
+- Fixed all 5 bugs across 7 files
+
+Stage Summary:
+- Fixed `useChannelAccounts()` and `useInboxContacts()` to extract `.data` from API response
+- Added `priority`, `isStarred`, `focusInbox` to Zod schema and API route
+- Added Focus Inbox server-side filtering logic (unread + starred + high/urgent priority)
+- Moved `'use client'` to line 1 in 4 files
+- Fixed error page branding
+- Added defensive array check for `channelAccounts` in layout
+- Lint passes clean, /app page returns 200

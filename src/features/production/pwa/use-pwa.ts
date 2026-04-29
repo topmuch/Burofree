@@ -1,11 +1,11 @@
+'use client'
+
 /**
  * usePWA — Custom hook for PWA functionality
  *
  * Combines install prompt, offline queue, network status,
  * and push notification management into a single reactive hook.
  */
-
-'use client'
 
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import { getOfflineQueue } from './offline-queue'

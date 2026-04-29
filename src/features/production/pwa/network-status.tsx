@@ -1,11 +1,11 @@
+'use client'
+
 /**
  * NetworkStatus — Offline/Online status banner component
  *
  * Shows a persistent banner when offline and a brief
  * success banner when the connection is restored.
  */
-
-'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react'

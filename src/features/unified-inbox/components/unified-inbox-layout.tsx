@@ -43,6 +43,11 @@ export function UnifiedInboxLayout({ className = '' }: UnifiedInboxLayoutProps) 
     conversationsQuery.data?.pages.flatMap((page) => page.data) ?? []
   const hasMore = conversationsQuery.hasNextPage ?? false
 
+  // Ensure channelAccounts is always an array (defensive against API response shape changes)
+  const channelAccounts = Array.isArray(channelAccountsQuery.data)
+    ? channelAccountsQuery.data
+    : []
+
   const handleSelectConversation = useCallback(
     (id: string) => {
       setSelectedId(id)
@@ -115,7 +120,7 @@ export function UnifiedInboxLayout({ className = '' }: UnifiedInboxLayoutProps) 
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  {channelAccountsQuery.data?.map((account) => (
+                  {channelAccounts.map((account) => (
                     <Button
                       key={account.id}
                       variant="ghost"

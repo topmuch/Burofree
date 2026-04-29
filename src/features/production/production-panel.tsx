@@ -1,10 +1,10 @@
+'use client'
+
 /**
  * ProductionPanel — Central UI for all PRIORITÉ 4 features
  *
  * Tabs: Abonnement, Équipe, Export/Import, Sauvegardes, Monitoring
  */
-
-'use client'
 
 import { useState, Fragment } from 'react'
 import { motion } from 'framer-motion'

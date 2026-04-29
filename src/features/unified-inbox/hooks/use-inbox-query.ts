@@ -105,7 +105,9 @@ export function useInboxContacts(search?: string) {
       if (search) params.set('search', search)
       const res = await fetch(`/api/inbox/contacts?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch contacts')
-      return res.json() as Promise<Contact[]>
+      const json = await res.json()
+      // API returns { data: [...] }
+      return (json.data ?? json) as Contact[]
     },
     staleTime: 60_000,
   })
@@ -118,7 +120,9 @@ export function useChannelAccounts() {
     queryFn: async () => {
       const res = await fetch('/api/inbox/channels')
       if (!res.ok) throw new Error('Failed to fetch channel accounts')
-      return res.json() as Promise<ChannelAccount[]>
+      const json = await res.json()
+      // API returns { data: [...] }
+      return (json.data ?? json) as ChannelAccount[]
     },
     staleTime: 60_000,
   })

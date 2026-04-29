@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * InstallPrompt — Smart PWA install prompt component
  *
@@ -5,8 +7,6 @@
  * Detects platform (iOS vs Android/Desktop) for appropriate guidance.
  * Dismissible with 7-day cooldown.
  */
-
-'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
