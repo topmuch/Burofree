@@ -135,6 +135,21 @@ export interface UseInboxSocketReturn {
   onSyncStatus: (callback: (data: InboxSyncStatusPayload) => void) => () => void
 }
 
+// ─── Socket Event Names ────────────────────────────────────────────────────
+
+const SOCKET_EVENTS = [
+  'inbox:new-message',
+  'inbox:conversation-updated',
+  'inbox:user-typing',
+  'inbox:user-viewing',
+  'inbox:user-stop-viewing',
+  'inbox:viewing-presence',
+  'inbox:unread-count',
+  'inbox:sync-status',
+] as const
+
+type SocketEventName = (typeof SOCKET_EVENTS)[number]
+
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 /**
@@ -142,6 +157,7 @@ export interface UseInboxSocketReturn {
  *
  * Connects via: io('/?XTransformPort=3002')
  * Supports auto-reconnect with exponential backoff.
+ * Preserves event listeners across reconnections.
  *
  * @example
  * ```tsx
@@ -172,7 +188,27 @@ export function useInboxSocket(options: UseInboxSocketOptions = {}): UseInboxSoc
   const socketRef = useRef<Socket | null>(null)
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Initialize socket connection
+  // Store userName in a ref to avoid triggering socket recreation
+  const userNameRef = useRef(userName)
+  useEffect(() => { userNameRef.current = userName }, [userName])
+
+  // Store registered event listeners so they survive reconnections
+  // Map<eventName, Set<callback>>
+  const listenersRef = useRef<Map<SocketEventName, Set<(...args: unknown[]) => void>>>(new Map())
+
+  /**
+   * Re-attach all stored listeners to the current socket instance.
+   * Called on initial connect and after reconnection.
+   */
+  const reattachListeners = useCallback((socketInstance: Socket) => {
+    for (const [event, callbacks] of listenersRef.current.entries()) {
+      for (const cb of callbacks) {
+        socketInstance.on(event, cb as (...args: unknown[]) => void)
+      }
+    }
+  }, [])
+
+  // Initialize socket connection — only recreate when userId changes
   useEffect(() => {
     const socketInstance = io('/?XTransformPort=3002', {
       transports: ['websocket', 'polling'],
@@ -191,9 +227,12 @@ export function useInboxSocket(options: UseInboxSocketOptions = {}): UseInboxSoc
       setSocket(socketInstance)
       console.log('[inbox-socket] Connected:', socketInstance.id)
 
+      // Re-attach all stored listeners on (re)connection
+      reattachListeners(socketInstance)
+
       // Auto-join inbox room if userId is provided
       if (autoJoin && userId) {
-        socketInstance.emit('inbox:join', { userId, userName })
+        socketInstance.emit('inbox:join', { userId, userName: userNameRef.current })
       }
     })
 
@@ -221,7 +260,7 @@ export function useInboxSocket(options: UseInboxSocketOptions = {}): UseInboxSoc
       socketRef.current = null
       setIsConnected(false)
     }
-  }, [userId, userName, autoJoin, reconnect, maxReconnectAttempts])
+  }, [userId, autoJoin, reconnect, maxReconnectAttempts, reattachListeners])
 
   // ─── Action callbacks ───────────────────────────────────────────────────
 
@@ -258,7 +297,7 @@ export function useInboxSocket(options: UseInboxSocketOptions = {}): UseInboxSoc
         })
       }, 10000)
     },
-    []
+    [],
   )
 
   const emitStopViewing = useCallback(
@@ -275,99 +314,94 @@ export function useInboxSocket(options: UseInboxSocketOptions = {}): UseInboxSoc
         heartbeatRef.current = null
       }
     },
-    []
+    [],
   )
 
-  // ─── Event listener callbacks ──────────────────────────────────────────
+  // ─── Event listener callbacks (with persistent storage) ────────────────
 
-  const onNewMessage = useCallback((callback: (data: InboxNewMessagePayload) => void) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
+  /**
+   * Helper to register a listener that persists across reconnections.
+   * Stores the callback in listenersRef and attaches it to the current socket.
+   */
+  const registerListener = useCallback(
+    <T>(event: SocketEventName, callback: (data: T) => void) => {
+      const socket = socketRef.current
 
-    socket.on('inbox:new-message', callback)
-    return () => {
-      socket.off('inbox:new-message', callback)
-    }
-  }, [])
+      // Store in persistent map
+      if (!listenersRef.current.has(event)) {
+        listenersRef.current.set(event, new Set())
+      }
+      listenersRef.current.get(event)!.add(callback as (...args: unknown[]) => void)
+
+      // Attach to current socket if connected
+      if (socket) {
+        socket.on(event, callback as (...args: unknown[]) => void)
+      }
+
+      // Return unsubscribe function
+      return () => {
+        listenersRef.current.get(event)?.delete(callback as (...args: unknown[]) => void)
+        socket?.off(event, callback as (...args: unknown[]) => void)
+      }
+    },
+    [],
+  )
+
+  const onNewMessage = useCallback(
+    (callback: (data: InboxNewMessagePayload) => void) => {
+      return registerListener('inbox:new-message', callback)
+    },
+    [registerListener],
+  )
 
   const onConversationUpdated = useCallback(
     (callback: (data: InboxConversationUpdatedPayload) => void) => {
-      const socket = socketRef.current
-      if (!socket) return () => {}
-
-      socket.on('inbox:conversation-updated', callback)
-      return () => {
-        socket.off('inbox:conversation-updated', callback)
-      }
+      return registerListener('inbox:conversation-updated', callback)
     },
-    []
+    [registerListener],
   )
 
-  const onUserTyping = useCallback((callback: (data: InboxUserTypingPayload) => void) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
+  const onUserTyping = useCallback(
+    (callback: (data: InboxUserTypingPayload) => void) => {
+      return registerListener('inbox:user-typing', callback)
+    },
+    [registerListener],
+  )
 
-    socket.on('inbox:user-typing', callback)
-    return () => {
-      socket.off('inbox:user-typing', callback)
-    }
-  }, [])
-
-  const onUserViewing = useCallback((callback: (data: InboxUserViewingPayload) => void) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
-
-    socket.on('inbox:user-viewing', callback)
-    return () => {
-      socket.off('inbox:user-viewing', callback)
-    }
-  }, [])
+  const onUserViewing = useCallback(
+    (callback: (data: InboxUserViewingPayload) => void) => {
+      return registerListener('inbox:user-viewing', callback)
+    },
+    [registerListener],
+  )
 
   const onUserStopViewing = useCallback(
     (callback: (data: InboxUserStopViewingPayload) => void) => {
-      const socket = socketRef.current
-      if (!socket) return () => {}
-
-      socket.on('inbox:user-stop-viewing', callback)
-      return () => {
-        socket.off('inbox:user-stop-viewing', callback)
-      }
+      return registerListener('inbox:user-stop-viewing', callback)
     },
-    []
+    [registerListener],
   )
 
   const onViewingPresence = useCallback(
     (callback: (data: InboxViewingPresencePayload) => void) => {
-      const socket = socketRef.current
-      if (!socket) return () => {}
-
-      socket.on('inbox:viewing-presence', callback)
-      return () => {
-        socket.off('inbox:viewing-presence', callback)
-      }
+      return registerListener('inbox:viewing-presence', callback)
     },
-    []
+    [registerListener],
   )
 
-  const onUnreadCount = useCallback((callback: (data: InboxUnreadCountPayload) => void) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
+  const onUnreadCount = useCallback(
+    (callback: (data: InboxUnreadCountPayload) => void) => {
+      return registerListener('inbox:unread-count', callback)
+    },
+    [registerListener],
+  )
 
-    socket.on('inbox:unread-count', callback)
-    return () => {
-      socket.off('inbox:unread-count', callback)
-    }
-  }, [])
-
-  const onSyncStatus = useCallback((callback: (data: InboxSyncStatusPayload) => void) => {
-    const socket = socketRef.current
-    if (!socket) return () => {}
-
-    socket.on('inbox:sync-status', callback)
-    return () => {
-      socket.off('inbox:sync-status', callback)
-    }
-  }, [])
+  const onSyncStatus = useCallback(
+    (callback: (data: InboxSyncStatusPayload) => void) => {
+      return registerListener('inbox:sync-status', callback)
+    },
+    [registerListener],
+  )
 
   return {
     socket,

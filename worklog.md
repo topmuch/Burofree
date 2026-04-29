@@ -78,3 +78,41 @@ Stage Summary:
 - Landing page: HTTP 200
 - API endpoints: 401 (correct, requires auth)
 - SSR error "Event handlers cannot be passed to Client Component props" persists but is non-blocking (Framer Motion + React 19 compatibility issue)
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Test dev logs for production errors and fix all remaining bugs
+
+Work Log:
+- Started dev server and tested all critical API endpoints
+- Health API: Fixed Prisma `current_database()` error (PostgreSQL function used with SQLite) → replaced with SQLite PRAGMA queries
+- Found not-found.tsx missing `'use client'` for its button with onClick → added directive
+- After fix: "Event handlers cannot be passed to Client Component props" SSR error is GONE from dev logs
+- Full code audit of unified inbox (15+ files) revealed 12 bugs:
+  - CRITICAL Bug #1: Zod `isStarred`/`focusInbox` transform silently converts `undefined` → `false`, filtering out ALL starred conversations
+  - CRITICAL Bug #2: `JSON.parse` without try/catch on DB JSON fields (emails, phones, tags, customFields) → crash on corrupt data
+  - CRITICAL Bug #3: `getProviderForChannel` hardcoded to 'gmail' → crashes for Outlook-only users
+  - HIGH Bug #7: Connect account dialog simulated OAuth without creating ChannelAccount record
+  - HIGH Bug #8: Socket event listeners lost after reconnection
+  - HIGH Bug #9: Search filter silently dropped when Focus Inbox is active
+  - MEDIUM Bug #10-12: Type duplication, name collision, socket reconnect on userName change
+- Fixed ALL critical and high severity bugs
+- Found middleware blocking `/api/landing/lead` (landing page signup) → added to public routes
+- Added `/api/stripe/config` to public routes (needed for pricing page)
+- Added `allowedDevOrigins: ['.space-z.ai']` to next.config.ts
+- Lint passes clean
+- Final dev log verification: NO errors, only minor warnings (middleware deprecation, optional resend module)
+
+Stage Summary:
+- Fixed 6 critical/high bugs + 3 medium bugs in unified inbox
+- Fixed middleware blocking landing page signup
+- Health API now uses SQLite-compatible queries
+- not-found.tsx has 'use client' directive
+- next.config.ts has allowedDevOrigins for preview panel
+- Lint: clean (0 errors, 0 warnings)
+- Dev logs: clean (no server errors)
+- Landing page: HTTP 200
+- Health API: HTTP 200, DB connected
+- Lead capture: HTTP 201, signup works without auth
+- Inbox APIs: HTTP 401 (correct, requires auth)

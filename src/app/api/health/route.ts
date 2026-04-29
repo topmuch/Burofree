@@ -22,27 +22,46 @@ export async function GET() {
     await db.$queryRaw`SELECT 1`
     const dbLatency = Date.now() - dbStart
 
-    // Database size (PostgreSQL)
+    // Database size — compatible with both SQLite and PostgreSQL
     let dbSize = 0
     try {
-      const pgResult = await db.$queryRaw<Array<{ pg_database_size: bigint }>>`
-        SELECT pg_database_size(current_database()) as pg_database_size
+      // Try SQLite first (our current provider)
+      const sqliteResult = await db.$queryRaw<Array<{ page_count: bigint; page_size: bigint }>>`
+        PRAGMA page_count
       `
-      dbSize = Number(pgResult[0]?.pg_database_size || 0)
+      const sqlitePageSize = await db.$queryRaw<Array<{ page_size: bigint }>>`
+        PRAGMA page_size
+      `
+      const pageCount = Number(sqliteResult[0]?.page_count || 0)
+      const pageSize = Number(sqlitePageSize[0]?.page_size || 4096)
+      dbSize = pageCount * pageSize
     } catch {
-      dbSize = 0
+      // Fallback for PostgreSQL
+      try {
+        const pgResult = await db.$queryRaw<Array<{ pg_database_size: bigint }>>`
+          SELECT pg_database_size(current_database()) as pg_database_size
+        `
+        dbSize = Number(pgResult[0]?.pg_database_size || 0)
+      } catch {
+        dbSize = 0
+      }
     }
 
-    // Active connections count
-    const activeUsers = await db.user.count({
-      where: {
-        sessions: {
-          some: {
-            expires: { gte: new Date() },
+    // Active connections count — safely query sessions if model exists
+    let activeUsers = 0
+    try {
+      activeUsers = await db.user.count({
+        where: {
+          sessions: {
+            some: {
+              expires: { gte: new Date() },
+            },
           },
         },
-      },
-    })
+      })
+    } catch {
+      activeUsers = 0
+    }
 
     // Backup health
     let backupHealth

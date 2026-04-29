@@ -114,15 +114,31 @@ export async function getConversations(
   if (isStarred !== undefined) where.isStarred = isStarred
 
   // Focus Inbox: show only unread + starred + high/urgent priority
-  if (focusInbox) {
+  if (focusInbox && search) {
+    // Combine focus inbox filter with search
+    where.AND = [
+      {
+        OR: [
+          { unreadCount: { gt: 0 } },
+          { isStarred: true },
+          { priority: { in: ['high', 'urgent'] } },
+        ],
+      },
+      {
+        OR: [
+          { subject: { contains: search } },
+          { messages: { some: { body: { contains: search } } } },
+          { messages: { some: { senderName: { contains: search } } } },
+        ],
+      },
+    ]
+  } else if (focusInbox) {
     where.OR = [
       { unreadCount: { gt: 0 } },
       { isStarred: true },
       { priority: { in: ['high', 'urgent'] } },
     ]
-  }
-
-  if (search && !focusInbox) {
+  } else if (search) {
     where.OR = [
       { subject: { contains: search } },
       { messages: { some: { body: { contains: search } } } },
@@ -328,7 +344,7 @@ export async function sendMessage(
   if (!conversation) return null
 
   // Determine the channel account and provider
-  const provider = getProviderForChannel(conversation.channel)
+  const provider = await getProviderForChannel(userId, conversation.channel)
   const recipient = conversation.participants.find((p) => p.role === 'recipient' || p.role === 'sender')
 
   let externalId: string | null = null
@@ -702,11 +718,11 @@ export async function upsertContact(userId: string, data: UpsertContactData) {
   }
 
   if (existingContact) {
-    // Merge data into existing contact
-    const existingEmails: string[] = JSON.parse(existingContact.emails)
-    const existingPhones: string[] = JSON.parse(existingContact.phones)
-    const existingTags: string[] = JSON.parse(existingContact.tags)
-    const existingCustomFields: Record<string, string> = JSON.parse(existingContact.customFields)
+    // Merge data into existing contact — safely parse JSON fields
+    const existingEmails: string[] = (() => { try { return JSON.parse(existingContact.emails) } catch { return [] } })()
+    const existingPhones: string[] = (() => { try { return JSON.parse(existingContact.phones) } catch { return [] } })()
+    const existingTags: string[] = (() => { try { return JSON.parse(existingContact.tags) } catch { return [] } })()
+    const existingCustomFields: Record<string, string> = (() => { try { return JSON.parse(existingContact.customFields) } catch { return {} } })()
 
     const mergedEmails = [...new Set([...existingEmails, ...(data.emails ?? [])])]
     const mergedPhones = [...new Set([...existingPhones, ...(data.phones ?? [])])]
@@ -843,14 +859,23 @@ async function upsertMessageFromSync(
 
 /**
  * Determine the provider for a given channel type.
- * Returns the first matching provider for the channel.
+ * For email channels, looks up the user's connected provider (gmail or outlook).
+ * Falls back to 'gmail' if no email provider is connected.
  */
-function getProviderForChannel(channel: string): string {
-  const mapping: Record<string, string> = {
-    email: 'gmail', // Default to gmail for email channel
-    whatsapp: 'whatsapp',
-    sms: 'twilio',
-    slack: 'slack',
+async function getProviderForChannel(userId: string, channel: string): Promise<string> {
+  if (channel !== 'email') {
+    const mapping: Record<string, string> = {
+      whatsapp: 'whatsapp',
+      sms: 'twilio',
+      slack: 'slack',
+    }
+    return mapping[channel] ?? channel
   }
-  return mapping[channel] ?? 'gmail'
+
+  // For email, find which provider the user has connected
+  const account = await db.channelAccount.findFirst({
+    where: { userId, provider: { in: ['gmail', 'outlook'] }, isActive: true },
+    select: { provider: true },
+  })
+  return account?.provider ?? 'gmail'
 }

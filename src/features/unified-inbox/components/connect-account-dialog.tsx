@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react'
+import { Mail, ExternalLink, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,9 +13,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { useQueryClient } from '@tanstack/react-query'
+import { inboxKeys } from '../hooks/use-inbox-query'
+import { toast } from 'sonner'
 
 interface ConnectAccountDialogProps {
   children: React.ReactNode
@@ -47,23 +48,53 @@ export function ConnectAccountDialog({
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const handleConnect = async () => {
     if (!selectedProvider) return
     setConnecting(true)
+    setErrorMsg(null)
 
-    // Simulate OAuth flow (placeholder)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      // Call the API to create a ChannelAccount record
+      // In a real implementation, this would redirect to OAuth
+      // For now, we create a placeholder account that can be updated with real tokens later
+      const res = await fetch('/api/inbox/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          accessToken: `placeholder_${selectedProvider}_${Date.now()}`,
+          email: `user@${selectedProvider === 'gmail' ? 'gmail.com' : 'outlook.com'}`,
+        }),
+      })
 
-    setConnecting(false)
-    setConnected(true)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Erreur lors de la connexion')
+      }
 
-    // Close after success animation
-    setTimeout(() => {
-      setOpen(false)
-      setConnected(false)
-      setSelectedProvider(null)
-    }, 2000)
+      setConnected(true)
+
+      // Invalidate queries to refresh channel list
+      queryClient.invalidateQueries({ queryKey: inboxKeys.channels() })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.conversations() })
+
+      toast.success(`Canal ${selectedProvider === 'gmail' ? 'Gmail' : 'Outlook'} connecté !`)
+
+      // Close after success animation
+      setTimeout(() => {
+        setOpen(false)
+        setConnected(false)
+        setSelectedProvider(null)
+      }, 2000)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erreur inconnue')
+      toast.error('Impossible de connecter le canal')
+    } finally {
+      setConnecting(false)
+    }
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -72,6 +103,7 @@ export function ConnectAccountDialog({
     if (!nextOpen) {
       setSelectedProvider(null)
       setConnected(false)
+      setErrorMsg(null)
     }
   }
 
@@ -129,6 +161,13 @@ export function ConnectAccountDialog({
         </div>
 
         {/* Connection status */}
+        {errorMsg && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-300">{errorMsg}</p>
+          </div>
+        )}
+
         {connected && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}

@@ -31,10 +31,14 @@ export const listConversationsQuerySchema = z.object({
   tags: z.string().optional(),
   /** Filter by priority */
   priority: conversationPrioritySchema.optional(),
-  /** Filter by starred status */
-  isStarred: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
+  /** Filter by starred status — undefined = no filter, true = starred only, false = unstarred only */
+  isStarred: z.enum(['true', 'false']).optional().transform(v =>
+    v === 'true' ? true : v === 'false' ? false : undefined
+  ),
   /** Focus Inbox mode (show only unread + starred + high priority) */
-  focusInbox: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
+  focusInbox: z.enum(['true', 'false']).optional().transform(v =>
+    v === 'true' ? true : v === 'false' ? false : undefined
+  ),
 })
 
 export const createConversationSchema = z.object({
