@@ -119,7 +119,7 @@ export function LandingHeader() {
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <Link
-              href="/api/auth/signin"
+              href="/auth/signin"
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 rounded-lg"
             >
               Connexion
@@ -181,7 +181,7 @@ export function LandingHeader() {
               ))}
               <div className="pt-3 border-t border-border space-y-2">
                 <Link
-                  href="/api/auth/signin"
+                  href="/auth/signin"
                   onClick={handleNavClick}
                   className="block px-3 py-3 text-base font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors text-center"
                   role="menuitem"
