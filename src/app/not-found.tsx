@@ -30,7 +30,7 @@ export default function NotFound() {
         {/* Logo */}
         <div className="flex items-center justify-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-            <span className="text-xl font-bold text-emerald-500">M</span>
+            <span className="text-xl font-bold text-emerald-500">B</span>
           </div>
         </div>
 

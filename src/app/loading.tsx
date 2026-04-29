@@ -23,7 +23,7 @@ export default function Loading() {
             />
             {/* Inner logo */}
             <div className="relative w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center animate-pulse">
-              <span className="text-2xl font-bold text-emerald-500">M</span>
+              <span className="text-2xl font-bold text-emerald-500">B</span>
             </div>
           </div>
         </div>
