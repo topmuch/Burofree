@@ -132,3 +132,42 @@ Stage Summary:
 - geo.ts: haversineDistance() and checkGeoFence() with 100m default tolerance
 - validations/badge.ts: Zod schemas for CreateMerchant, AgentVerify, ValidatePayment, RevokeBadge
 - badge-token.ts: generateBadgeToken(), verifyBadgeToken(), revokeBadge(), getPublicMerchantData(), getAgentMerchantData()
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Annuler l'implémentation du prompt Fiscaly QR et tester les dev logs pour production
+
+Work Log:
+- Audité le projet complet pour identifier les modules créés par le prompt Fiscaly "Carte d'Identité Commerciale"
+- Identifié 3 fichiers Fiscaly créés: /src/lib/badge-token.ts, /src/lib/geo.ts, /src/lib/validations/badge.ts
+- Identifié 4 modèles Prisma créés: Merchant, FiscalBadge, BadgeScanLog, PaymentTransaction (+ relations User)
+- Découvert des erreurs de syntaxe dans le schéma Prisma Fiscaly (erchantId] au lieu de [merchantId])
+- Supprimé les 3 fichiers Fiscaly
+- Retiré les 2 relations Fiscaly du modèle User (merchants, paymentTransactionsAsAgent)
+- Retiré les 4 modèles Fiscaly du schéma Prisma (Merchant, FiscalBadge, BadgeScanLog, PaymentTransaction)
+- Retiré le commentaire de section Fiscaly en fin de fichier
+- Vérifié qu'aucun import/référence vers les modules Fiscaly n'existe dans le code source
+- Poussé le schéma Prisma nettoyé avec succès (bun run db:push)
+- Lint: clean (0 errors, 0 warnings)
+- Testé toutes les routes clés du serveur de développement:
+  - Landing page: 200 ✅
+  - Health API: 200 ✅
+  - Pricing API: 200 ✅
+  - App page: 200 ✅
+  - Lead signup POST: 200 ✅
+  - Auth setup: 200 ✅
+  - Stripe webhook: 405 (POST only, correct) ✅
+  - Protected routes (Inbox, Tasks, CRM, etc.): 401 (correct, auth required) ✅
+- Dev log: AUCUNE erreur serveur, seulement un warning mineur pour le module optionnel resend
+
+Stage Summary:
+- Implémentation Fiscaly QR complètement annulée et nettoyée
+- 3 fichiers supprimés: badge-token.ts, geo.ts, validations/badge.ts
+- 4 modèles Prisma supprimés: Merchant, FiscalBadge, BadgeScanLog, PaymentTransaction
+- 2 relations User supprimées: merchants, paymentTransactionsAsAgent
+- Erreurs de syntaxe Prisma corrigées (issues du prompt Fiscaly)
+- Prisma db push: succès, schéma synchronisé
+- Lint: 0 errors, 0 warnings
+- Dev server: démarre sans erreur, toutes les routes fonctionnelles
+- Dev logs: aucune erreur serveur, projet prêt pour production
