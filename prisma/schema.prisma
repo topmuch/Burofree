@@ -80,6 +80,8 @@ model User {
   emailTemplates     EmailTemplate[]
   workspaceMemberships WorkspaceMember[]
   metricSnapshots    MetricSnapshot[]
+  merchants          Merchant[]
+  paymentTransactionsAsAgent PaymentTransaction[]
 }
 
 model Project {
@@ -1712,4 +1714,111 @@ model ReportCache {
 
   @@index([key])
   @@index([expiresAt])
+}
+
+// ─── FISCALY — QR Carte d'Identité Commerciale ────────────────────────────────
+
+/// Merchant — commerce inscrit sur la plateforme Fiscaly
+model Merchant {
+  id            String   @id @default(cuid())
+  userId        String   // Lien vers le User propriétaire
+  commerceName  String   // Nom du commerce (affiché publiquement)
+  activity      String   // Type d'activité (boulangerie, restaurant, etc.)
+  quartier      String   // Quartier / zone (affiché publiquement)
+  latitude      Float    // Latitude GPS pour géofencing
+  longitude     Float    // Longitude GPS pour géofencing
+  photoUrl      String?  // Photo du commerce (visible agent uniquement)
+  phone         String?  // Téléphone (JAMAIS exposé publiquement)
+  taxAmount     Float    @default(0) // Montant de la taxe fiscale
+  currency      String   @default("XOF") // Devise
+  paymentStatus String   @default("up_to_date") // up_to_date, overdue
+  dueDate       DateTime? // Date d'échéance du paiement
+  lastPaidAt    DateTime? // Dernier paiement
+  tenantId      String?  // Multi-tenant (organisation)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badges  FiscalBadge[]
+  scanLogs BadgeScanLog[]
+  payments PaymentTransaction[]
+
+  @@index([userId])
+  @@index([paymentStatus])
+  @@index([tenantId])
+}
+
+/// FiscalBadge — Badge QR avec token signé
+model FiscalBadge {
+  id          String    @id @default(cuid())
+  merchantId  String    // Lien vers le commerce
+  token       String    @unique // JWT signé encodé dans le QR
+  status      String    @default("ACTIVE") // ACTIVE, REVOKED, EXPIRED
+  issuedAt    DateTime  @default(now()) // Date d'émission du token
+  expiresAt   DateTime  // Expiration du token (1 an)
+  revokedAt   DateTime? // Date de révocation (si applicable)
+  revokedBy   String?   // ID de l'utilisateur ayant révoqué
+  lastScannedAt DateTime? // Dernier scan
+  scanCount   Int       @default(0) // Nombre de scans total
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  merchant Merchant      @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  scanLogs BadgeScanLog[]
+
+  @@index([token])
+  @@index([merchantId, status])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+/// BadgeScanLog — Journal immuable de chaque scan (public & agent)
+model BadgeScanLog {
+  id          String   @id @default(cuid())
+  badgeId     String   // Lien vers le badge
+  merchantId  String   // Lien vers le commerce (dénormalisé pour requêtes rapides)
+  scanType    String   // public, agent
+  agentId     String?  // ID de l'agent (si scan agent)
+  agentLat    Float?   // Latitude GPS de l'agent au scan
+  agentLng    Float?   // Longitude GPS de l'agent au scan
+  distance    Float?   // Distance en mètres entre agent et commerce
+  geoStatus   String?  // OK, FRAUD_GPS, TOO_FAR (si scan agent)
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  badge    FiscalBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  merchant Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([badgeId, createdAt])
+  @@index([merchantId, createdAt])
+  @@index([scanType])
+  @@index([agentId])
+  @@index([geoStatus])
+}
+
+/// PaymentTransaction — Transactions de paiement validées par agent
+model PaymentTransaction {
+  id              String    @id @default(cuid())
+  merchantId      String    // Commerce concerné
+  badgeId         String    // Badge scanné lors du paiement
+  agentId         String    // Agent ayant validé
+  amount          Float     // Montant payé
+  currency        String    @default("XOF")
+  paymentMethod   String    // cash, mobile_money, card, bank_transfer
+  reference       String?   // Référence de paiement
+  proofPhotoUrl   String?   // Photo preuve de paiement
+  agentLat        Float     // Latitude GPS de l'agent
+  agentLng        Float     // Longitude GPS de l'agent
+  distance        Float     // Distance en mètres
+  geoStatus       String    // OK, FRAUD_GPS
+  status          String    @default("completed") // completed, disputed, refunded
+  createdAt       DateTime  @default(now())
+
+  merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  agent    User         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, createdAt])
+  @@index([agentId, createdAt])
+  @@index([status])
 }

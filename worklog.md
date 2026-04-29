@@ -116,3 +116,19 @@ Stage Summary:
 - Health API: HTTP 200, DB connected
 - Lead capture: HTTP 201, signup works without auth
 - Inbox APIs: HTTP 401 (correct, requires auth)
+
+---
+Task ID: 2-3-4
+Agent: full-stack-developer
+Task: Create lib files for Fiscaly badge system (geo, validations, badge-token)
+
+Work Log:
+- Created /src/lib/geo.ts with haversine distance calculation and geofence checking
+- Created /src/lib/validations/badge.ts with Zod schemas for all badge inputs
+- Created /src/lib/badge-token.ts building on existing jwt-simple.ts for JWT sign/verify
+
+Stage Summary:
+- All 3 lib files created successfully
+- geo.ts: haversineDistance() and checkGeoFence() with 100m default tolerance
+- validations/badge.ts: Zod schemas for CreateMerchant, AgentVerify, ValidatePayment, RevokeBadge
+- badge-token.ts: generateBadgeToken(), verifyBadgeToken(), revokeBadge(), getPublicMerchantData(), getAgentMerchantData()
