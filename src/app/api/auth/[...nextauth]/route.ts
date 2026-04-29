@@ -113,22 +113,29 @@ export const authOptions: NextAuthOptions = {
         mode: { label: 'Mode', type: 'text' }, // 'login' or 'register'
       },
       async authorize(credentials, req) {
-        if (!credentials?.email) return null
+        try {
+          if (!credentials?.email) return null
 
-        const email = credentials.email.trim().toLowerCase()
+          const email = credentials.email.trim().toLowerCase()
 
-        // Rate limiting: check before processing
-        const requestObj = new Request(req?.headers?.origin || 'http://localhost:3000', {
-          headers: req?.headers as HeadersInit || {},
-        })
-        const rateLimitId = getRateLimitIdentifier(requestObj, email)
-        const rateCheck = checkRateLimit(rateLimitId, DEFAULT_AUTH_OPTIONS)
+          // Rate limiting: check before processing
+          let rateLimitId = email
+          try {
+            const requestObj = new Request(req?.headers?.origin || 'http://localhost:3000', {
+              headers: req?.headers as HeadersInit || {},
+            })
+            rateLimitId = getRateLimitIdentifier(requestObj, email)
+          } catch {
+            // Fallback if Request constructor fails
+            rateLimitId = email
+          }
+          const rateCheck = checkRateLimit(rateLimitId, DEFAULT_AUTH_OPTIONS)
 
-        if (!rateCheck.allowed) {
-          throw new Error('Trop de tentatives. Veuillez réessayer dans quelques minutes.')
-        }
+          if (!rateCheck.allowed) {
+            throw new Error('Trop de tentatives. Veuillez réessayer dans quelques minutes.')
+          }
 
-        const mode = credentials.mode || 'login'
+          const mode = credentials.mode || 'login'
 
         if (mode === 'register') {
           // --- REGISTRATION ---
@@ -186,6 +193,11 @@ export const authOptions: NextAuthOptions = {
 
         // If user has no password (OAuth-only or demo account), allow login without password
         return { id: user.id, email: user.email, name: user.name }
+        } catch (error) {
+          // Log the error and return null to prevent silent failures
+          console.error('[NextAuth] Authorize error:', error)
+          throw new Error('Erreur de connexion. Veuillez réessayer.')
+        }
       },
     }),
   ],
@@ -293,7 +305,21 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = account.refresh_token
         token.provider = account.provider
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000
-        token.role = 'user' // Default role, will be updated on next JWT refresh
+        // Fetch actual role from DB immediately on sign-in
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: user.id! },
+            select: { role: true, suspendedAt: true },
+          })
+          if (dbUser) {
+            token.role = dbUser.role
+            token.suspended = !!dbUser.suspendedAt
+          } else {
+            token.role = 'user'
+          }
+        } catch {
+          token.role = 'user'
+        }
         return token
       }
 
@@ -388,6 +414,7 @@ export const authOptions: NextAuthOptions = {
       // Expose user ID and provider info from JWT to session
       if (session.user) {
         session.user.id = token.userId as string
+        session.user.role = token.role as string
 
         // Fetch email accounts to expose in session
         if (session.user.email) {
@@ -399,6 +426,7 @@ export const authOptions: NextAuthOptions = {
             if (dbUser) {
               session.user.id = dbUser.id
               session.user.onboardingDone = dbUser.onboardingDone
+              session.user.role = dbUser.role
               ;(session as unknown as Record<string, unknown>).emailAccounts = dbUser.emailAccounts
             }
           } catch {

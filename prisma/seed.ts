@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -33,12 +34,51 @@ async function main() {
   await prisma.user.deleteMany()
 
   // ============================================================
-  // 1. USER
+  // 1. USERS (Superadmin + Admin + Demo User)
   // ============================================================
+
+  // Hash passwords for test accounts
+  const superadminPasswordHash = await bcrypt.hash('Superadmin2026!', 12)
+  const adminPasswordHash = await bcrypt.hash('Admin2026!', 12)
+  const userPasswordHash = await bcrypt.hash('User2026!', 12)
+
+  const superadmin = await prisma.user.create({
+    data: {
+      email: 'superadmin@burozen.com',
+      name: 'Super Admin',
+      passwordHash: superadminPasswordHash,
+      profession: 'Administrateur Plateforme',
+      timezone: 'Europe/Paris',
+      assistantName: 'Burozen AI',
+      assistantTone: 'professional',
+      theme: 'dark',
+      focusMode: false,
+      onboardingDone: true,
+      role: 'superadmin',
+    },
+  })
+
+  const admin = await prisma.user.create({
+    data: {
+      email: 'admin@burozen.com',
+      name: 'Admin Burozen',
+      passwordHash: adminPasswordHash,
+      profession: 'Administrateur',
+      timezone: 'Europe/Paris',
+      assistantName: 'Burozen AI',
+      assistantTone: 'friendly',
+      theme: 'dark',
+      focusMode: false,
+      onboardingDone: true,
+      role: 'admin',
+    },
+  })
+
   const user = await prisma.user.create({
     data: {
       email: 'alex@freelance.dev',
       name: 'Alex Martin',
+      passwordHash: userPasswordHash,
       profession: 'Développeur Web Freelance',
       timezone: 'Europe/Paris',
       assistantName: 'Burozen AI',
@@ -46,6 +86,7 @@ async function main() {
       theme: 'dark',
       focusMode: false,
       onboardingDone: true,
+      role: 'user',
     },
   })
 
@@ -1107,7 +1148,15 @@ async function main() {
   }
 
   console.log('✅ Données de démonstration créées avec succès !')
-  console.log(`- Utilisateur : ${user.name} (${user.email})`)
+  console.log('')
+  console.log('🔑 COMPTES DE TEST :')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log('  Superadmin : superadmin@burozen.com / Superadmin2026!')
+  console.log('  Admin      : admin@burozen.com / Admin2026!')
+  console.log('  Utilisateur: alex@freelance.dev / User2026!')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+  console.log('')
+  console.log(`- Utilisateur démo : ${user.name} (${user.email})`)
   console.log(`- Projets : 4`)
   console.log(`- Tâches : 15`)
   console.log(`- Événements : 12`)

@@ -8,6 +8,7 @@ declare module 'next-auth' {
       name?: string | null
       image?: string | null
       onboardingDone?: boolean
+      role?: string
     }
     emailAccounts?: {
       id: string

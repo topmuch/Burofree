@@ -37,7 +37,7 @@ export default function SignInPage() {
     try {
       const result = await signIn('credentials', {
         email: email.trim().toLowerCase(),
-        password: isRegister ? password : undefined,
+        password: password || undefined,
         mode: isRegister ? 'register' : 'login',
         redirect: false,
       })
@@ -252,7 +252,6 @@ export default function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className={cn('h-11 pl-10 pr-10', !isRegister && 'pr-10')}
                   autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  required={isRegister}
                 />
                 <button
                   type="button"
@@ -267,11 +266,6 @@ export default function SignInPage() {
                   )}
                 </button>
               </div>
-              {!isRegister && (
-                <p className="text-xs text-muted-foreground">
-                  Laissez vide si vous n'avez pas défini de mot de passe
-                </p>
-              )}
             </div>
 
             {/* Submit button */}
