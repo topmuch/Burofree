@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { endImpersonation } from '@/features/superadmin/utils/impersonation'
 import { db } from '@/lib/db'
 import { z } from 'zod'
+import { requireAuth } from '@/lib/auth-guard'
 
 const endSchema = z.object({
   sessionId: z.string().min(1),
@@ -14,6 +15,9 @@ const endSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAuth(req)
+    if (!auth.user) return auth.response!
+
     let body: unknown
     try {
       body = await req.json()

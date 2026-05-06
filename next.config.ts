@@ -27,7 +27,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.stripe.com https://oauth2.googleapis.com https://login.microsoftonline.com wss: ws:; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.stripe.com https://oauth2.googleapis.com https://login.microsoftonline.com wss: ws:; frame-src https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
   },
   {
     key: 'Permissions-Policy',

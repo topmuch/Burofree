@@ -12,11 +12,7 @@
 const getSecret = () => {
   const secret = process.env.NEXTAUTH_SECRET
   if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('NEXTAUTH_SECRET environment variable is required in production.')
-    }
-    console.warn('[SECURITY] Using development-only invoice token secret. Set NEXTAUTH_SECRET in production!')
-    return 'burozen-dev-secret-key-do-not-use-in-prod'
+    throw new Error('FATAL: NEXTAUTH_SECRET environment variable is required.')
   }
   return secret
 }

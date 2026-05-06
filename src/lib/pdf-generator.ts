@@ -9,6 +9,7 @@
 import type { Invoice } from './store'
 import type { Browser } from 'puppeteer-core'
 import { existsSync } from 'fs'
+import { escapeHtml } from '@/lib/search-utils'
 
 // ─── Currency Helpers ────────────────────────────────────────────────────────────
 
@@ -588,15 +589,6 @@ export async function generateInvoicePDF(
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {

@@ -18,19 +18,15 @@ const keyVersionCache = new Map<number, Buffer>()
 
 /**
  * Derive a 32-byte key from the ENCRYPTION_KEY env variable with a version-specific salt.
- * Falls back to a dev-only key if ENCRYPTION_KEY is not set.
+ * Throws if ENCRYPTION_KEY is not set (in any environment).
  */
 function deriveKey(version: number): Buffer {
   const secret = process.env.ENCRYPTION_KEY
   if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('ENCRYPTION_KEY environment variable is required in production.')
-    }
-    console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
+    throw new Error('FATAL: ENCRYPTION_KEY environment variable is required.')
   }
-  const keySource = secret || 'burozen-dev-encryption-key-do-not-use-in-prod'
   const salt = `burozen-encryption-salt-v${version}`
-  return scryptSync(keySource, salt, KEY_LENGTH)
+  return scryptSync(secret, salt, KEY_LENGTH)
 }
 
 /**

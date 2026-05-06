@@ -1,3 +1,11 @@
+/**
+ * LEGACY - prefer @/features/security/encryption/service.ts for new code
+ *
+ * Sync encryption helpers using AES-256-GCM.
+ * Uses the same ENCRYPTION_KEY derivation (salt: burozen-encryption-salt-v1)
+ * as the encryption service for cross-compatibility.
+ */
+
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
@@ -7,20 +15,15 @@ const KEY_LENGTH = 32
 
 /**
  * Derive a 32-byte key from the ENCRYPTION_KEY env variable.
- * Throws in production if ENCRYPTION_KEY is not set.
- * Falls back to a dev-only key in development mode.
+ * Throws if ENCRYPTION_KEY is not set (in any environment).
  */
 function getEncryptionKey(): Buffer {
   const secret = process.env.ENCRYPTION_KEY
   if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('ENCRYPTION_KEY environment variable is required in production. Generate one with: openssl rand -base64 32')
-    }
-    console.warn('[SECURITY] Using development-only encryption key. Set ENCRYPTION_KEY in production!')
+    throw new Error('FATAL: ENCRYPTION_KEY environment variable is required. Generate one with: openssl rand -base64 32')
   }
-  const keySource = secret || 'burozen-dev-encryption-key-do-not-use-in-prod'
   const salt = 'burozen-encryption-salt-v1'
-  return scryptSync(keySource, salt, KEY_LENGTH)
+  return scryptSync(secret, salt, KEY_LENGTH)
 }
 
 /**

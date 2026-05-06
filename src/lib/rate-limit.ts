@@ -1,7 +1,19 @@
 /**
- * Simple in-memory rate limiter for Burozen
- * Prevents brute-force attacks on authentication endpoints
+ * Rate limiter for Burozen
+ *
+ * Provides two strategies:
+ * 1. `checkRateLimit` — synchronous, in-memory Map (safe for Next.js middleware).
+ *    Works for single-instance deployments (docker-compose) and is kept for
+ *    backward-compatibility with all 90+ existing consumers.
+ *
+ * 2. `checkRateLimitRedis` — async, Redis INCR+EXPIRE based.
+ *    Use this in async API routes (e.g. auth) for multi-instance correctness.
+ *    Falls back to the in-memory Map when Redis is unavailable.
+ *
+ * Prevents brute-force attacks on authentication endpoints.
  */
+
+import { redis } from '@/lib/redis'
 
 interface RateLimitEntry {
   count: number
@@ -20,11 +32,19 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000)
 
+const REDIS_KEY_PREFIX = 'rate-limit:'
+
 export interface RateLimitOptions {
   /** Max number of requests in the window */
   maxRequests: number
   /** Time window in milliseconds */
   windowMs: number
+}
+
+export type RateLimitResult = {
+  allowed: boolean
+  retryAfterMs: number
+  remaining: number
 }
 
 const DEFAULT_AUTH_OPTIONS: RateLimitOptions = {
@@ -38,13 +58,15 @@ const DEFAULT_API_OPTIONS: RateLimitOptions = {
 }
 
 /**
- * Check if a request should be rate-limited
- * Returns { allowed: boolean, retryAfterMs: number }
+ * Synchronous in-memory rate limiter.
+ *
+ * Kept for backward-compatibility with Next.js middleware and all existing
+ * API route consumers. Works correctly for single-instance deployments.
  */
 export function checkRateLimit(
   identifier: string,
   options: RateLimitOptions = DEFAULT_AUTH_OPTIONS,
-): { allowed: boolean; retryAfterMs: number; remaining: number } {
+): RateLimitResult {
   const now = Date.now()
   const entry = store.get(identifier)
 
@@ -64,6 +86,53 @@ export function checkRateLimit(
 
   entry.count++
   return { allowed: true, retryAfterMs: 0, remaining: options.maxRequests - entry.count }
+}
+
+/**
+ * Async Redis-backed rate limiter for multi-instance deployments.
+ *
+ * Uses Redis INCR + EXPIRE pattern:
+ *  - INCR a per-identifier key on every request
+ *  - If the key is new (INCR returns 1), set EXPIRE with the window duration
+ *  - If count exceeds maxRequests, the request is denied
+ *
+ * Falls back gracefully to the in-memory Map if Redis is unavailable,
+ * so local development without Redis still works.
+ *
+ * Use this in async API routes (e.g. NextAuth authorize, POST handlers)
+ * for cross-instance rate-limit enforcement.
+ */
+export async function checkRateLimitRedis(
+  identifier: string,
+  options: RateLimitOptions = DEFAULT_AUTH_OPTIONS,
+): Promise<RateLimitResult> {
+  const key = `${REDIS_KEY_PREFIX}${identifier}`
+  const windowSec = Math.ceil(options.windowMs / 1000)
+
+  try {
+    const count = await redis.incr(key)
+
+    // First request in this window — set the TTL
+    if (count === 1) {
+      await redis.expire(key, windowSec)
+    }
+
+    if (count > options.maxRequests) {
+      // Get remaining TTL to compute precise retry-after
+      const ttl = await redis.ttl(key)
+      const retryAfterMs = ttl > 0 ? ttl * 1000 : options.windowMs
+      return { allowed: false, retryAfterMs, remaining: 0 }
+    }
+
+    return {
+      allowed: true,
+      retryAfterMs: 0,
+      remaining: Math.max(0, options.maxRequests - count),
+    }
+  } catch {
+    // Redis unavailable — fall back to in-memory Map
+    return checkRateLimit(identifier, options)
+  }
 }
 
 /**

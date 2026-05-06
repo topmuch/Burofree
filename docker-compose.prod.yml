@@ -17,8 +17,12 @@ services:
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - NEXT_PUBLIC_GOOGLE_CONFIGURED=${NEXT_PUBLIC_GOOGLE_CONFIGURED:-false}
       - NEXT_PUBLIC_MICROSOFT_CONFIGURED=${NEXT_PUBLIC_MICROSOFT_CONFIGURED:-false}
+      - REDIS_URL=redis://redis:6379
+      - BACKUP_DIR=/app/backups
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: always
     networks:
@@ -37,6 +41,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: always
+    networks:
+      - burozen-network
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
     restart: always
     networks:
       - burozen-network
@@ -71,3 +88,5 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  backup_data:

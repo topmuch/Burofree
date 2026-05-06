@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:../db/custom.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Optional: for migration tooling
 }
 
 model User {
@@ -102,6 +103,8 @@ model Project {
   tags           ProjectTag[]
   portalInvites  PortalInvite[]
   focusSessions  FocusSession[]
+  @@index([userId])
+  @@index([userId, status])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -126,6 +129,8 @@ model Task {
   timeEntries   TimeEntry[]
   tags          TaskTag[]
   focusSessions FocusSession[]
+  @@index([userId, status])
+  @@index([userId, dueDate])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -144,6 +149,7 @@ model CalendarEvent {
   sourceId    String?   @unique
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, startDate])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -159,6 +165,7 @@ model Reminder {
   relatedType String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, remindAt])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -180,6 +187,7 @@ model EmailAccount {
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   emails          Email[]
+  @@index([userId])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -206,6 +214,9 @@ model Email {
   tags           EmailTag[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+
+  @@index([emailAccountId])
+  @@index([userId])
 }
 
 model Invoice {
@@ -232,6 +243,8 @@ model Invoice {
   project                Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId                 String
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([userId, status])
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 }
@@ -249,6 +262,7 @@ model TimeEntry {
   project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, startTime])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -266,6 +280,7 @@ model Document {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tags      DocumentTag[]
+  @@index([userId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -277,6 +292,7 @@ model Snippet {
   category  String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -291,6 +307,8 @@ model Notification {
   actionUrl String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -306,6 +324,7 @@ model WeeklyGoal {
   completed Boolean  @default(false)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, weekStart])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -316,6 +335,7 @@ model ChatMessage {
   content   String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
   createdAt DateTime @default(now())
 }
 
@@ -326,6 +346,7 @@ model PushSubscription {
   auth      String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
   createdAt DateTime @default(now())
 }
 
@@ -379,6 +400,7 @@ model Meeting {
   project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, startDate])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -403,6 +425,7 @@ model Contract {
   project        Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId         String
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, status])
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }
@@ -425,6 +448,8 @@ model Template {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId, type])
 }
 
 /// Préférences utilisateur pour les rappels automatiques
@@ -454,6 +479,8 @@ model AutomationLog {
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 /// Tags multi-dimensionnels avec couleur et catégorie
@@ -925,6 +952,7 @@ model SupportTicket {
   updatedAt   DateTime  @updatedAt
 
   @@index([userId, status])
+  @@index([userId, createdAt])
   @@index([status, priority])
   @@index([assignedTo])
   @@index([createdAt])
@@ -1070,6 +1098,7 @@ model SecurityAlert {
   createdAt   DateTime @default(now())
 
   @@index([userId, status])
+  @@index([userId, createdAt])
   @@index([type, severity])
   @@index([status, createdAt])
   @@index([teamId])
@@ -1220,6 +1249,7 @@ model Conversation {
 
   @@index([userId, status, lastActivityAt])
   @@index([userId, channel])
+  @@index([userId, updatedAt])
   @@index([assignedToId])
   @@index([projectId])
   @@index([lastActivityAt])
@@ -1374,6 +1404,7 @@ model CrmContact {
   deals     Deal[]
 
   @@index([userId, status])
+  @@index([userId, createdAt])
   @@index([teamId, status])
   @@index([email])
   @@index([lifecycle])
@@ -1512,6 +1543,7 @@ model Deal {
   @@index([contactId])
   @@index([expectedCloseDate])
   @@index([userId])
+  @@index([userId, stageId])
 }
 
 /// Deal Activity — audit trail for deal changes

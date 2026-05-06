@@ -88,9 +88,7 @@ function getTransporter(config: SmtpConfig): Transporter {
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 30000,
-    tls: {
-      rejectUnauthorized: false, // Allow self-signed certs in dev
-    },
+    tls: process.env.NODE_ENV === 'development' ? { rejectUnauthorized: false } : undefined,
   })
 
   cachedTransporter = transporter

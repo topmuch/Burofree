@@ -238,13 +238,22 @@ async function executeAction(
   try {
     switch (action.type) {
       case 'email.send': {
-        const { to, subject, body } = action.config
+        const { to, subject, body } = action.config as { to?: string; subject: string; body: string }
         if (!to && !context.contactId) {
           return { success: false, error: 'No recipient specified' }
         }
-        // MVP: Simulate email send
-        console.log(`[WorkflowEngine] Sending email to ${to || context.contactId}: ${subject}`)
-        return { success: true, output: `Email queued: ${subject}` }
+        try {
+          const { sendEmail } = await import('@/lib/email')
+          await sendEmail({
+            to: to || context.contactId!,
+            subject,
+            html: body,
+            text: body.replace(/<[^>]*>/g, ''),
+          })
+          return { success: true, output: `Email sent to ${to || context.contactId}: ${subject}` }
+        } catch (err) {
+          return { success: false, error: `Email send failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
       }
 
       case 'tag.add': {
@@ -269,13 +278,26 @@ async function executeAction(
       }
 
       case 'assign.to': {
-        const { userId: assignToUserId } = action.config
-        if (!assignToUserId) {
+        const { entityType, entityId, userId: targetUserId } = action.config as { entityType?: string; entityId?: string; userId: string }
+        if (!targetUserId) {
           return { success: false, error: 'No user specified for assign.to' }
         }
-        // MVP: Log assignment
-        console.log(`[WorkflowEngine] Assigned to user ${assignToUserId as string}`)
-        return { success: true, output: `Assigned to ${assignToUserId as string}` }
+        try {
+          if (entityType && entityId) {
+            if (entityType === 'task') {
+              await db.task.update({ where: { id: entityId }, data: { userId: targetUserId } })
+            } else if (entityType === 'deal') {
+              await db.deal.update({ where: { id: entityId }, data: { userId: targetUserId } })
+            } else if (entityType === 'contact') {
+              await db.crmContact.update({ where: { id: entityId }, data: { userId: targetUserId } })
+            }
+            return { success: true, output: `Assigned ${entityType} ${entityId} to user ${targetUserId}` }
+          }
+          // Legacy fallback: no entity specified, just log the assignment
+          return { success: true, output: `Assigned to ${targetUserId}` }
+        } catch (err) {
+          return { success: false, error: `Assignment failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
       }
 
       case 'create.task': {
@@ -300,24 +322,55 @@ async function executeAction(
       }
 
       case 'webhook.call': {
-        const { url, method, headers, body: webhookBody } = action.config
+        const { url, method = 'POST', headers = {}, body: webhookBody } = action.config as {
+          url: string
+          method?: string
+          headers?: Record<string, string>
+          body?: unknown
+        }
         if (!url) {
           return { success: false, error: 'No webhook URL specified' }
         }
-        // MVP: Simulate webhook call
-        console.log(`[WorkflowEngine] Webhook call to ${url as string} (${(method as string) || 'POST'})`)
-        return { success: true, output: `Webhook called: ${url as string}` }
+        try {
+          const resp = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: webhookBody ? JSON.stringify(webhookBody) : undefined,
+            signal: AbortSignal.timeout(10_000), // 10 s timeout
+          })
+          if (resp.ok) {
+            return { success: true, output: `Webhook called: HTTP ${resp.status} from ${url}` }
+          }
+          return { success: false, error: `Webhook returned HTTP ${resp.status} from ${url}` }
+        } catch (err) {
+          return { success: false, error: `Webhook call failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
       }
 
       case 'ai.generate_reply': {
-        const { tone, conversationId: convId } = action.config
-        const targetConvId = (convId as string) || context.conversationId
-        if (!targetConvId) {
-          return { success: false, error: 'No conversation specified for ai.generate_reply' }
+        const { tone = 'professional', conversationId: convId, context: aiContext } = action.config as {
+          tone?: string
+          conversationId?: string
+          context?: string
         }
-        // MVP: Simulate AI reply generation
-        console.log(`[WorkflowEngine] AI reply generated for conversation ${targetConvId} (tone: ${(tone as string) || 'professional'})`)
-        return { success: true, output: `AI reply generated for ${targetConvId}` }
+        const targetConvId = convId || context.conversationId
+        if (!targetConvId && !aiContext) {
+          return { success: false, error: 'No conversation or context specified for ai.generate_reply' }
+        }
+        try {
+          const { createAIEngine } = await import('@/lib/ai')
+          const engine = createAIEngine()
+          const promptText = aiContext
+            ? `Generate a ${tone} reply to: ${aiContext}`
+            : `Generate a ${tone} reply for conversation ${targetConvId}`
+          const reply = await engine.chat(
+            [{ role: 'user', content: promptText }],
+            { temperature: 0.7, maxTokens: 500 },
+          )
+          return { success: true, output: reply }
+        } catch (err) {
+          return { success: false, error: `AI reply generation failed: ${err instanceof Error ? err.message : String(err)}` }
+        }
       }
 
       default:

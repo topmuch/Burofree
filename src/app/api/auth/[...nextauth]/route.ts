@@ -4,7 +4,7 @@ import AzureADProvider from 'next-auth/providers/azure-ad'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/crypto'
-import { checkRateLimit, getRateLimitIdentifier, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
+import { checkRateLimitRedis, getRateLimitIdentifier, DEFAULT_AUTH_OPTIONS } from '@/lib/rate-limit'
 import bcrypt from 'bcryptjs'
 
 // Token refresh helpers
@@ -129,7 +129,7 @@ export const authOptions: NextAuthOptions = {
             // Fallback if Request constructor fails
             rateLimitId = email
           }
-          const rateCheck = checkRateLimit(rateLimitId, DEFAULT_AUTH_OPTIONS)
+          const rateCheck = await checkRateLimitRedis(rateLimitId, DEFAULT_AUTH_OPTIONS)
 
           if (!rateCheck.allowed) {
             throw new Error('Trop de tentatives. Veuillez réessayer dans quelques minutes.')
@@ -140,8 +140,11 @@ export const authOptions: NextAuthOptions = {
         if (mode === 'register') {
           // --- REGISTRATION ---
           const password = credentials.password
-          if (!password || password.length < 6) {
-            throw new Error('Le mot de passe doit contenir au moins 6 caractères.')
+          if (!password || password.length < 8) {
+            throw new Error('Le mot de passe doit contenir au moins 8 caractères.')
+          }
+          if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+            throw new Error('Le mot de passe doit contenir au moins une majuscule et un chiffre.')
           }
 
           // Check if user already exists
@@ -166,32 +169,26 @@ export const authOptions: NextAuthOptions = {
         }
 
         // --- LOGIN ---
-        const user = await db.user.findUnique({ where: { email } })
-
-        if (!user) {
-          // Demo mode: auto-create user without password if no password provided
-          // This allows the demo flow to continue working
-          if (!credentials.password) {
-            const newUser = await db.user.create({
-              data: { email, name: email.split('@')[0] },
-            })
-            return { id: newUser.id, email: newUser.email, name: newUser.name }
-          }
+        if (!credentials.password) {
           throw new Error('Email ou mot de passe incorrect.')
         }
 
-        // If user has a password, verify it
-        if (user.passwordHash) {
-          if (!credentials.password) {
-            throw new Error('Mot de passe requis pour ce compte.')
-          }
-          const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
-          if (!isValid) {
-            throw new Error('Email ou mot de passe incorrect.')
-          }
+        const user = await db.user.findUnique({ where: { email } })
+
+        if (!user) {
+          throw new Error('Email ou mot de passe incorrect.')
         }
 
-        // If user has no password (OAuth-only or demo account), allow login without password
+        // OAuth-only users (no password hash) must use OAuth provider, not credentials
+        if (!user.passwordHash) {
+          throw new Error('Ce compte utilise une connexion via fournisseur OAuth. Veuillez vous connecter via Google ou Azure AD.')
+        }
+
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
+        if (!isValid) {
+          throw new Error('Email ou mot de passe incorrect.')
+        }
+
         return { id: user.id, email: user.email, name: user.name }
         } catch (error) {
           // Log the error and return null to prevent silent failures
@@ -309,11 +306,12 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await db.user.findUnique({
             where: { id: user.id! },
-            select: { role: true, suspendedAt: true },
+            select: { role: true, suspendedAt: true, twoFactorEnabled: true },
           })
           if (dbUser) {
             token.role = dbUser.role
             token.suspended = !!dbUser.suspendedAt
+            token.twoFactorEnabled = !!dbUser.twoFactorEnabled
           } else {
             token.role = 'user'
           }
@@ -327,11 +325,12 @@ export const authOptions: NextAuthOptions = {
       if (!token.role && token.userId) {
         const dbUser = await db.user.findUnique({
           where: { id: token.userId as string },
-          select: { role: true, suspendedAt: true },
+          select: { role: true, suspendedAt: true, twoFactorEnabled: true },
         })
         if (dbUser) {
           token.role = dbUser.role
           token.suspended = !!dbUser.suspendedAt
+          token.twoFactorEnabled = !!dbUser.twoFactorEnabled
         }
       }
 
@@ -442,9 +441,9 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
-  secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === 'production' ? undefined : 'burozen-dev-secret-key-do-not-use-in-prod'),
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
 }
 

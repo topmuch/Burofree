@@ -21,6 +21,15 @@ import {
   withRetry,
   calculateGroqCost,
 } from '../ai-engine'
+import {
+  buildSuggestionsPrompt,
+  buildEmailDraftPrompt,
+  buildBriefingPrompt,
+  buildDailySummaryPrompt,
+  buildPrioritizeTasksPrompt,
+  buildMentalLoadPrompt,
+  buildCoachingAdvicePrompt,
+} from './prompts'
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
@@ -104,16 +113,10 @@ export class GroqAIEngine implements AIEngine {
     assistantName: string,
     assistantTone: string,
   ): Promise<AISuggestion[]> {
-    const toneLabel = assistantTone === 'pro' ? 'professionnel et concis' : assistantTone === 'friendly' ? 'amical, chaleureux et encourageant' : 'minimaliste et direct'
-
+    const { systemPrompt, userPrompt } = buildSuggestionsPrompt(context, userName, assistantName, assistantTone)
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Tu es ${assistantName}, l'assistant IA d'un freelancer nommé ${userName}. Ton ton est ${toneLabel}. Analyse la situation et génère 3-5 suggestions ACTIONABLES et PRIORISÉES. Chaque suggestion doit être concise et spécifique. Réponds en JSON uniquement avec ce format:
-[{"icon": "emoji", "title": "titre court", "message": "description actionnable en 1 phrase", "priority": "high|medium|low", "actionUrl": "#tasks|#emails|#invoices|#calendar|#time"}]
-Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Réponds en français.`
-      },
-      { role: 'user', content: `Voici mon contexte actuel:\n${context}` }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     const result = await withRetry(() => this.callGroq(messages, { temperature: 0.6, maxTokens: 600 }))
@@ -129,17 +132,10 @@ Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Répond
     assistantName: string,
     emailSubject?: string,
   ): Promise<EmailDraft> {
+    const { systemPrompt, userPrompt } = buildEmailDraftPrompt(emailContent, tone, context, userName, assistantName, emailSubject)
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Tu es ${assistantName}, l'assistant de ${userName}, un freelancer. Génère un brouillon de réponse email professionnel. Ton: ${tone}. Sois concis mais poli. Réponds en français. Format JSON: {"subject": "sujet", "body": "corps du message"}`
-      },
-      {
-        role: 'user',
-        content: context
-          ? `Contexte: ${context}\n\nGénère un email adapté.`
-          : `Génère une réponse à cet email:\nSujet: ${emailSubject || ''}\nContenu: ${emailContent.substring(0, 500)}`
-      }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     const result = await withRetry(() => this.callGroq(messages, { temperature: 0.7, maxTokens: 400 }))
@@ -153,11 +149,10 @@ Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Répond
     assistantName: string,
     tone: string,
   ): Promise<string> {
-    const toneLabel = tone === 'pro' ? 'professionnel et concis' : tone === 'friendly' ? 'amical, chaleureux et encourageant' : 'minimaliste et direct'
-
+    const { systemPrompt, userPrompt } = buildBriefingPrompt(context, userName, assistantName, tone)
     const messages: ChatMessage[] = [
-      { role: 'system', content: `Tu es ${assistantName}, l'assistant intelligent de ${userName}. Ton ton est ${toneLabel}. Génère un briefing matinal concis et structuré en français. Utilise des émojis pour la lisibilité. Sois encourageant mais factuel.` },
-      { role: 'user', content: `Génère mon briefing du jour basé sur: ${context}` },
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     const result = await withRetry(() => this.callGroq(messages, { temperature: 0.6, maxTokens: 400 }))
@@ -169,9 +164,10 @@ Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Répond
     userName: string,
     assistantName: string,
   ): Promise<string> {
+    const { systemPrompt, userPrompt } = buildDailySummaryPrompt(context, userName, assistantName)
     const messages: ChatMessage[] = [
-      { role: 'system', content: `Tu es ${assistantName}. Génère un résumé de fin de journée encourageant et factuel pour ${userName}. 3-4 phrases max. Réponds en français.` },
-      { role: 'user', content: `Mon résumé du jour:\n${context}` }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     const result = await withRetry(() => this.callGroq(messages, { temperature: 0.6, maxTokens: 200 }))
@@ -179,16 +175,10 @@ Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Répond
   }
 
   async prioritizeTasks(tasks: TaskDescription[]): Promise<PrioritizationResult[]> {
-    const tasksDescription = tasks.map(t =>
-      `ID:${t.id}|"${t.title}"|Priorité:${t.priority}|Échéance:${t.dueDate || 'N/A'}|Projet:${t.projectName || 'Aucun'}|Catégorie:${t.category || 'N/A'}`
-    ).join('\n')
-
+    const { systemPrompt, userPrompt } = buildPrioritizeTasksPrompt(tasks)
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Tu es un assistant de productivité. Analyse les tâches et suggère une priorisation optimisée. Réponds en JSON: [{"id": "taskId", "suggestedPriority": "urgent|high|medium|low", "reason": "courte raison"}]. Seulement les tâches qui méritent un changement de priorité.`
-      },
-      { role: 'user', content: `Tâches à analyser:\n${tasksDescription}` }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     const result = await withRetry(() => this.callGroq(messages, { temperature: 0.4, maxTokens: 500 }))
@@ -197,47 +187,10 @@ Priorise: 1) Urgences (retards) 2) Actions immédiates 3) Optimisations. Répond
   }
 
   async analyzeMentalLoad(context: MentalLoadContext): Promise<MentalLoadAnalysis> {
-    const toneLabel = context.assistantTone === 'pro' ? 'professionnel' : context.assistantTone === 'friendly' ? 'amical et bienveillant' : 'direct'
-
+    const { systemPrompt, userPrompt } = buildMentalLoadPrompt(context)
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Tu es ${context.assistantName}, l'assistant IA d'un freelancer nommé ${context.userName}. Ton ton est ${toneLabel}.
-
-Analyse la charge mentale du freelancer basée sur les données fournies. Calcule un score de 0 à 100 et un niveau (low/moderate/high/critical).
-
-Règles de scoring:
-- 0-25: low (peu de stress, workload gérable)
-- 26-50: moderate (charge normale, quelques points d'attention)
-- 51-75: high (charge élevée, risques de surmenage)
-- 76-100: critical (charge critique, action urgente nécessaire)
-
-Réponds en JSON uniquement:
-{
-  "score": number,
-  "level": "low|moderate|high|critical",
-  "factors": [{"name": "nom du facteur", "impact": number 1-10, "suggestion": "conseil actionnable"}],
-  "overallAdvice": "conseil global personnalisé en 2-3 phrases"
-}
-
-Donne 4-6 facteurs. Réponds en français.`
-      },
-      {
-        role: 'user',
-        content: `Analyse ma charge mentale:
-- Tâches en retard: ${context.overdueTasks}
-- Tâches dues aujourd'hui: ${context.tasksDueToday}
-- Tâches dues cette semaine: ${context.tasksDueThisWeek}
-- Emails clients non lus: ${context.unreadClientEmails}
-- Factures en retard: ${context.overdueInvoices}
-- Deadlines à venir: ${context.upcomingDeadlines}
-- Temps tracké vs estimé: ${context.timeTrackedVsEstimated.tracked}h / ${context.timeTrackedVsEstimated.estimated}h
-- Projets actifs: ${context.activeProjects}
-- Réunions aujourd'hui: ${context.meetingsToday}
-- Réunions cette semaine: ${context.meetingsThisWeek}
-- Tâches complétées cette semaine: ${context.completedTasksThisWeek}
-- Total tâches en attente: ${context.totalPendingTasks}`
-      }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     try {
@@ -255,38 +208,10 @@ Donne 4-6 facteurs. Réponds en français.`
   }
 
   async generateCoachingAdvice(context: CoachingContext): Promise<CoachingAdvice> {
-    const toneLabel = context.assistantTone === 'pro' ? 'professionnel et structuré' : context.assistantTone === 'friendly' ? 'amical, chaleureux et encourageant' : 'direct et concis'
-
+    const { systemPrompt, userPrompt } = buildCoachingAdvicePrompt(context)
     const messages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Tu es ${context.assistantName}, le coach de productivité de ${context.userName}, un freelancer. Ton ton est ${toneLabel}.
-
-Génère des conseils de productivité personnalisés basés sur les données du freelancer. Chaque conseil doit être actionnable et spécifique à sa situation.
-
-Réponds en JSON uniquement:
-{
-  "dailyTip": "conseil du jour actionnable en 1-2 phrases",
-  "weeklyFocus": "focus prioritaire pour la semaine en 1-2 phrases",
-  "habitSuggestion": "une habitude à adopter ou améliorer, spécifique à sa situation",
-  "timeOptimization": "suggestion concrète d'optimisation du temps basée sur ses données"
-}
-
-Réponds en français.`
-      },
-      {
-        role: 'user',
-        content: `Mes données de productivité:
-- Tâches complétées cette semaine: ${context.completedTasksThisWeek}
-- Heures travaillées: ${context.totalHoursThisWeek}h (facturables: ${context.billableHoursThisWeek}h)
-- Tâches en retard: ${context.overdueTasks}
-- Tâches dues aujourd'hui: ${context.tasksDueToday}
-- Emails non lus: ${context.unreadEmails}
-- Projets actifs: ${context.activeProjects}
-- Score de charge mentale: ${context.mentalLoadScore}/100 (${context.mentalLoadLevel})
-- Point de douleur principal: ${context.topPainPoint}
-- Tendance productivité: ${context.recentProductivityTrend}`
-      }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
     ]
 
     try {

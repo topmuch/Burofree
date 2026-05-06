@@ -13,7 +13,8 @@ import { PERMISSIONS } from './permissions'
 
 // ─── In-memory permission cache ──────────────────────────────────────────
 
-const permissionCache = new Map<string, Set<string>>()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const permissionCache = new Map<string, { permissions: Set<string>; expiresAt: number }>()
 
 /**
  * Check if a user has a specific permission.
@@ -26,10 +27,10 @@ export async function hasPermission(
 ): Promise<boolean> {
   const cacheKey = `${userId}:${teamId || 'global'}`
   const cached = permissionCache.get(cacheKey)
-  if (cached) return cached.has(permissionSlug)
+  if (cached && cached.expiresAt > Date.now()) return cached.permissions.has(permissionSlug)
 
   const permissions = await loadUserPermissions(userId, teamId)
-  permissionCache.set(cacheKey, permissions)
+  permissionCache.set(cacheKey, { permissions, expiresAt: Date.now() + CACHE_TTL_MS })
   return permissions.has(permissionSlug)
 }
 
@@ -90,32 +91,9 @@ async function loadUserPermissions(userId: string, teamId?: string): Promise<Set
     }
   }
 
-  // 4. Also accumulate permissions from ALL team memberships
-  const allTeamMemberships = await db.teamMember.findMany({
-    where: { userId, status: 'active' },
-    include: {
-      roleRef: {
-        include: {
-          rolePermissions: {
-            include: { permission: true },
-          },
-        },
-      },
-    },
-  })
-
-  for (const membership of allTeamMemberships) {
-    // Owner gets all permissions
-    if (membership.role === 'owner') {
-      return new Set(Object.keys(PERMISSIONS))
-    }
-
-    if (membership.roleRef) {
-      for (const rp of membership.roleRef.rolePermissions) {
-        permissions.add(rp.permission.slug)
-      }
-    }
-  }
+  // 4. (REMOVED) Previously accumulated permissions from ALL team memberships,
+  //     which allowed cross-team permission escalation. When a teamId is provided,
+  //     only that team's permissions are used (steps 2-3 above).
 
   return permissions
 }
@@ -158,9 +136,9 @@ export async function getUserPermissions(
 ): Promise<Set<string>> {
   const cacheKey = `${userId}:${teamId || 'global'}`
   const cached = permissionCache.get(cacheKey)
-  if (cached) return cached
+  if (cached && cached.expiresAt > Date.now()) return cached.permissions
 
   const permissions = await loadUserPermissions(userId, teamId)
-  permissionCache.set(cacheKey, permissions)
+  permissionCache.set(cacheKey, { permissions, expiresAt: Date.now() + CACHE_TTL_MS })
   return permissions
 }

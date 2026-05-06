@@ -5,6 +5,7 @@ import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, createRate
 import { analyticsExportSchema } from '@/lib/validations/productivity'
 import { existsSync, readdirSync } from 'fs'
 import { join } from 'path'
+import { escapeHtml } from '@/lib/search-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -360,15 +361,6 @@ function findChromium(): string | null {
 }
 
 // ─── Analytics HTML Report Generator ───────────────────────────────────────────
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 interface AnalyticsReportData {
   user: { name: string; email: string; profession: string }

@@ -10,7 +10,7 @@ import Stripe from 'stripe'
 
 // ─── Stripe Client ────────────────────────────────────────────────────────────────
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_mock'
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || ''
 
 export const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2026-04-22.dahlia',
@@ -20,8 +20,7 @@ export const stripe = new Stripe(stripeSecretKey, {
 // ─── Configuration Check ──────────────────────────────────────────────────────────
 
 export function isStripeConfigured(): boolean {
-  const key = process.env.STRIPE_SECRET_KEY
-  return !!key && key.startsWith('sk_live_') || !!key && key.startsWith('sk_test_') && key !== 'sk_test_mock'
+  return !!process.env.STRIPE_SECRET_KEY
 }
 
 // ─── Checkout Session ─────────────────────────────────────────────────────────────

@@ -15,17 +15,6 @@ import { checkRateLimit, getRateLimitIdentifier, DEFAULT_API_OPTIONS, DEFAULT_AU
  * 6. 2FA-protected route enforcement
  */
 
-// Routes that don't require authentication
-const PUBLIC_ROUTES = [
-  '/api/auth',        // NextAuth routes (login, callback, etc.)
-  '/api/',            // Root API health check (exact match handled separately)
-  '/api/health',      // Health check endpoint (monitoring)
-  '/api/stripe/webhook', // Stripe webhooks (uses signature verification, not session)
-  '/api/teams/accept',   // Team invitation acceptance (GET redirect from email)
-  '/api/dpo/contact',    // DPO contact form (public submission)
-  '/api/roles/seed',     // Role seeding (superadmin, has its own auth)
-]
-
 // Routes that require 2FA if the user has it enabled
 const TWO_FA_REQUIRED_ROUTES = [
   '/api/security/2fa/disable',
@@ -129,7 +118,7 @@ export async function middleware(request: NextRequest) {
       const { decode } = await import('next-auth/jwt')
       const decoded = await decode({
         token: sessionToken,
-        secret: process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV !== 'production' ? 'burozen-dev-secret-key-do-not-use-in-prod' : ''),
+        secret: process.env.NEXTAUTH_SECRET as string,
       })
       if (decoded?.role !== 'superadmin') {
         return NextResponse.json(
@@ -148,6 +137,26 @@ export async function middleware(request: NextRequest) {
         { error: 'Session invalide.' },
         { status: 401 }
       )
+    }
+  }
+
+  // 8. 2FA-protected routes - verify user has 2FA enabled
+  const requires2FA = TWO_FA_REQUIRED_ROUTES.some((p) => pathname.startsWith(p))
+  if (requires2FA) {
+    try {
+      const { decode } = await import('next-auth/jwt')
+      const decoded = await decode({
+        token: sessionToken,
+        secret: process.env.NEXTAUTH_SECRET as string,
+      })
+      if (!decoded?.twoFactorEnabled) {
+        return NextResponse.json(
+          { error: 'Authentification à deux facteurs requise pour cette action.' },
+          { status: 403 }
+        )
+      }
+    } catch {
+      return NextResponse.json({ error: 'Session invalide.' }, { status: 401 })
     }
   }
 
