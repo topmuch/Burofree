@@ -36,6 +36,7 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   allowedDevOrigins: [
     '.space-z.ai',
