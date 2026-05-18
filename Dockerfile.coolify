@@ -11,7 +11,7 @@ WORKDIR /app
 RUN git clone https://github.com/topmuch/Burofree.git .
 
 # Install dependencies
-RUN bun install
+RUN npm install 2>/dev/null || bun install
 
 # Generate Prisma Client
 ENV NEXT_TELEMETRY_DISABLED=1
