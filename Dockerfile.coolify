@@ -1,0 +1,73 @@
+# Burofree - Dockerfile for Coolify (adapted from proven QRTrans production config)
+FROM node:20-alpine
+
+# Cache buster - increment to force rebuild
+ARG CACHEBUST=1
+
+# Install required packages
+RUN apk add --no-cache git libc6-compat openssl
+RUN npm install -g bun
+
+WORKDIR /app
+
+# Clone the repository from main branch
+RUN git clone --branch main --depth 1 https://github.com/topmuch/Burofree.git /app/tmp && \
+    cp -r /app/tmp/. /app/ && rm -rf /app/tmp && \
+    echo "--- Build context files ---" && ls -la /app/package.json /app/bun.lock
+
+# Install dependencies
+RUN bun install
+
+# Generate Prisma Client (requires DATABASE_URL even at build time for schema validation)
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+RUN npx prisma generate
+
+# Build the application
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN bun run build
+
+# Copy static assets into standalone for runtime
+RUN cp -r .next/static .next/standalone/.next/static
+RUN cp -r public .next/standalone/public
+
+# Copy Prisma files into standalone so migrations work at runtime
+# CRITICAL: schema + engine (.prisma) + CLI (prisma package) + runtime (@prisma)
+RUN cp -r prisma .next/standalone/prisma
+RUN cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
+RUN cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
+RUN cp -r node_modules/prisma .next/standalone/node_modules/prisma
+
+# Copy inbox-ws mini-service (Socket.io WebSocket server on port 3002)
+RUN cp -r mini-services/inbox-ws .next/standalone/mini-services/inbox-ws
+RUN cd .next/standalone/mini-services/inbox-ws && bun install --production
+
+# Create data directories
+RUN mkdir -p /app/data /app/public/uploads
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Start command: sync DB schema → generate client → seed → start server + inbox-ws
+# Strategy: try migrate deploy first, fall back to db push (handles both fresh & existing DBs)
+CMD sh -c "\
+  mkdir -p /app/data /app/public/uploads && \
+  echo '>>> [1/5] Syncing DB schema...' && \
+  npx prisma migrate deploy 2>&1 && echo '>>> [1/5] Migrations applied OK' || \
+    (echo '>>> [1/5] No migration history, using db push...' && \
+     npx prisma db push --skip-generate --accept-data-loss 2>&1 && \
+     echo '>>> [1/5] DB push OK') ; \
+  echo '>>> [2/5] Regenerating Prisma client...' && \
+  npx prisma generate 2>&1 && \
+  cp -r node_modules/.prisma .next/standalone/node_modules/.prisma && \
+  echo '>>> [2/5] Prisma client regenerated + copied to standalone' ; \
+  echo '>>> [3/5] Running seed...' ; \
+  bun run prisma/seed.ts 2>&1 || echo '>>> [3/5] Seed skipped (non-critical)' ; \
+  echo '>>> [4/5] Starting WebSocket inbox service (port 3002)...' ; \
+  cd /app/.next/standalone/mini-services/inbox-ws && node index.js & \
+  echo '>>> [5/5] Starting Next.js server (port 3000)...' ; \
+  cd /app/.next/standalone && \
+  HOSTNAME=0.0.0.0 exec node server.js \
+"
