@@ -1,34 +1,16 @@
-# Multi-stage build for Burozen
-FROM node:20-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-alpine
+RUN apk add --no-cache git libc6-compat openssl
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN npm install --frozen-lockfile 2>/dev/null || npm install
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+RUN git clone https://github.com/topmuch/Burofree.git . && rm -rf .git
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development
+ENV DATABASE_URL=file:/app/data/burofree.db
+ENV REDIS_URL=redis://localhost:6379
+RUN npm install
 RUN npx prisma generate
 RUN npm run build
-
-# Production image
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/db ./db
-USER nextjs
+RUN mkdir -p /app/data /app/public/uploads
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+CMD sh -c "npx prisma db push --skip-generate 2>/dev/null || true && node .next/standalone/server.js"
