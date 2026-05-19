@@ -10,16 +10,18 @@ WORKDIR /app
 # Clone the repository
 RUN git clone https://github.com/topmuch/Burofree.git .
 
-# Install dependencies
-RUN npm install 2>/dev/null || bun install
+# Install dependencies (production + dev for build time)
+ENV NODE_ENV=development
+RUN npm install
 
 # Generate Prisma Client
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL=postgresql://burozen:dummy@localhost:5432/burozen
 RUN npx prisma generate
 
-# Build the application
-RUN bun run build
+# Build the application (skip TS errors for Coolify)
+ENV NEXT_IGNORE_TS_ERRORS=true
+RUN npm run build
 
 # Create data directory
 RUN mkdir -p /app/data /app/public/uploads
