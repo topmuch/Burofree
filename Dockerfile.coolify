@@ -1,35 +1,15 @@
-# Burofree - Dockerfile for Coolify
 FROM node:20-alpine
-
-# Install required packages
 RUN apk add --no-cache git libc6-compat openssl
-RUN npm install -g bun
-
 WORKDIR /app
-
-# Clone the repository
-RUN git clone https://github.com/topmuch/Burofree.git .
-
-# Install dependencies (production + dev for build time)
-ENV NODE_ENV=development
-RUN npm install
-
-# Generate Prisma Client
+RUN git clone https://github.com/topmuch/Burofree.git . && rm -rf .git
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=postgresql://burozen:dummy@localhost:5432/burozen
+ENV NODE_ENV=development
+ENV DATABASE_URL=file:/app/data/burofree.db
+RUN npm install
 RUN npx prisma generate
-
-# Build the application (skip TS errors for Coolify)
-ENV NEXT_IGNORE_TS_ERRORS=true
 RUN npm run build
-
-# Create data directory
 RUN mkdir -p /app/data /app/public/uploads
-
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Start command - sync DB, seed, start inbox-ws + server
-CMD sh -c "mkdir -p /app/data /app/public/uploads && npx prisma db push --skip-generate 2>/dev/null || true && bun run prisma/seed.ts 2>/dev/null || true && cd mini-services/inbox-ws && node index.js & cd /app && exec node .next/standalone/server.js"
+CMD sh -c "npx prisma db push --skip-generate 2>/dev/null || true && node .next/standalone/server.js"

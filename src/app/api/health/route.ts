@@ -22,10 +22,9 @@ export async function GET() {
     await db.$queryRaw`SELECT 1`
     const dbLatency = Date.now() - dbStart
 
-    // Database size — compatible with both SQLite and PostgreSQL
+    // Database size (SQLite)
     let dbSize = 0
     try {
-      // Try SQLite first (our current provider)
       const sqliteResult = await db.$queryRaw<Array<{ page_count: bigint; page_size: bigint }>>`
         PRAGMA page_count
       `
@@ -36,15 +35,7 @@ export async function GET() {
       const pageSize = Number(sqlitePageSize[0]?.page_size || 4096)
       dbSize = pageCount * pageSize
     } catch {
-      // Fallback for PostgreSQL
-      try {
-        const pgResult = await db.$queryRaw<Array<{ pg_database_size: bigint }>>`
-          SELECT pg_database_size(current_database()) as pg_database_size
-        `
-        dbSize = Number(pgResult[0]?.pg_database_size || 0)
-      } catch {
-        dbSize = 0
-      }
+      dbSize = 0
     }
 
     // Active connections count — safely query sessions if model exists
