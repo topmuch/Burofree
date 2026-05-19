@@ -6,7 +6,7 @@ WORKDIR /app
 RUN git clone https://github.com/topmuch/Burofree.git .
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma Client
 RUN npx prisma generate
